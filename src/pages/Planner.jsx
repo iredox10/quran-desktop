@@ -269,6 +269,44 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                 })}
             </div>
 
+            {/* My Plans — shown right after pace cards */}
+            {planners && planners.length > 0 && (
+                <div className="plr-plans-section">
+                    <h2 className="plr-plans-title">My Plans</h2>
+                    <div className="plr-plans-list">
+                        {planners.map(p => {
+                            const overview = getPlannerOverview(p);
+                            const pct = overview ? Math.round(overview.completionRatio * 100) : 0;
+                            const isActive = p.id === activePlannerId;
+                            return (
+                                <motion.div key={p.id} className={`plr-plan-item ${isActive ? 'is-active' : ''}`}
+                                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                                    <div className="plr-plan-info" onClick={() => { onSwitchPlan(p.id); onViewActive?.(); }}>
+                                        <p className="plr-plan-name">{p.title || 'Unnamed Plan'}</p>
+                                        <p className="plr-plan-meta">
+                                            {p.durationDays} days · {p.unitType} · {pct}% complete
+                                        </p>
+                                        <div className="plr-plan-bar">
+                                            <div className="plr-plan-bar-fill" style={{ width: `${pct}%` }} />
+                                        </div>
+                                    </div>
+                                    <div className="plr-plan-actions">
+                                        {isActive && <span className="plr-plan-active-badge">Active</span>}
+                                        <button className="plr-plan-delete-btn" onClick={() => onDeletePlan(p.id)}
+                                            title="Delete this plan" aria-label="Delete plan">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                                                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             {/* Custom timeline section */}
             <motion.div className="plr-custom-section"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
@@ -361,44 +399,6 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                 <p className="plr-int-wisdom">"The best of deeds are those that are consistent, even if they are few."</p>
                 <span className="plr-int-wisdom-source">Prophetic Wisdom</span>
             </div>
-
-            {/* Existing plans list */}
-            {planners && planners.length > 0 && (
-                <div className="plr-plans-section">
-                    <h2 className="plr-plans-title">My Plans</h2>
-                    <div className="plr-plans-list">
-                        {planners.map(p => {
-                            const overview = getPlannerOverview(p);
-                            const pct = overview ? Math.round(overview.completionRatio * 100) : 0;
-                            const isActive = p.id === activePlannerId;
-                            return (
-                                <motion.div key={p.id} className={`plr-plan-item ${isActive ? 'is-active' : ''}`}
-                                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                                    <div className="plr-plan-info" onClick={() => { onSwitchPlan(p.id); onViewActive?.(); }}>
-                                        <p className="plr-plan-name">{p.title || 'Unnamed Plan'}</p>
-                                        <p className="plr-plan-meta">
-                                            {p.durationDays} days · {p.unitType} · {pct}% complete
-                                        </p>
-                                        <div className="plr-plan-bar">
-                                            <div className="plr-plan-bar-fill" style={{ width: `${pct}%` }} />
-                                        </div>
-                                    </div>
-                                    <div className="plr-plan-actions">
-                                        {isActive && <span className="plr-plan-active-badge">Active</span>}
-                                        <button className="plr-plan-delete-btn" onClick={() => onDeletePlan(p.id)}
-                                            title="Delete this plan" aria-label="Delete plan">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                                                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
