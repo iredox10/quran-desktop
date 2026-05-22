@@ -1,499 +1,600 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, CheckCircle2, Compass, Flag, PlusCircle, Sparkles, Target, Trophy, Trash2, ArrowRight, Settings2 } from 'lucide-react';
-
-import { getChapters } from '../services/api/quranApi';
+import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import {
     PLANNER_UNITS,
     buildReadingPlanner,
     formatPlannerDate,
     formatPlannerDateLabel,
-    getAssignmentProgress,
-    getAssignmentStatus,
-    getPlannerUnitItems,
     getPlannerOverview,
     getPlannerSuccessMetrics,
+    getAssignmentProgress,
+    getAssignmentStatus,
+    addDays,
 } from '../utils/planner';
+import { getChapters } from '../services/api/quranApi';
 import './Planner.css';
 
-const plannerUnitOptions = [
-    { id: 'page', label: 'Page Plan', description: 'Finish the Quran by Mushaf pages.' },
-    { id: 'juz', label: 'Juz Plan', description: 'Read by 30 equal juz sections.' },
-    { id: 'hizb', label: 'Hizb Plan', description: 'Use 60 smaller checkpoints.' },
-    { id: 'surah', label: 'Surah Plan', description: 'Move chapter by chapter.' },
-];
+/* ─── Icons as inline SVGs to avoid import overhead ─── */
+const MoonIcon = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+);
+const SunIcon = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+);
+const GemIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+        <line x1="12" y1="22" x2="12" y2="2"/><polyline points="2 8.5 12 13.5 22 8.5"/>
+    </svg>
+);
+const CheckIcon = ({ size = 16 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+    </svg>
+);
+const BookIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="set">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </svg>
+);
+const ClockIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+);
 
-const statusStyles = {
-    completed: { label: 'Done', color: '#22c55e', background: 'rgba(34, 197, 94, 0.12)' },
-    today: { label: 'Today', color: 'var(--accent-primary)', background: 'var(--accent-light)' },
-    overdue: { label: 'Catch Up', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.14)' },
-    upcoming: { label: 'Upcoming', color: 'var(--text-secondary)', background: 'var(--bg-secondary)' },
-};
-
-export default function Planner() {
-    const {
-        setNavHeaderTitle,
-        planners,
-        activePlannerId,
-        planner,
-        setPlanner,
-        setActivePlanner,
-        deletePlanner,
-        togglePlannerDayComplete,
-        setPlannerAssignmentProgress,
-    } = useAppStore();
-
-    const { data: chapters } = useQuery({
-        queryKey: ['chapters'],
-        queryFn: getChapters,
-        staleTime: Infinity,
-    });
-
-    const [unitType, setUnitType] = useState(planner?.unitType || 'page');
-    const [durationDays, setDurationDays] = useState(planner?.durationDays || 30);
-    const [startDate, setStartDate] = useState(planner?.startDate || formatPlannerDate(new Date()));
-    const [plannerScope, setPlannerScope] = useState(planner?.isCustomRange ? 'custom' : 'full');
-    const [startUnit, setStartUnit] = useState(planner?.startUnit || 1);
-    const [endUnit, setEndUnit] = useState(planner?.endUnit || PLANNER_UNITS[planner?.unitType || 'page'].max);
-    const [customTitle, setCustomTitle] = useState(planner?.title || '');
-
-    const [showCreator, setShowCreator] = useState(!planner);
-    const [plannerToDelete, setPlannerToDelete] = useState(null);
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => {
-        if (!planner) return;
-        setUnitType(planner.unitType || 'page');
-        setDurationDays(planner.durationDays || 30);
-        setStartDate(planner.startDate || formatPlannerDate(new Date()));
-        setPlannerScope(planner.isCustomRange ? 'custom' : 'full');
-        setStartUnit(planner.startUnit || 1);
-        setEndUnit(planner.endUnit || PLANNER_UNITS[planner.unitType || 'page'].max);
-        setCustomTitle(planner.title || '');
-        setShowCreator(false);
-    }, [planner?.id, planner]);
-
-    useEffect(() => {
-        setNavHeaderTitle('Reading Planner');
-        return () => setNavHeaderTitle(null);
-    }, [setNavHeaderTitle]);
-
-    const unitMeta = PLANNER_UNITS[unitType];
-    const plannerOverview = useMemo(() => getPlannerOverview(planner), [planner]);
-    const plannerSuccess = useMemo(() => getPlannerSuccessMetrics(planner), [planner]);
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useEffect(() => {
-        const max = PLANNER_UNITS[unitType].max;
-        if (plannerScope === 'full') {
-            setStartUnit(1);
-            setEndUnit(max);
-            setDurationDays((current) => Math.min(current, max));
-            return;
-        }
-        setStartUnit((current) => Math.min(Math.max(1, current), max));
-        setEndUnit((current) => Math.min(Math.max(1, current), max));
-        setDurationDays((current) => Math.min(current, max));
-    }, [plannerScope, unitType]);
-
-    useEffect(() => {
-        if (endUnit < startUnit) setEndUnit(startUnit);
-    }, [endUnit, startUnit]);
-
-    const scopedUnitCount = plannerScope === 'full' ? unitMeta.max : Math.max(endUnit - startUnit + 1, 1);
-
-    const handleGeneratePlanner = () => {
-        const nextPlanner = buildReadingPlanner({
-            unitType,
-            durationDays,
-            startDate,
-            startUnit: plannerScope === 'full' ? 1 : startUnit,
-            endUnit: plannerScope === 'full' ? unitMeta.max : endUnit,
-            customTitle,
-        }, chapters || []);
-        setPlanner(nextPlanner);
-        setShowCreator(false);
-    };
-
+/* ─── Circular progress SVG ─── */
+function RingProgress({ percent, size = 200, stroke = 9, children }) {
+    const r = (size - stroke * 2) / 2;
+    const circ = 2 * Math.PI * r;
+    const offset = circ - (percent / 100) * circ;
     return (
-        <div className="planner-container">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: 'easeOut' }}>
-
-                {/* Hero Section */}
-                <div className="planner-hero">
-                    <div className="planner-hero-content">
-                        <div className="planner-hero-text">
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.4rem 0.8rem', borderRadius: '999px', background: 'var(--accent-light)', color: 'var(--accent-primary)', fontWeight: 700, fontSize: '0.82rem', marginBottom: '1rem' }}>
-                                <Sparkles size={14} aria-hidden="true" />
-                                Personal Reading Journey
-                            </div>
-                            <h1 className="planner-hero-title">
-                                Build a gentle plan that fits your rhythm.
-                            </h1>
-                            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '1.05rem', maxWidth: '600px' }}>
-                                Set a clear target, choose your duration, and progress step by step. Every day gives you one concrete goal to accomplish.
-                            </p>
-                        </div>
-
-                        {plannerOverview && (
-                            <div className="planner-hero-progress stat-card" style={{ minWidth: '240px', flex: '0 1 auto' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-                                    <div className="stat-card-label" style={{ marginBottom: 0 }}>Current Plan Progress</div>
-                                    <Target size={18} color="var(--accent-primary)" />
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
-                                    <div className="stat-card-value">{plannerOverview.completedCount}</div>
-                                    <div style={{ fontSize: '1.1rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ {planner.durationDays} days</div>
-                                </div>
-                                <div style={{ marginTop: '1.2rem', height: '10px', borderRadius: '999px', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${plannerOverview.completionRatio * 100}%` }}
-                                        transition={{ duration: 0.8, ease: 'easeOut' }}
-                                        style={{ height: '100%', background: 'var(--accent-primary)', borderRadius: '999px' }}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* My Planners Manager */}
-                {planners?.length > 0 && (
-                    <div style={{ marginBottom: '2.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                            <div>
-                                <h3 style={{ color: 'var(--text-primary)', fontSize: '1.25rem', fontWeight: 800 }}>My Planners</h3>
-                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.2rem' }}>Switch between different reading tracks</div>
-                            </div>
-                            <button
-                                onClick={() => setShowCreator(!showCreator)}
-                                className="btn-secondary"
-                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}
-                            >
-                                {showCreator ? 'Cancel Creation' : 'Create New Plan'} <Settings2 size={16} />
-                            </button>
-                        </div>
-
-                        <div className="planners-grid">
-                            {planners.map((item) => {
-                                const isActive = item.id === activePlannerId;
-                                const overview = getPlannerOverview(item);
-                                return (
-                                    <div key={item.id} className={`planner-item-card ${isActive ? 'active' : ''}`}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.8rem' }}>
-                                            <div>
-                                                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{item.title || `${PLANNER_UNITS[item.unitType].label} Plan`}</div>
-                                                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.3rem', fontWeight: isActive ? 600 : 400 }}>
-                                                    {PLANNER_UNITS[item.unitType].label} {item.startUnit}-{item.endUnit}
-                                                </div>
-                                            </div>
-                                            {isActive && <span style={{ padding: '0.3rem 0.8rem', borderRadius: '999px', background: 'var(--accent-primary)', color: '#fff', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Active</span>}
-                                        </div>
-
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid rgba(0,0,0,0.04)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                            <div style={{ flex: 1, height: '6px', background: isActive ? 'rgba(0,0,0,0.05)' : 'var(--bg-secondary)', borderRadius: '999px', overflow: 'hidden' }}>
-                                                <div style={{ width: `${(overview?.completedCount / item.durationDays) * 100}%`, height: '100%', background: isActive ? 'var(--accent-primary)' : 'var(--text-muted)' }} />
-                                            </div>
-                                            <span style={{ fontWeight: 600 }}>{overview?.completedCount || 0}/{item.durationDays}</span>
-                                        </div>
-
-                                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
-                                            {!isActive && (
-                                                <button onClick={() => setActivePlanner(item.id)} className="btn-secondary" style={{ flex: 1, fontSize: '0.9rem' }}>
-                                                    Set Active
-                                                </button>
-                                            )}
-                                            <button onClick={() => setPlannerToDelete(item)} style={{ padding: '0.8rem', borderRadius: '999px', background: 'rgba(239, 68, 68, 0.08)', color: 'rgb(239, 68, 68)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: isActive ? '100%' : 'auto', transition: 'all 0.2s', fontWeight: 600 }}>
-                                                <Trash2 size={18} /> {isActive && <span style={{ marginLeft: '0.5rem' }}>Delete Plan</span>}
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Planner Creator Form */}
-                {showCreator && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                        <div className="planner-hero" style={{ background: 'var(--bg-primary)', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}>
-                            <div style={{ marginBottom: '2rem' }}>
-                                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Configure New Plan</h2>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', marginTop: '0.4rem' }}>Set up your reading unit, scope, and duration to generate a personalized timeline.</p>
-                            </div>
-
-                            <div style={{ display: 'grid', gap: '2rem' }}>
-
-                                {/* Step 1: Unit */}
-                                <div>
-                                    <div className="stat-card-label" style={{ marginBottom: '1rem' }}>1. Choose Your Unit</div>
-                                    <div className="form-grid">
-                                        {plannerUnitOptions.map((option) => {
-                                            const active = option.id === unitType;
-                                            return (
-                                                <div key={option.id} onClick={() => {
-                                                    setUnitType(option.id);
-                                                    setDurationDays((current) => Math.min(current, PLANNER_UNITS[option.id].max));
-                                                    if (plannerScope === 'full') {
-                                                        setStartUnit(1);
-                                                        setEndUnit(PLANNER_UNITS[option.id].max);
-                                                    }
-                                                }} className={`unit-btn ${active ? 'active' : ''}`}>
-                                                    <div style={{ fontWeight: 800, color: active ? 'var(--accent-primary)' : 'var(--text-primary)', marginBottom: '0.4rem', fontSize: '1.1rem' }}>{option.label}</div>
-                                                    <div style={{ color: active ? 'var(--accent-primary)' : 'var(--text-secondary)', opacity: active ? 0.9 : 1, fontSize: '0.9rem', lineHeight: 1.5 }}>{option.description}</div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                {/* Step 2 & 3: Scope and Range */}
-                                <div style={{ padding: '1.5rem', background: 'var(--bg-surface)', borderRadius: '24px', border: '1px solid rgba(0,0,0,0.04)' }}>
-                                    <div className="form-grid">
-                                        <div>
-                                            <div className="stat-card-label" style={{ marginBottom: '1rem' }}>2. Choose Scope</div>
-                                            <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--bg-secondary)', padding: '0.4rem', borderRadius: '999px' }}>
-                                                {[{ id: 'full', label: `Full ${unitMeta.plural}` }, { id: 'custom', label: 'Custom Range' }].map((option) => (
-                                                    <button key={option.id} onClick={() => setPlannerScope(option.id)} style={{
-                                                        flex: 1, padding: '0.85rem 1rem', borderRadius: '999px',
-                                                        background: plannerScope === option.id ? 'var(--bg-primary)' : 'transparent',
-                                                        color: plannerScope === option.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                                        fontWeight: plannerScope === option.id ? 800 : 600,
-                                                        boxShadow: plannerScope === option.id ? '0 2px 10px rgba(0,0,0,0.05)' : 'none',
-                                                        transition: 'all 0.2s',
-                                                    }}>
-                                                        {option.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {plannerScope === 'custom' && (
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                    <span className="stat-card-label">Start {unitMeta.label}</span>
-                                                    <input type="number" min="1" max={unitMeta.max} value={startUnit} onChange={(e) => setStartUnit(Number(e.target.value))} className="planner-input" />
-                                                </label>
-                                                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                    <span className="stat-card-label">End {unitMeta.label}</span>
-                                                    <input type="number" min={startUnit} max={unitMeta.max} value={endUnit} onChange={(e) => setEndUnit(Number(e.target.value))} className="planner-input" />
-                                                </label>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Step 4: Duration & Date */}
-                                <div className="form-grid">
-                                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <span className="stat-card-label">3. Start Date</span>
-                                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="planner-input" />
-                                    </label>
-
-                                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <span className="stat-card-label">4. Duration (Days)</span>
-                                        <div style={{ padding: '1.1rem 1.25rem', borderRadius: '16px', background: 'var(--bg-primary)', border: '1px solid rgba(0,0,0,0.08)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
-                                                <span style={{ fontWeight: 800, color: 'var(--accent-primary)', fontSize: '1.1rem' }}>{durationDays} Days</span>
-                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>Max {scopedUnitCount}</span>
-                                            </div>
-                                            <input type="range" min="1" max={scopedUnitCount} step="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value))} className="settings-slider" style={{ width: '100%' }} />
-                                        </div>
-                                    </label>
-                                </div>
-
-                                <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <span className="stat-card-label">5. Optional Title</span>
-                                    <input type="text" value={customTitle} onChange={(e) => setCustomTitle(e.target.value)} placeholder="e.g. Ramadan Khatmah" className="planner-input" />
-                                </label>
-
-                                <div style={{ paddingTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
-                                    {planners?.length > 0 && <button onClick={() => setShowCreator(false)} className="btn-secondary">Cancel</button>}
-                                    <button onClick={handleGeneratePlanner} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <PlusCircle size={20} /> Generate Plan
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Empty State */}
-                {!planner && !showCreator && (
-                    <div className="planner-hero" style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--bg-primary)' }}>
-                        <div style={{ width: '90px', height: '90px', borderRadius: '50%', background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: '0 8px 32px var(--accent-light)' }}>
-                            <Compass size={44} color="var(--accent-primary)" />
-                        </div>
-                        <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '1rem' }}>No Active Plan</h2>
-                        <p style={{ color: 'var(--text-secondary)', maxWidth: '420px', margin: '0 auto 2.5rem', lineHeight: 1.7, fontSize: '1.1rem' }}>
-                            A consistent reading habit starts with a good plan. Create one tailored to your pace and start making daily progress.
-                        </p>
-                        <button onClick={() => setShowCreator(true)} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.05rem', padding: '1rem 2.5rem' }}>
-                            <PlusCircle size={20} /> Create Your First Plan
-                        </button>
-                    </div>
-                )}
-
-                {/* Planner Active State Views */}
-                {planner && plannerOverview && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
-
-                        {/* Stats Section */}
-                        <div className="stat-card-grid">
-                            <div className="stat-card">
-                                <div className="stat-card-icon"><Flag size={20} /></div>
-                                <div className="stat-card-label">Plan Type</div>
-                                <div className="stat-card-value text-english" style={{ fontSize: '1.25rem' }}>{planner.title || PLANNER_UNITS[planner.unitType].label}</div>
-                            </div>
-                            <div className="stat-card">
-                                <div className="stat-card-icon"><CalendarDays size={20} /></div>
-                                <div className="stat-card-label">Start Date</div>
-                                <div className="stat-card-value">{formatPlannerDateLabel(planner.startDate)}</div>
-                            </div>
-                            <div className="stat-card">
-                                <div className="stat-card-icon"><Compass size={20} /></div>
-                                <div className="stat-card-label">Scope</div>
-                                <div className="stat-card-value">{PLANNER_UNITS[planner.unitType].label} {planner.startUnit}-{planner.endUnit}</div>
-                            </div>
-                        </div>
-
-                        {plannerSuccess && plannerOverview.completedCount > 0 && (
-                            <div className="stat-card-grid">
-                                <div className="stat-card">
-                                    <div className="stat-card-icon" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}><Trophy size={20} /></div>
-                                    <div className="stat-card-label">Success Rate</div>
-                                    <div className="stat-card-value" style={{ color: '#22c55e' }}>{plannerSuccess.successRate}%</div>
-                                    <div className="stat-card-helper">Completed on time</div>
-                                </div>
-                                <div className="stat-card">
-                                    <div className="stat-card-icon"><Target size={20} /></div>
-                                    <div className="stat-card-label">Consistency</div>
-                                    <div className="stat-card-value">{plannerSuccess.consistencyStreak} Day{plannerSuccess.consistencyStreak !== 1 ? 's' : ''}</div>
-                                    <div className="stat-card-helper">Current on-time streak</div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Daily Timeline */}
-                        <div className="timeline-card">
-                            <div className="timeline-header">
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>Daily Timeline</h2>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.4rem' }}>Your step-by-step reading journey</p>
-                            </div>
-
-                            <ul className="timeline-list">
-                                <div className="timeline-line" />
-                                {planner.assignments.map((assignment, index) => {
-                                    const status = getAssignmentStatus(planner, assignment);
-                                    const statusMeta = statusStyles[status];
-                                    const progress = getAssignmentProgress(planner, assignment);
-                                    const isDone = progress.isComplete;
-                                    const isFirst = index === 0;
-
-                                    return (
-                                        <li key={assignment.dayNumber} className={`timeline-item ${isDone ? 'done' : status === 'today' ? 'today' : ''}`}>
-                                            <div onClick={() => togglePlannerDayComplete(assignment.dayNumber)} className={`timeline-node ${isDone ? 'done' : status === 'today' ? 'today' : ''}`}>
-                                                <CheckCircle2 size={24} />
-                                            </div>
-
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
-                                                    <span style={{ fontWeight: 800, fontSize: '1.2rem', color: isDone ? '#16a34a' : 'var(--text-primary)' }}>Day {assignment.dayNumber}</span>
-                                                    <span style={{ padding: '0.3rem 0.8rem', borderRadius: '999px', background: statusMeta.background, color: statusMeta.color, fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                        {statusMeta.label}
-                                                    </span>
-                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>{formatPlannerDateLabel(assignment.date)}</span>
-                                                </div>
-
-                                                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.4rem' }}>{assignment.title}</div>
-                                                <div style={{ color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '1rem' }}>{assignment.subtitle}</div>
-
-                                                <div className={`assignment-card ${isDone ? 'done' : ''}`}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: isDone ? '#16a34a' : 'var(--text-primary)', fontSize: '0.95rem' }}>
-                                                            <Target size={18} /> Progress: {progress.completedCount} / {progress.totalCount}
-                                                        </div>
-                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 700 }}>
-                                                            {Math.round(progress.completionRatio * 100)}%
-                                                        </span>
-                                                    </div>
-
-                                                    <input type="range" min="0" max={progress.totalCount} step="1" value={progress.completedCount} onChange={(e) => setPlannerAssignmentProgress(assignment.dayNumber, Number(e.target.value))} className="settings-slider" style={{ width: '100%', marginBottom: '1.5rem', height: '8px' }} />
-
-                                                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                        <Link to={assignment.primaryRoute} state={{ backToPlanner: true }} style={{ padding: '0.75rem 1.5rem', borderRadius: '999px', background: 'var(--accent-light)', color: 'var(--accent-primary)', textDecoration: 'none', fontWeight: 700, fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-                                                            onMouseOver={(e) => {
-                                                                e.currentTarget.style.background = 'var(--accent-primary)';
-                                                                e.currentTarget.style.color = '#fff';
-                                                            }}
-                                                            onMouseOut={(e) => {
-                                                                e.currentTarget.style.background = 'var(--accent-light)';
-                                                                e.currentTarget.style.color = 'var(--accent-primary)';
-                                                            }}>
-                                                            <span style={{ color: 'inherit' }}>Read Assignment</span>
-                                                            <ArrowRight size={16} />
-                                                        </Link>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    </motion.div>
-                )}
-            </motion.div>
-
-            {/* Delete Warning Modal */}
-            <AnimatePresence>
-                {plannerToDelete && (
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => setPlannerToDelete(null)}
-                            style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(6px)' }}
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            style={{ position: 'relative', width: '100%', maxWidth: '420px', background: 'var(--bg-primary)', borderRadius: '28px', padding: '2.5rem', boxShadow: '0 25px 50px rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', zIndex: 1 }}
-                        >
-                            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', color: 'rgb(239, 68, 68)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                                <Trash2 size={28} />
-                            </div>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Delete Planner?</h3>
-                            <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '2.5rem', fontSize: '1.05rem' }}>
-                                Are you sure you want to delete the <strong>{plannerToDelete.title || `${PLANNER_UNITS[plannerToDelete.unitType].label} Plan`}</strong>? All progress tracked under this plan will be permanently lost.
-                            </p>
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button onClick={() => setPlannerToDelete(null)} className="btn-secondary" style={{ flex: 1, fontSize: '1rem', padding: '1rem' }}>
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        deletePlanner(plannerToDelete.id);
-                                        setPlannerToDelete(null);
-                                    }}
-                                    style={{ flex: 1, padding: '1rem', borderRadius: '999px', background: 'rgb(239, 68, 68)', color: '#fff', fontWeight: 700, fontSize: '1rem', border: 'none', cursor: 'pointer', transition: 'filter 0.2s' }}
-                                    onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
-                                    onMouseOut={(e) => e.currentTarget.style.filter = 'brightness(1)'}
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+        <div className="ring-wrap" style={{ width: size, height: size }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx={size / 2} cy={size / 2} r={r} fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.25)" strokeWidth={stroke} />
+                <circle
+                    cx={size / 2} cy={size / 2} r={r}
+                    fill="none"
+                    stroke="#8B6B40"
+                    strokeWidth={stroke}
+                    strokeLinecap="round"
+                    strokeDasharray={circ}
+                    strokeDashoffset={offset}
+                    style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)' }}
+                />
+            </svg>
+            <div className="ring-inner">{children}</div>
         </div>
     );
 }
+
+/* ─── Pace computation helpers ─── */
+const TOTAL_QURAN_PAGES = 604;
+
+function getPaceStats(durationDays) {
+    const dailyPages = Math.ceil(TOTAL_QURAN_PAGES / durationDays);
+    const perPrayer = Math.ceil(dailyPages / 5);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + durationDays);
+    const endLabel = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return { dailyPages, perPrayer, endLabel };
+}
+
+/** Returns the current prayer name based on local time (approximate). */
+function getPrayerByTime() {
+    const now = new Date();
+    const t = now.getHours() * 60 + now.getMinutes();
+    if (t >= 3 * 60 + 30 && t < 12 * 60) return 'Fajr';
+    if (t >= 12 * 60 && t < 15 * 60 + 30) return 'Dhuhr';
+    if (t >= 15 * 60 + 30 && t < 18 * 60) return 'Asr';
+    if (t >= 18 * 60 && t < 20 * 60) return 'Maghrib';
+    return 'Isha';
+}
+
+const PACES = [
+    { id: 'ramadan',    icon: MoonIcon, title: 'Ramadan Pace',    duration: '30 DAYS',  durationDays: 30,  badge: null },
+    { id: 'steady',     icon: SunIcon,  title: 'Steady Journey',  duration: '60 DAYS',  durationDays: 60,  badge: 'MOST BALANCED' },
+    { id: 'devotional', icon: GemIcon,  title: 'Devotional Path', duration: '1 YEAR',   durationDays: 365, badge: null },
+];
+
+/* ─── Pace card circle — arc length proportional to pages/day ─── */
+function PaceRing({ durationDays, selected }) {
+    const { dailyPages } = getPaceStats(durationDays);
+    const size = 104;
+    const stroke = 7;
+    const r = (size - stroke * 2) / 2;
+    const circ = 2 * Math.PI * r;
+    const ratio = durationDays <= 30 ? 0.88 : durationDays <= 60 ? 0.72 : 0.45;
+    const filled = circ * ratio;
+    const gap = circ - filled;
+    return (
+        <div className="pace-ring-wrap" style={{ width: size, height: size }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(135deg)' }}>
+                <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--plr-ring-bg)" strokeWidth={stroke} />
+                <circle
+                    cx={size/2} cy={size/2} r={r} fill="none"
+                    stroke={selected ? 'var(--plr-gold)' : 'var(--plr-ring-stroke)'}
+                    strokeWidth={stroke}
+                    strokeLinecap="round"
+                    strokeDasharray={`${filled} ${gap}`}
+                />
+            </svg>
+            <div className="pace-ring-label">
+                <span className="pace-pages-num">{dailyPages}</span>
+                <span className="pace-pages-sub">PAGES / DAY</span>
+            </div>
+        </div>
+    );
+}
+
+
+/* ════════════════════════════════════════════════════════
+   INTENTION VIEW  (no active planner)
+════════════════════════════════════════════════════════ */
+function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan }) {
+    const [selected, setSelected] = useState('steady');
+    const [showCustom, setShowCustom] = useState(false);
+    const [unitType, setUnitType] = useState('page');
+    const [startDate, setStartDate] = useState(formatPlannerDate(new Date()));
+    const [durationDays, setDurationDays] = useState(60);
+
+    const unitMeta = PLANNER_UNITS[unitType];
+
+    const handleBegin = () => {
+        const pace = PACES.find(p => p.id === selected);
+        if (!pace) return;
+        const days = showCustom ? durationDays : pace.durationDays;
+        const unit = showCustom ? unitType : 'page';
+        try {
+            const built = buildReadingPlanner({
+                unitType: unit,
+                durationDays: days,
+                startDate,
+                startUnit: 1,
+                endUnit: PLANNER_UNITS[unit].max,
+                customTitle: showCustom ? '' : pace.title,
+            }, chapters || []);
+            onBegin(built);
+        } catch (e) {
+            console.error('Planner build failed:', e);
+            alert(`Could not build plan: ${e.message}`);
+        }
+    };
+
+    return (
+        <div className="plr-intention">
+            {/* Continue Plan banner */}
+            {hasExistingPlan && onViewActive && (
+                <motion.button
+                    className="plr-continue-banner"
+                    onClick={onViewActive}
+                    initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                >
+                    <span>Continue my active plan</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </motion.button>
+            )}
+
+            <motion.div className="plr-int-header" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}>
+                <h1 className="plr-int-title">Set Your Intention</h1>
+                <p className="plr-int-sub">Choose a pace that fits your rhythm. A journey of a thousand miles begins with a single, mindful verse.</p>
+            </motion.div>
+
+            <div className="plr-pace-list">
+                {PACES.map((pace, i) => {
+                    const Icon = pace.icon;
+                    const isSelected = selected === pace.id;
+                    const stats = getPaceStats(pace.durationDays);
+                    return (
+                        <motion.div key={pace.id} className={`plr-pace-card ${isSelected ? 'is-selected' : ''}`}
+                            onClick={() => { setSelected(pace.id); setDurationDays(pace.durationDays); }}
+                            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.1 + i * 0.12 }}
+                        >
+                            {pace.badge && <div className="plr-pace-badge">{pace.badge}</div>}
+                            <div className="plr-pace-icon-wrap"><Icon /></div>
+                            <p className="plr-pace-name">{pace.title}</p>
+                            <p className="plr-pace-duration">{pace.duration}</p>
+                            <PaceRing durationDays={pace.durationDays} selected={isSelected} />
+                            <p className="plr-pace-quote">"{stats.perPrayer} pages per prayer"</p>
+                        </motion.div>
+                    );
+                })}
+            </div>
+
+            {/* Live plan preview strip — updates with selection */}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={`preview-${selected}-${durationDays}`}
+                    className="plr-preview-strip"
+                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                >
+                    {(() => {
+                        const d = showCustom ? durationDays : PACES.find(p => p.id === selected)?.durationDays || 60;
+                        const s = getPaceStats(d);
+                        return (
+                            <>
+                                <div className="plr-preview-stat">
+                                    <span className="plr-preview-val">{s.dailyPages}</span>
+                                    <span className="plr-preview-lbl">pages / day</span>
+                                </div>
+                                <div className="plr-preview-divider" />
+                                <div className="plr-preview-stat">
+                                    <span className="plr-preview-val">{s.perPrayer}</span>
+                                    <span className="plr-preview-lbl">pages / prayer</span>
+                                </div>
+                                <div className="plr-preview-divider" />
+                                <div className="plr-preview-stat">
+                                    <span className="plr-preview-val">{s.endLabel}</span>
+                                    <span className="plr-preview-lbl">finish date</span>
+                                </div>
+                            </>
+                        );
+                    })()}
+                </motion.div>
+            </AnimatePresence>
+
+            {/* Customise toggle */}
+            <div className="plr-custom-toggle-row">
+                <button className="plr-custom-toggle-btn" onClick={() => setShowCustom(v => !v)}>
+                    {showCustom ? '− Hide options' : '+ Customise plan'}
+                </button>
+            </div>
+
+            <AnimatePresence>
+                {showCustom && (
+                    <motion.div className="plr-custom-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                        {/* Unit type */}
+                        <div className="plr-form-group">
+                            <label className="plr-form-label">Reading unit</label>
+                            <div className="plr-unit-pills">
+                                {Object.entries(PLANNER_UNITS).map(([key, meta]) => (
+                                    <button key={key} className={`plr-unit-pill ${unitType === key ? 'active' : ''}`} onClick={() => setUnitType(key)}>
+                                        {meta.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        {/* Start date */}
+                        <div className="plr-form-group">
+                            <label className="plr-form-label">Start date</label>
+                            <input type="date" className="plr-date-input" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                        </div>
+                        {/* Duration */}
+                        <div className="plr-form-group">
+                            <label className="plr-form-label">Duration — <strong>{durationDays} days</strong></label>
+                            <input type="range" min={1} max={unitMeta.max} value={durationDays}
+                                onChange={e => setDurationDays(Number(e.target.value))} className="plr-range" />
+                            <div className="plr-range-limits"><span>1</span><span>{unitMeta.max}</span></div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <div className="plr-int-footer">
+                <div className="plr-arch" aria-hidden="true"><div className="plr-arch-inner" /><div className="plr-arch-mid" /></div>
+                <motion.button className="plr-cta-btn" whileTap={{ scale: 0.97 }} onClick={handleBegin}
+                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+                    BEGIN MY JOURNEY
+                </motion.button>
+            </div>
+        </div>
+    );
+}
+
+const PRAYER_NAMES = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+function buildPrayerSlots(planner, todayAssignment) {
+    if (!todayAssignment) return PRAYER_NAMES.map(name => ({ name, count: 0, doneInSlot: 0, completedUpTo: 0, slotStart: 0, slotRoute: null, status: 'upcoming' }));
+    const progress = getAssignmentProgress(planner, todayAssignment);
+    const { completedRangeValues } = progress;
+    const items = todayAssignment.items;
+    const total = items.length;
+    const done = progress.completedCount;
+    const slots = PRAYER_NAMES.map((name, i) => {
+        const slotEnd = Math.floor(((i + 1) / 5) * total);
+        const slotStart = Math.floor((i / 5) * total);
+        const slotItems = items.slice(slotStart, slotEnd);
+        const count = Math.max(slotEnd - slotStart, total > 0 ? 0 : 1);
+        // Count how many items within THIS slot are completed
+        const doneInSlot = slotItems.filter(item => completedRangeValues.includes(item.rangeValue)).length;
+        const isComplete = doneInSlot >= count && count > 0;
+        const isCurrent = !isComplete && doneInSlot > 0;
+        // First unread item in this slot (for linking)
+        const firstUnread = slotItems.find(item => !completedRangeValues.includes(item.rangeValue));
+        const slotRoute = (firstUnread || slotItems[0])?.route || null;
+        return { name, count, doneInSlot, completedUpTo: slotEnd, slotStartCount: slotStart, slotRoute, status: isComplete ? 'completed' : isCurrent ? 'current' : 'upcoming' };
+    });
+    const firstIncomplete = slots.findIndex(s => s.status !== 'completed');
+    if (firstIncomplete !== -1 && slots[firstIncomplete].status === 'upcoming') {
+        // If no progress yet, use time-based detection; otherwise use positional
+        const timePrayer = done === 0 ? getPrayerByTime() : null;
+        if (timePrayer) {
+            // Find the matching slot index by name
+            const timeIdx = slots.findIndex(s => s.name === timePrayer);
+            const targetIdx = timeIdx >= firstIncomplete ? timeIdx : firstIncomplete;
+            slots[targetIdx] = { ...slots[targetIdx], status: 'current' };
+        } else {
+            slots[firstIncomplete] = { ...slots[firstIncomplete], status: 'current' };
+        }
+    }
+    return slots;
+}
+
+/* ════════════════════════════════════════════════════════
+   ACTIVE PLANNER VIEW
+════════════════════════════════════════════════════════ */
+function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePlannerDayComplete }) {
+    const overview = useMemo(() => getPlannerOverview(planner), [planner]);
+    const metrics = useMemo(() => getPlannerSuccessMetrics(planner), [planner]);
+    const today = formatPlannerDate(new Date());
+
+    const todayAssignment = useMemo(() => {
+        if (!planner) return null;
+        return planner.assignments.find(a => a.date === today) || planner.assignments[overview?.currentDayNumber - 1] || null;
+    }, [planner, today, overview]);
+
+    const prayerSlots = useMemo(() => buildPrayerSlots(planner, todayAssignment), [planner, todayAssignment]);
+
+    const unitsLabel = planner ? PLANNER_UNITS[planner.unitType]?.plural : 'Pages';
+    const completionDate = planner ? new Date(`${addDays(planner.startDate, planner.durationDays - 1)}T00:00:00`)
+        .toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+    const streakDays = metrics?.consistencyStreak ?? 0;
+    const currentDay = overview?.currentDayNumber ?? 1;
+
+    const todayProgress = useMemo(() => todayAssignment ? getAssignmentProgress(planner, todayAssignment) : null, [planner, todayAssignment]);
+    const nextReadRoute = todayProgress?.nextItem?.route || todayAssignment?.primaryRoute || null;
+
+    // Ring shows TODAY's page progress (not overall day-completion)
+    const todayDone = todayProgress?.completedCount ?? 0;
+    const todayTotal = todayProgress?.totalCount ?? 1;
+    const todayPct = Math.round((todayDone / todayTotal) * 100);
+
+    // Overall plan progress for stats row
+    const overallPct = overview ? Math.round(overview.completionRatio * 100) : 0;
+    const completedDays = overview?.completedCount ?? 0;
+
+    const handleMarkPrayer = (slot) => {
+        if (!todayAssignment) return;
+        const newCount = slot.completedUpTo;
+        setPlannerAssignmentProgress(todayAssignment.dayNumber, newCount);
+    };
+
+    const handleUndoPrayer = (slot) => {
+        if (!todayAssignment || slot.status !== 'completed') return;
+        setPlannerAssignmentProgress(todayAssignment.dayNumber, slot.slotStartCount);
+    };
+
+    // Dynamic subtitle
+    const nextPrayer = prayerSlots.find(s => s.status === 'current' || s.status === 'upcoming');
+    const daySubtitle = (() => {
+        if (overview?.isFinishedWindow) return 'Plan complete! 🎉';
+        if (!todayAssignment) return 'Starting soon…';
+        if (todayDone > 0 && todayDone < todayTotal && nextPrayer) return `${todayDone} of ${todayTotal} ${unitsLabel} read · ${nextPrayer.name} next`;
+        if (nextPrayer) return `${todayTotal} ${unitsLabel} today · start with ${nextPrayer.name}`;
+        return 'All done for today! ✓';
+    })();
+
+    const ringLabel = `${todayDone} OF ${todayTotal} ${PLANNER_UNITS[planner.unitType]?.label.toUpperCase()}S TODAY`;
+
+    return (
+        <div className="plr-active">
+            <div className="plr-active-bg" aria-hidden="true" />
+            <motion.div className="plr-active-inner" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
+
+                {/* Day header */}
+                <div className="plr-day-header">
+                    <h1 className="plr-day-title">Day {currentDay} of {planner.durationDays}</h1>
+                    <p className="plr-day-sub">{daySubtitle}</p>
+                </div>
+
+                {/* Ring */}
+                <div className="plr-ring-section">
+                    <RingProgress percent={todayPct} size={200} stroke={9}>
+                        <span className="plr-pct">{todayPct}%</span>
+                        <span className="plr-juz-label">{ringLabel}</span>
+                    </RingProgress>
+                </div>
+
+                {/* Stats */}
+                <div className="plr-stat-row">
+                    <div className="plr-stat-pill">
+                        <span className="plr-stat-label">Overall</span>
+                        <span className="plr-stat-val">{completedDays}/{planner.durationDays} Days ({overallPct}%)</span>
+                    </div>
+                    <div className="plr-stat-pill">
+                        <span className="plr-stat-label">Finish by</span>
+                        <span className="plr-stat-val">{completionDate}</span>
+                    </div>
+                    <div className="plr-stat-pill">
+                        <span className="plr-stat-label">Streak</span>
+                        <span className="plr-stat-val">{streakDays} Day{streakDays !== 1 ? 's' : ''}</span>
+                    </div>
+                </div>
+
+                {/* Daily Ritual */}
+                <div className="plr-ritual-section">
+                    <div className="plr-ritual-header">
+                        <h2 className="plr-ritual-title">Daily Ritual</h2>
+                        <span className="plr-ritual-status">
+                            <span className="plr-ritual-dot" />
+                            {todayAssignment && getAssignmentProgress(planner, todayAssignment).isComplete ? 'Complete' : 'In Progress'}
+                        </span>
+                    </div>
+
+                    <div className="plr-prayers">
+                        {prayerSlots.map((slot, i) => (
+                            <motion.div key={slot.name}
+                                className={`plr-prayer-card plr-prayer-${slot.status}`}
+                                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.05 * i, duration: 0.35 }}
+                            >
+                                <div className={`plr-prayer-icon plr-prayer-icon-${slot.status}`}>
+                                    {slot.status === 'completed' && <CheckIcon size={18} />}
+                                    {slot.status === 'current' && <BookIcon />}
+                                    {slot.status === 'upcoming' && <ClockIcon />}
+                                </div>
+                                <div className="plr-prayer-info">
+                                    <span className={`plr-prayer-name ${slot.status === 'completed' ? 'is-done' : ''}`}>{slot.name}</span>
+                                    <span className="plr-prayer-meta">
+                                        {slot.status === 'completed' && `${slot.doneInSlot}/${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} ✓`}
+                                        {slot.status === 'current' && `${slot.doneInSlot} of ${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} read`}
+                                        {slot.status === 'upcoming' && `${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} · not started`}
+                                    </span>
+                                </div>
+                                <div className="plr-prayer-action">
+                                    {slot.status === 'completed' && (
+                                        <button
+                                            className="plr-check-badge"
+                                            onClick={() => handleUndoPrayer(slot)}
+                                            title="Undo this prayer"
+                                        >
+                                            <CheckIcon size={14} />
+                                        </button>
+                                    )}
+                                    {slot.status === 'current' && slot.slotRoute && (
+                                        <Link to={slot.slotRoute} className="plr-start-btn">Start</Link>
+                                    )}
+                                    {slot.status === 'upcoming' && (
+                                        <button className="plr-mark-btn" onClick={() => handleMarkPrayer(slot)} title="Mark done">
+                                            <div className="plr-empty-ring" />
+                                        </button>
+                                    )}
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Footer CTA */}
+                <div className="plr-active-footer">
+                    {nextReadRoute ? (
+                        <Link to={nextReadRoute} className="plr-open-btn">Open Al-Quran</Link>
+                    ) : (
+                        <button className="plr-open-btn" disabled>Open Al-Quran</button>
+                    )}
+                    <p className="plr-ayah-quote">"Recite what has been revealed to you of the Book…" (29:45)</p>
+                    <button className="plr-delete-link" onClick={onDelete}
+                        title="Delete plan" aria-label="Delete plan">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                        Delete plan
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
+/* ════════════════════════════════════════════════════════
+   ACTIVE VIEW — add back button
+════════════════════════════════════════════════════════ */
+function ActiveViewWrapper({ planner, onDelete, onBack, setPlannerAssignmentProgress, togglePlannerDayComplete }) {
+    return (
+        <div style={{ position: 'relative' }}>
+            <button className="plr-back-btn" onClick={onBack} aria-label="Back to intention">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+            </button>
+            <ActiveView
+                planner={planner}
+                onDelete={onDelete}
+                setPlannerAssignmentProgress={setPlannerAssignmentProgress}
+                togglePlannerDayComplete={togglePlannerDayComplete}
+            />
+        </div>
+    );
+}
+export default function Planner() {
+    const {
+        setNavHeaderTitle, planner, setPlanner, deletePlanner,
+        setPlannerAssignmentProgress, togglePlannerDayComplete,
+    } = useAppStore();
+
+    const { data: chapters = [] } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
+    const [view, setView] = useState('intention'); // always land on intention
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
+    useEffect(() => {
+        setNavHeaderTitle('Planner');
+        return () => setNavHeaderTitle(null);
+    }, [setNavHeaderTitle]);
+
+    const handleBegin = (built) => {
+        // Delete any existing plan first so we start fresh with 0 progress
+        if (planner) {
+            deletePlanner(planner.id);
+        }
+        setPlanner(built);
+        setView('active');
+    };
+
+    const handleDelete = () => {
+        deletePlanner(planner.id);
+        setConfirmDelete(false);
+        setView('intention');
+    };
+
+    return (
+        <>
+            <AnimatePresence mode="wait">
+                {view === 'active' && planner ? (
+                    <motion.div key="active" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <ActiveViewWrapper
+                            planner={planner}
+                            onDelete={() => setConfirmDelete(true)}
+                            onBack={() => setView('intention')}
+                            setPlannerAssignmentProgress={setPlannerAssignmentProgress}
+                            togglePlannerDayComplete={togglePlannerDayComplete}
+                        />
+                    </motion.div>
+                ) : (
+                    <motion.div key="intention" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <IntentionView
+                            onBegin={handleBegin}
+                            onViewActive={() => setView('active')}
+                            hasExistingPlan={!!planner}
+                            chapters={chapters}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {confirmDelete && (
+                    <motion.div className="plr-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onClick={() => setConfirmDelete(false)}>
+                        <motion.div className="plr-modal" initial={{ scale: 0.92, y: 16 }} animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.92, y: 16 }} onClick={e => e.stopPropagation()}>
+                            <h3 className="plr-modal-title">Delete this plan?</h3>
+                            <p className="plr-modal-body">All progress will be permanently lost. This cannot be undone.</p>
+                            <div className="plr-modal-actions">
+                                <button className="plr-modal-cancel" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                                <button className="plr-modal-confirm" onClick={handleDelete}>Delete</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
+    );
+}
+
+
+

@@ -101,6 +101,22 @@ export default function Page() {
         ? getAssignmentProgress(planner, plannerPageContext.assignment)
         : null;
 
+    // Auto-mark current page as read when the user navigates to a new page
+    const { markPlannerItemComplete: markItemDone } = useAppStore.getState();
+    const prevPageRef = React.useRef(pageNumber);
+    useEffect(() => {
+        const leavingPage = prevPageRef.current;
+        prevPageRef.current = pageNumber;
+        if (leavingPage === pageNumber) return; // initial mount, no change
+        // Find context for the page we just left
+        const leftCtx = getPlannerPageContext(planner, leavingPage, chapters || []);
+        if (!leftCtx || !leftCtx.currentItem) return;
+        const leftProgress = getAssignmentProgress(planner, leftCtx.assignment);
+        if (!leftProgress.completedRangeValues.includes(leftCtx.currentItem.rangeValue)) {
+            markItemDone(leftCtx.assignment.dayNumber, leftCtx.currentItem.rangeValue);
+        }
+    }, [pageNumber]); // intentionally only pageNumber — we want to capture the snapshot when it changes
+
     const activeSurahId = verses.length > 0 ? verses[0].verse_key.split(':')[0] : null;
     const activeSurah = chapters?.find(c => c.id.toString() === activeSurahId);
 
@@ -344,6 +360,66 @@ export default function Page() {
                         </div>
                     </div>
 
+                    {/* Planner context bar — shown at top when reading from a plan */}
+                    {plannerPageContext && plannerAssignmentProgress && (
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            marginBottom: '1.25rem',
+                            padding: '0.75rem 1rem',
+                            borderRadius: '14px',
+                            background: 'var(--bg-surface)',
+                            border: '1px solid var(--border-color)',
+                            boxShadow: 'var(--shadow-sm)',
+                            flexWrap: 'wrap',
+                        }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.15rem', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.88rem' }}>
+                                    <Target size={13} aria-hidden="true" />
+                                    <span>{plannerPageContext.assignment.title}</span>
+                                    {plannerAssignmentProgress.isComplete && (
+                                        <span style={{ marginLeft: '0.3rem', color: '#22c55e', fontSize: '0.78rem', fontWeight: 600 }}>✓ Done</span>
+                                    )}
+                                </div>
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>
+                                    {plannerAssignmentProgress.isComplete
+                                        ? 'Day completed 🎉'
+                                        : `Page ${plannerAssignmentProgress.completedCount + 1} of ${plannerAssignmentProgress.totalCount} · ${plannerAssignmentProgress.remainingCount} remaining`}
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                {!plannerAssignmentProgress.isComplete && !plannerPageContext.isCurrentItemComplete && (
+                                    <button
+                                        type="button"
+                                        onClick={() => markPlannerItemComplete(plannerPageContext.assignment.dayNumber, plannerPageContext.currentItem?.rangeValue)}
+                                        style={{
+                                            minHeight: '36px', padding: '0.5rem 0.8rem', borderRadius: '999px',
+                                            background: 'var(--accent-light)', color: 'var(--accent-primary)',
+                                            fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                                            fontSize: '0.82rem', border: 'none', cursor: 'pointer',
+                                        }}
+                                    >
+                                        <CheckCircle2 size={13} aria-hidden="true" />
+                                        Mark done
+                                    </button>
+                                )}
+                                <Link
+                                    to="/planner"
+                                    style={{
+                                        minHeight: '36px', padding: '0.5rem 0.8rem', borderRadius: '999px',
+                                        background: 'var(--bg-secondary)', color: 'var(--text-muted)',
+                                        fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                        fontSize: '0.78rem', textDecoration: 'none',
+                                    }}
+                                >
+                                    ← Planner
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+
                     <div style={{ position: 'relative', zIndex: 5, paddingBottom: '4rem' }}>
                         {mushaf.renderMode === 'qcf-page' && !readingMode ? (
                             isPageLoading && verses.length === 0 ? (
@@ -406,93 +482,7 @@ export default function Page() {
                 </motion.div>
             </AnimatePresence>
 
-            {/* Bottom Navigation */}
-            {plannerPageContext && plannerAssignmentProgress && (
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    marginTop: '0.5rem',
-                    marginBottom: '1rem',
-                    padding: '0.8rem 1rem',
-                    borderRadius: '16px',
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-color)',
-                    boxShadow: 'var(--shadow-sm)',
-                    flexWrap: 'wrap'
-                }}>
-                    <div style={{ minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.2rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-                            <Target size={14} aria-hidden="true" />
-                            <span>{plannerPageContext.assignment.title}</span>
-                        </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                            {plannerAssignmentProgress.isComplete
-                                ? 'Day completed'
-                                : plannerPageContext.isLastPageOfDay
-                                    ? 'Last page of the day reached'
-                                    : plannerPageContext.isLastPageOfCurrentItem
-                                        ? 'Ready to mark current unit done'
-                                        : `Progress ${plannerAssignmentProgress.completedCount}/${plannerAssignmentProgress.totalCount} · unlocks at page ${plannerPageContext.currentItemPageEnd || plannerPageContext.assignmentPageEnd}`}
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {!plannerAssignmentProgress.isComplete && (
-                            <button
-                                type="button"
-                                disabled={!plannerPageContext.isLastPageOfCurrentItem || plannerPageContext.isCurrentItemComplete}
-                                onClick={() => markPlannerItemComplete(plannerPageContext.assignment.dayNumber, plannerPageContext.currentItem?.rangeValue)}
-                                style={{
-                                    minHeight: '40px',
-                                    padding: '0.7rem 0.9rem',
-                                    borderRadius: '999px',
-                                    background: plannerPageContext.isLastPageOfCurrentItem && !plannerPageContext.isCurrentItemComplete ? 'var(--accent-light)' : 'var(--bg-secondary)',
-                                    color: plannerPageContext.isLastPageOfCurrentItem && !plannerPageContext.isCurrentItemComplete ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                    fontWeight: 700,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.4rem',
-                                    opacity: plannerPageContext.isLastPageOfCurrentItem && !plannerPageContext.isCurrentItemComplete ? 1 : 0.72,
-                                }}
-                            >
-                                <CheckCircle2 size={15} aria-hidden="true" />
-                                <span>{plannerPageContext.isCurrentItemComplete ? 'Done' : 'Done'}</span>
-                            </button>
-                        )}
-
-                        <button
-                            type="button"
-                            disabled={!plannerPageContext.isLastPageOfDay && !plannerAssignmentProgress.isComplete}
-                            onClick={() => togglePlannerDayComplete(plannerPageContext.assignment.dayNumber)}
-                            style={{
-                                minHeight: '40px',
-                                padding: '0.7rem 0.9rem',
-                                borderRadius: '999px',
-                                background: plannerAssignmentProgress.isComplete
-                                    ? 'rgba(34, 197, 94, 0.12)'
-                                    : plannerPageContext.isLastPageOfDay
-                                        ? '#22c55e'
-                                        : 'var(--bg-secondary)',
-                                color: plannerAssignmentProgress.isComplete
-                                    ? '#22c55e'
-                                    : plannerPageContext.isLastPageOfDay
-                                        ? '#fff'
-                                        : 'var(--text-muted)',
-                                fontWeight: 700,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.4rem',
-                                opacity: plannerPageContext.isLastPageOfDay || plannerAssignmentProgress.isComplete ? 1 : 0.72,
-                            }}
-                        >
-                            <CheckCircle2 size={15} aria-hidden="true" />
-                            <span>{plannerAssignmentProgress.isComplete ? 'Completed' : 'Finish day'}</span>
-                        </button>
-                    </div>
-                </div>
-            )}
+            {/* Old planner bar removed — now shown at top */}
 
             <div style={{
                 display: 'flex',
