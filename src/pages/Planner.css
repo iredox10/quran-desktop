@@ -60,18 +60,18 @@
 
 /* Header */
 .plr-int-header {
-    padding: 2.5rem 1.75rem 1.75rem;
+    padding: 1.5rem 1.5rem 1rem;
     text-align: center;
 }
 
 .plr-int-title {
     font-family: var(--font-ui, 'Cormorant Garamond', serif);
-    font-size: clamp(2rem, 7vw, 2.6rem);
+    font-size: clamp(1.7rem, 6vw, 2.4rem);
     font-weight: 600;
     color: var(--plr-ink);
     letter-spacing: -0.01em;
     line-height: 1.1;
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.5rem;
 }
 
 .plr-int-sub {
@@ -86,20 +86,25 @@
 /* Pace card list */
 .plr-pace-list {
     display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
     padding: 0 1.25rem;
-    flex: 1;
-    max-width: 480px;
+    max-width: 520px;
     width: 100%;
     margin: 0 auto;
+    /* Mobile: horizontal scroll */
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.5rem;
 }
+.plr-pace-list::-webkit-scrollbar { display: none; }
 
 /* Individual pace card */
 .plr-pace-card {
     background: var(--plr-cream);
     border-radius: 14px;
-    padding: 2rem 1.5rem 1.5rem;
+    padding: 1.5rem 1.25rem 1.25rem;
     text-align: center;
     position: relative;
     cursor: pointer;
@@ -109,7 +114,11 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.4rem;
+    /* Mobile scroll: each card is nearly full-width */
+    min-width: 260px;
+    flex-shrink: 0;
+    scroll-snap-align: center;
 }
 
 .plr-pace-card:hover {
@@ -121,6 +130,11 @@
 .plr-pace-card.is-selected {
     border-color: var(--plr-gold);
     box-shadow: 0 8px 28px rgba(184,146,74,0.16);
+}
+
+/* On mobile, unselected cards show condensed content */
+.plr-pace-card:not(.is-selected) .plr-pace-quote {
+    display: none;
 }
 
 /* Badge pill */
@@ -143,15 +157,15 @@
 
 /* Icon circle */
 .plr-pace-icon-wrap {
-    width: 50px;
-    height: 50px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--plr-bone);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--plr-ink-mid);
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.15rem;
     flex-shrink: 0;
     transition: background 0.2s;
 }
@@ -164,7 +178,7 @@
 /* Title & duration */
 .plr-pace-name {
     font-family: var(--font-ui, 'Cormorant Garamond', serif);
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 600;
     color: var(--plr-ink);
     letter-spacing: 0.01em;
@@ -695,13 +709,87 @@
     transform: translateX(-2px);
 }
 
-/* ─── Responsive tweaks ─── */
+/* ─── Inline CTA in selected card ─── */
+.plr-card-cta {
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--plr-bone-dark);
+    margin-top: 0.35rem;
+}
+
+.plr-card-stats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem;
+    font-family: var(--font-mono, 'Geist Mono', monospace);
+    font-size: 0.68rem;
+    color: var(--plr-ink-mid);
+    letter-spacing: 0.03em;
+}
+
+.plr-card-stats-dot {
+    color: var(--plr-bone-dark);
+}
+
+.plr-card-begin-btn {
+    width: 100%;
+    padding: 0.85rem 1.5rem;
+    border-radius: 12px;
+    border: none;
+    background: var(--plr-teal);
+    color: #fff;
+    font-family: var(--font-mono, 'Geist Mono', monospace);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.plr-card-begin-btn:hover {
+    background: var(--plr-teal-dark, #1c534d);
+}
+
+.plr-card-begin-btn:active {
+    transform: scale(0.97);
+}
+
+/* Custom plan CTA row inside the custom form */
+.plr-custom-cta-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--plr-bone-dark);
+    margin-top: 0.75rem;
+}
+
+/* ─── Responsive: desktop vertical stack ─── */
 @media (min-width: 480px) {
     .plr-int-header {
         padding: 3rem 2rem 2rem;
     }
     .plr-pace-list {
+        flex-direction: column;
+        overflow-x: visible;
+        scroll-snap-type: none;
         padding: 0 1.5rem;
+    }
+    .plr-pace-card {
+        min-width: auto;
+        flex-shrink: 1;
+        scroll-snap-align: initial;
+    }
+    .plr-pace-card:not(.is-selected) .plr-pace-quote {
+        display: block;
     }
 }
 

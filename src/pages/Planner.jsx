@@ -171,6 +171,10 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan }) {
         }
     };
 
+    // Compute stats for the currently selected/active duration
+    const activeDays = showCustom ? durationDays : PACES.find(p => p.id === selected)?.durationDays || 60;
+    const activeStats = getPaceStats(activeDays);
+
     return (
         <div className="plr-intention">
             {/* Continue Plan banner */}
@@ -189,7 +193,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan }) {
 
             <motion.div className="plr-int-header" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}>
                 <h1 className="plr-int-title">Set Your Intention</h1>
-                <p className="plr-int-sub">Choose a pace that fits your rhythm. A journey of a thousand miles begins with a single, mindful verse.</p>
+                <p className="plr-int-sub">Choose a pace that aligns with your rhythm.</p>
             </motion.div>
 
             <div className="plr-pace-list">
@@ -202,6 +206,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan }) {
                             onClick={() => { setSelected(pace.id); setDurationDays(pace.durationDays); }}
                             initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.1 + i * 0.12 }}
+                            layout
                         >
                             {pace.badge && <div className="plr-pace-badge">{pace.badge}</div>}
                             <div className="plr-pace-icon-wrap"><Icon /></div>
@@ -209,43 +214,29 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan }) {
                             <p className="plr-pace-duration">{pace.duration}</p>
                             <PaceRing durationDays={pace.durationDays} selected={isSelected} />
                             <p className="plr-pace-quote">"{stats.perPrayer} pages per prayer"</p>
+
+                            {/* Inline CTA — visible inside selected card */}
+                            <AnimatePresence>
+                                {isSelected && (
+                                    <motion.div className="plr-card-cta"
+                                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }}
+                                    >
+                                        <div className="plr-card-stats">
+                                            <span>{stats.dailyPages} pages/day</span>
+                                            <span className="plr-card-stats-dot">·</span>
+                                            <span>Done by {stats.endLabel}</span>
+                                        </div>
+                                        <motion.button className="plr-card-begin-btn" whileTap={{ scale: 0.96 }} onClick={e => { e.stopPropagation(); handleBegin(); }}>
+                                            BEGIN MY JOURNEY
+                                        </motion.button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </motion.div>
                     );
                 })}
             </div>
-
-            {/* Live plan preview strip — updates with selection */}
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={`preview-${selected}-${durationDays}`}
-                    className="plr-preview-strip"
-                    initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                >
-                    {(() => {
-                        const d = showCustom ? durationDays : PACES.find(p => p.id === selected)?.durationDays || 60;
-                        const s = getPaceStats(d);
-                        return (
-                            <>
-                                <div className="plr-preview-stat">
-                                    <span className="plr-preview-val">{s.dailyPages}</span>
-                                    <span className="plr-preview-lbl">pages / day</span>
-                                </div>
-                                <div className="plr-preview-divider" />
-                                <div className="plr-preview-stat">
-                                    <span className="plr-preview-val">{s.perPrayer}</span>
-                                    <span className="plr-preview-lbl">pages / prayer</span>
-                                </div>
-                                <div className="plr-preview-divider" />
-                                <div className="plr-preview-stat">
-                                    <span className="plr-preview-val">{s.endLabel}</span>
-                                    <span className="plr-preview-lbl">finish date</span>
-                                </div>
-                            </>
-                        );
-                    })()}
-                </motion.div>
-            </AnimatePresence>
 
             {/* Customise toggle */}
             <div className="plr-custom-toggle-row">
@@ -280,17 +271,23 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan }) {
                                 onChange={e => setDurationDays(Number(e.target.value))} className="plr-range" />
                             <div className="plr-range-limits"><span>1</span><span>{unitMeta.max}</span></div>
                         </div>
+
+                        {/* Custom plan stats + CTA */}
+                        <div className="plr-custom-cta-row">
+                            <div className="plr-card-stats">
+                                <span>{activeStats.dailyPages} pages/day</span>
+                                <span className="plr-card-stats-dot">·</span>
+                                <span>{activeStats.perPrayer} per prayer</span>
+                                <span className="plr-card-stats-dot">·</span>
+                                <span>Done by {activeStats.endLabel}</span>
+                            </div>
+                            <motion.button className="plr-card-begin-btn" whileTap={{ scale: 0.96 }} onClick={handleBegin}>
+                                BEGIN CUSTOM JOURNEY
+                            </motion.button>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            <div className="plr-int-footer">
-                <div className="plr-arch" aria-hidden="true"><div className="plr-arch-inner" /><div className="plr-arch-mid" /></div>
-                <motion.button className="plr-cta-btn" whileTap={{ scale: 0.97 }} onClick={handleBegin}
-                    initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-                    BEGIN MY JOURNEY
-                </motion.button>
-            </div>
         </div>
     );
 }
