@@ -41,94 +41,38 @@ export default function FloatingPomodoro() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                        style={{
-                            position: 'fixed',
-                            bottom: '80px',
-                            right: '20px',
-                            zIndex: 1000,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            background: 'var(--bg-surface)',
-                            border: '1px solid var(--border-color)',
-                            padding: '0.4rem 0.5rem 0.4rem 1rem',
-                            borderRadius: '999px',
-                            boxShadow: 'var(--shadow-lg)',
-                        }}
+                        className="fixed bottom-20 right-5 z-[1000] flex items-center gap-2 rounded-[999px] border border-[var(--border-color)] bg-[var(--bg-surface)] px-4 py-[0.4rem] shadow-[var(--shadow-lg)]"
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }} onClick={() => setIsConfigModalOpen(true)}>
+                        <div className="flex cursor-pointer items-center gap-2" onClick={() => setIsConfigModalOpen(true)}>
                             <Timer size={16} color={pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80'} />
-                            <span style={{
-                                fontSize: '1.2rem',
-                                fontWeight: 800,
-                                fontFamily: 'monospace',
-                                color: 'var(--text-primary)',
-                                width: '48px',
-                                textAlign: 'center'
-                            }}>
+                            <span className="w-12 text-center font-mono text-[1.2rem] font-extrabold text-[var(--text-primary)]">
                                 {formatTime(pomodoroSecondsLeft)}
                             </span>
                         </div>
 
-                        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)', margin: '0 0.25rem' }} />
+                        <div className="mx-1 h-6 w-px bg-[var(--border-color)]" />
 
                         <button
                             onClick={togglePomodoroRunning}
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: pomodoroIsRunning
-                                    ? (pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80')
-                                    : 'var(--bg-secondary)',
-                                color: pomodoroIsRunning ? '#fff' : 'var(--text-primary)',
-                                border: 'none',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
+                            className={`flex h-9 w-9 items-center justify-center rounded-full border-none transition-all duration-200 ${
+                                pomodoroIsRunning
+                                    ? pomodoroMode === 'focus' ? 'bg-accent text-white' : 'bg-green-400 text-white'
+                                    : 'bg-[var(--bg-secondary)] text-[var(--text-primary)]'
+                            }`}
                         >
-                            {pomodoroIsRunning ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" style={{ marginLeft: '2px' }} />}
+                            {pomodoroIsRunning ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-[2px]" />}
                         </button>
 
                         <button
                             onClick={() => setIsConfigModalOpen(true)}
-                            style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: 'transparent',
-                                color: 'var(--text-muted)',
-                                border: 'none',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                            className="interactive-hover"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-[var(--text-muted)] transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]"
                         >
                             <Settings size={16} />
                         </button>
 
                         <button
                             onClick={() => setIsMinimized(true)}
-                            style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: 'transparent',
-                                color: 'var(--text-muted)',
-                                border: 'none',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                            className="interactive-hover"
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-[var(--text-muted)] transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]"
                         >
                             <X size={16} />
                         </button>
@@ -146,38 +90,26 @@ export default function FloatingPomodoro() {
                         onTap={() => setIsMinimized(false)}
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
+                        className={`fixed bottom-[100px] right-[25px] z-[1000] flex h-9 w-9 cursor-grab items-center justify-center rounded-full ${
+                            pomodoroIsRunning
+                                ? pomodoroMode === 'focus' ? 'bg-accent' : 'bg-green-400'
+                                : 'bg-[var(--bg-surface)]'
+                        }`}
                         style={{
-                            position: 'fixed',
-                            bottom: '100px',
-                            right: '25px',
-                            zIndex: 1000,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '50%',
-                            background: pomodoroIsRunning
-                                ? (pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80')
-                                : 'var(--bg-surface)',
                             border: pomodoroIsRunning
                                 ? '2px solid transparent'
                                 : `2px solid ${pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80'}`,
                             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                            cursor: 'grab',
                         }}
                     >
-                        <div style={{
-                            width: '12px',
-                            height: '12px',
-                            borderRadius: '50%',
-                            background: pomodoroIsRunning
-                                ? '#fff'
-                                : (pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80'),
-                            opacity: pomodoroIsRunning ? 1 : 0.8,
-                            boxShadow: pomodoroIsRunning ? '0 0 8px rgba(255,255,255,0.8)' : 'none',
-                            transition: 'all 0.3s'
-                        }} />
+                        <div
+                            className="h-3 w-3 rounded-full transition-all duration-300"
+                            style={{
+                                background: pomodoroIsRunning ? '#fff' : (pomodoroMode === 'focus' ? 'var(--accent-primary)' : '#4ade80'),
+                                opacity: pomodoroIsRunning ? 1 : 0.8,
+                                boxShadow: pomodoroIsRunning ? '0 0 8px rgba(255,255,255,0.8)' : 'none',
+                            }}
+                        />
                     </motion.div>
                 )}
             </AnimatePresence>

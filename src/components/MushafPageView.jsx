@@ -35,35 +35,18 @@ export default function MushafPageView({ verses, mushaf, arabicFont, fontSize, a
   }
 
   return (
-    <div
-      style={{
-        maxWidth: '840px',
-        margin: '0 auto',
-        padding: '1.5rem',
-        background: 'var(--bg-surface)',
-        borderRadius: '24px',
-        border: '1px solid var(--border-color)',
-        boxShadow: 'var(--shadow-md)',
-      }}
-    >
-      <div style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+    <div className="mx-auto max-w-[840px] rounded-[24px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-[var(--shadow-md)]">
+      <div className="mb-4 text-[0.8rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">
         {mushaf.name} · line-grouped page scaffolding
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+      <div className="flex flex-col gap-[0.3rem]">
         {lines.map((line) => (
           <div
             key={line.lineNumber}
             data-line-number={line.lineNumber}
-            style={{
-              minHeight: '2.8rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: '0.4rem',
-              direction: 'rtl',
-              textAlign: 'justify',
-            }}
+            className="flex min-h-[2.8rem] items-center justify-between gap-[0.4rem] text-justify"
+            style={{ direction: 'rtl' }}
           >
             {line.words.map((word) => (
               <span
@@ -72,14 +55,14 @@ export default function MushafPageView({ verses, mushaf, arabicFont, fontSize, a
                   fontFamily: arabicFont,
                   fontSize: `${fontSize * 0.4 + 1.35}rem`,
                   lineHeight: 1.95,
-                  color: word.verseKey === activeAudioVerseKey
-                    ? 'var(--accent-primary)'
-                    : word.charType === 'end'
-                      ? 'var(--accent-primary)'
-                      : 'var(--text-primary)',
                   whiteSpace: 'nowrap',
                   transition: 'color 0.3s ease'
                 }}
+                className={
+                  word.verseKey === activeAudioVerseKey || word.charType === 'end'
+                    ? 'text-accent'
+                    : 'text-[var(--text-primary)]'
+                }
               >
                 {word.text}
               </span>

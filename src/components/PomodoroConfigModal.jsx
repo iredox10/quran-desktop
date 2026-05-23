@@ -33,11 +33,8 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
         setPomodoroDailyGoal,
     } = useAppStore();
 
-    // The active profile from store
     const activeProfile = (pomodoroProfiles || []).find((p) => p.id === activePomodoroProfileId) || pomodoroProfiles?.[0];
 
-    // Local state for the form so we don't save until user confirms, or we can auto-save
-    // Let's use local state for smooth editing and save on close or save button
     const [draftName, setDraftName] = useState('');
     const [draftFocusMinutes, setDraftFocusMinutes] = useState(25);
     const [draftBreakMinutes, setDraftBreakMinutes] = useState(5);
@@ -74,105 +71,81 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, backdropFilter: 'blur(4px)' }}
+                        className="fixed inset-0 z-[1100] bg-black/60 backdrop-blur-sm"
                     />
 
-                    {/* Bottom Drawer Modal */}
                     <motion.div
                         initial={{ y: '100%' }}
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                        style={{
-                            position: 'fixed',
-                            bottom: 0, left: 0, right: 0,
-                            display: 'flex',
-                            justifyContent: 'center',
-                            zIndex: 1101,
-                        }}
+                        className="fixed inset-x-0 bottom-0 z-[1101] flex justify-center"
                     >
-                        <div style={{
-                            width: '100%',
-                            maxWidth: '520px',
-                            maxHeight: '85vh',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            background: 'var(--bg-surface)',
-                            borderTopLeftRadius: '24px',
-                            borderTopRightRadius: '24px',
-                            boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-                            border: '1px solid var(--border-color)',
-                            borderBottom: 'none',
-                            overflow: 'hidden',
-                        }}>
-                            {/* Drag handle */}
-                            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.75rem', paddingBottom: '0.25rem', flexShrink: 0 }}>
-                                <div style={{ width: '40px', height: '5px', borderRadius: '9999px', background: 'var(--border-color)' }} />
+                        <div className="flex w-full max-w-[520px] flex-col overflow-hidden rounded-t-[24px] border border-[var(--border-color)] border-b-0 bg-[var(--bg-surface)] shadow-[0_-8px_40px_rgba(0,0,0,0.25)]"
+                            style={{ maxHeight: '85vh' }}
+                        >
+                            <div className="flex shrink-0 justify-center pb-1 pt-3">
+                                <div className="h-[5px] w-10 rounded-[9999px] bg-[var(--border-color)]" />
                             </div>
 
-                            {/* Sticky Header */}
-                            <div style={{ padding: '0 1.5rem 1rem', flexShrink: 0, borderBottom: '1px solid var(--border-color)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div className="shrink-0 border-b border-[var(--border-color)] px-6 pb-4">
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Pomodoro Settings</h3>
-                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                        <h3 className="m-0 text-[1.2rem] font-bold text-[var(--text-primary)]">Pomodoro Settings</h3>
+                                        <p className="m-0 mt-1 text-[0.82rem] text-[var(--text-muted)]">
                                             Customize your reading and break intervals
                                         </p>
                                     </div>
-                                    <button className="btn-icon" onClick={onClose} style={{ background: 'var(--bg-secondary)', width: '36px', height: '36px', flexShrink: 0 }}>
+                                    <button onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-all duration-200 hover:text-accent">
                                         <X size={18} />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Scrollable Body */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
 
-                                {/* Timer Actions (from Widget) */}
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '16px', gap: '1rem' }}>
-                                    <div style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1, fontFamily: 'monospace' }}>
+                                <div className="flex flex-col items-center gap-4 rounded-2xl bg-[var(--bg-secondary)] px-6 py-6">
+                                    <div className="font-mono text-[3rem] font-extrabold leading-none text-[var(--text-primary)]">
                                         {formatTime(pomodoroSecondsLeft)}
                                     </div>
-                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                    <div className="text-[0.9rem] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                                         {pomodoroMode === 'focus' ? 'Focus Session' : 'Break Time'}
                                     </div>
 
-                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                        <button type="button" onClick={togglePomodoroRunning} style={{ padding: '0.75rem 1.5rem', borderRadius: '999px', background: 'var(--accent-primary)', color: '#fff', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
-                                            {pomodoroIsRunning ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
+                                    <div className="mt-2 flex flex-wrap justify-center gap-3">
+                                        <button type="button" onClick={togglePomodoroRunning} className="inline-flex cursor-pointer items-center gap-2 rounded-[999px] border-none bg-accent px-6 py-3 text-base font-bold text-white">
+                                            {pomodoroIsRunning ? <Pause size={18} /> : <Play size={18} />}
                                             <span>{pomodoroIsRunning ? 'Pause' : 'Start'}</span>
                                         </button>
-                                        <button type="button" onClick={resetPomodoroSession} style={{ padding: '0.75rem 1.2rem', borderRadius: '999px', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--border-color)', cursor: 'pointer' }}>
-                                            <RotateCcw size={16} aria-hidden="true" />
+                                        <button type="button" onClick={resetPomodoroSession} className="inline-flex cursor-pointer items-center gap-2 rounded-[999px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-5 py-3 text-base font-bold text-[var(--text-primary)]">
+                                            <RotateCcw size={16} />
                                             <span>Reset</span>
                                         </button>
-                                        <button type="button" onClick={switchPomodoroMode} style={{ padding: '0.75rem 1.2rem', borderRadius: '999px', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--border-color)', cursor: 'pointer' }}>
-                                            <TimerReset size={16} aria-hidden="true" />
+                                        <button type="button" onClick={switchPomodoroMode} className="inline-flex cursor-pointer items-center gap-2 rounded-[999px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-5 py-3 text-base font-bold text-[var(--text-primary)]">
+                                            <TimerReset size={16} />
                                             <span>{pomodoroMode === 'focus' ? 'Break' : 'Focus'}</span>
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Profiles Selection */}
                                 <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                        <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    <div className="mb-3 flex items-center justify-between">
+                                        <label className="text-[0.8rem] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
                                             Profiles
                                         </label>
                                         <button
                                             onClick={handleCreateProfile}
-                                            style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}
+                                            className="flex cursor-pointer items-center gap-1 border-none bg-transparent text-[0.85rem] font-semibold text-accent"
                                         >
                                             <PlusCircle size={16} /> New Profile
                                         </button>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
+                                    <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
                                         {(pomodoroProfiles || []).map((profile) => {
                                             const active = profile.id === activePomodoroProfileId;
                                             return (
@@ -180,19 +153,11 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
                                                     key={profile.id}
                                                     type="button"
                                                     onClick={() => setActivePomodoroProfile(profile.id)}
-                                                    style={{
-                                                        minHeight: '40px',
-                                                        padding: '0.65rem 1.25rem',
-                                                        borderRadius: '999px',
-                                                        background: active ? 'var(--accent-primary)' : 'var(--bg-secondary)',
-                                                        color: active ? '#fff' : 'var(--text-primary)',
-                                                        fontWeight: 700,
-                                                        border: 'none',
-                                                        whiteSpace: 'nowrap',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s',
-                                                        boxShadow: active ? '0 4px 12px rgba(var(--accent-primary-rgb), 0.3)' : 'none'
-                                                    }}
+                                                    className={`min-h-10 cursor-pointer whitespace-nowrap rounded-[999px] border-none px-5 py-[0.65rem] font-bold transition-all duration-200 ${
+                                                        active
+                                                            ? 'bg-accent text-white shadow-[0_4px_12px_rgba(198,168,124,0.3)]'
+                                                            : 'bg-[var(--bg-secondary)] text-[var(--text-primary)]'
+                                                    }`}
                                                 >
                                                     {profile.name}
                                                 </button>
@@ -201,50 +166,46 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
                                     </div>
                                 </div>
 
-                                {/* Active Profile Editing */}
-                                <div style={{ background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-
-                                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                                        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Profile Name</span>
+                                <div className="flex flex-col gap-4 rounded-2xl bg-[var(--bg-secondary)] px-5 py-5">
+                                    <label className="flex flex-col gap-[0.45rem]">
+                                        <span className="text-[0.76rem] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">Profile Name</span>
                                         <input
                                             type="text"
                                             value={draftName}
                                             onChange={(event) => setDraftName(event.target.value)}
-                                            style={{ minHeight: '48px', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '0.7rem 1rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 500 }}
+                                            className="min-h-12 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-3 text-base font-medium text-[var(--text-primary)] outline-none"
                                         />
                                     </label>
 
-                                    <div style={{ display: 'flex', gap: '1rem' }}>
-                                        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', flex: 1 }}>
-                                            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Focus (mins)</span>
+                                    <div className="flex gap-4">
+                                        <label className="flex flex-1 flex-col gap-[0.45rem]">
+                                            <span className="text-[0.76rem] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">Focus (mins)</span>
                                             <input
                                                 type="number"
                                                 min="5"
                                                 max="120"
                                                 value={draftFocusMinutes}
                                                 onChange={(event) => setDraftFocusMinutes(event.target.value === '' ? '' : Number(event.target.value))}
-                                                style={{ minHeight: '48px', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '0.7rem 1rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 500 }}
+                                                className="min-h-12 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-3 text-base font-medium text-[var(--text-primary)] outline-none"
                                             />
                                         </label>
 
-                                        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', flex: 1 }}>
-                                            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Break (mins)</span>
+                                        <label className="flex flex-1 flex-col gap-[0.45rem]">
+                                            <span className="text-[0.76rem] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">Break (mins)</span>
                                             <input
                                                 type="number"
                                                 min="1"
                                                 max="60"
                                                 value={draftBreakMinutes}
                                                 onChange={(event) => setDraftBreakMinutes(event.target.value === '' ? '' : Number(event.target.value))}
-                                                style={{ minHeight: '48px', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '0.7rem 1rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 500 }}
+                                                className="min-h-12 rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-3 text-base font-medium text-[var(--text-primary)] outline-none"
                                             />
                                         </label>
                                     </div>
-
                                 </div>
 
-                                {/* Global Sound Settings */}
                                 <div>
-                                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', display: 'block' }}>
+                                    <label className="mb-3 block text-[0.8rem] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
                                         Timer Sound
                                     </label>
                                     <select
@@ -266,7 +227,7 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
                                                 }
                                             }
                                         }}
-                                        style={{ width: '100%', minHeight: '48px', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '0.7rem 1rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 500, appearance: 'none', cursor: 'pointer' }}
+                                        className="min-h-12 w-full cursor-pointer appearance-none rounded-xl border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-3 text-base font-medium text-[var(--text-primary)] outline-none"
                                     >
                                         <option value="allahu-akbar">Allahu Akbar (Adhan Snippet)</option>
                                         <option value="bismillah">Bismillah (Mishary Alafasy)</option>
@@ -275,37 +236,37 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
                                     </select>
                                 </div>
 
-                                {/* Global Behavior Settings */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '16px' }}>
-
-                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>Auto-start Breaks</span>
+                                <div className="flex flex-col gap-4 rounded-2xl bg-[var(--bg-secondary)] px-5 py-5">
+                                    <label className="flex cursor-pointer items-center justify-between">
+                                        <span className="text-[0.9rem] font-semibold text-[var(--text-primary)]">Auto-start Breaks</span>
                                         <input
                                             type="checkbox"
                                             checked={pomodoroAutoStartBreaks}
                                             onChange={(e) => setPomodoroAutoStartBreaks(e.target.checked)}
-                                            style={{ width: '20px', height: '20px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                                            className="h-5 w-5 cursor-pointer"
+                                            style={{ accentColor: 'var(--accent-primary)' }}
                                         />
                                     </label>
 
-                                    <div style={{ height: '1px', background: 'var(--border-color)', width: '100%' }} />
+                                    <div className="h-px w-full bg-[var(--border-color)]" />
 
-                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>Auto-start Focus Sessions</span>
+                                    <label className="flex cursor-pointer items-center justify-between">
+                                        <span className="text-[0.9rem] font-semibold text-[var(--text-primary)]">Auto-start Focus Sessions</span>
                                         <input
                                             type="checkbox"
                                             checked={pomodoroAutoStartFocus}
                                             onChange={(e) => setPomodoroAutoStartFocus(e.target.checked)}
-                                            style={{ width: '20px', height: '20px', accentColor: 'var(--accent-primary)', cursor: 'pointer' }}
+                                            className="h-5 w-5 cursor-pointer"
+                                            style={{ accentColor: 'var(--accent-primary)' }}
                                         />
                                     </label>
 
-                                    <div style={{ height: '1px', background: 'var(--border-color)', width: '100%' }} />
+                                    <div className="h-px w-full bg-[var(--border-color)]" />
 
-                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 600 }}>Daily Session Goal</span>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>How many focus sessions to aim for today</span>
+                                    <label className="flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-[0.9rem] font-semibold text-[var(--text-primary)]">Daily Session Goal</span>
+                                            <span className="text-[0.75rem] text-[var(--text-muted)]">How many focus sessions to aim for today</span>
                                         </div>
                                         <input
                                             type="number"
@@ -313,14 +274,12 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
                                             max="20"
                                             value={pomodoroDailyGoal}
                                             onChange={(e) => setPomodoroDailyGoal(Number(e.target.value) || 4)}
-                                            style={{ minHeight: '38px', width: '70px', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '0.5rem', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}
+                                            className="min-h-[38px] w-[70px] rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-2 py-2 text-center text-base font-semibold text-[var(--text-primary)] outline-none"
                                         />
                                     </label>
-
                                 </div>
 
-                                {/* Actions */}
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <div className="mt-2 flex gap-4">
                                     {(pomodoroProfiles || []).length > 1 && (
                                         <button
                                             type="button"
@@ -329,19 +288,7 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
                                                     deletePomodoroProfile(activeProfile.id);
                                                 }
                                             }}
-                                            style={{
-                                                minHeight: '48px',
-                                                padding: '0 1.2rem',
-                                                borderRadius: '14px',
-                                                background: 'rgba(239, 68, 68, 0.1)',
-                                                color: 'rgb(239, 68, 68)',
-                                                fontWeight: 700,
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                border: 'none',
-                                                cursor: 'pointer'
-                                            }}
+                                            className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-[14px] border-none bg-red-500/10 px-5 font-bold text-red-500"
                                         >
                                             <Trash2 size={20} />
                                         </button>
@@ -349,21 +296,7 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
                                     <button
                                         type="button"
                                         onClick={handleSaveProfile}
-                                        style={{
-                                            flex: 1,
-                                            minHeight: '48px',
-                                            borderRadius: '14px',
-                                            background: 'var(--text-primary)',
-                                            color: 'var(--bg-primary)',
-                                            fontWeight: 700,
-                                            fontSize: '1rem',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '0.5rem',
-                                            border: 'none',
-                                            cursor: 'pointer'
-                                        }}
+                                        className="flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[14px] border-none bg-[var(--text-primary)] text-base font-bold text-[var(--bg-primary)]"
                                     >
                                         <CheckCircle2 size={18} /> Save & Apply
                                     </button>
@@ -377,4 +310,3 @@ export default function PomodoroConfigModal({ isOpen, onClose }) {
         </AnimatePresence>
     );
 }
-

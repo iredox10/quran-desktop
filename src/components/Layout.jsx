@@ -62,7 +62,6 @@ export default function Layout() {
     }, [theme]);
 
     useEffect(() => {
-        // Load the local audio directory handle from IndexedDB if it exists
         getLocalAudioDirHandle().then(handle => {
             if (handle) setLocalAudioDirHandle(handle);
         }).catch(err => console.warn('Could not load local directory handle', err));
@@ -122,14 +121,12 @@ export default function Layout() {
             const currentScrollY = window.scrollY;
 
             if (!isMemorizePage) {
-                // Normal Surah scroll behavior
                 if (currentScrollY > lastScrollY && currentScrollY > 100) {
                     setShowHeader(false);
                 } else {
                     setShowHeader(true);
                 }
             } else {
-                // Memorization mode scroll just triggers activity
                 handleActivity();
             }
             setLastScrollY(currentScrollY);
@@ -141,7 +138,7 @@ export default function Layout() {
             window.addEventListener('mousemove', handleActivity);
             window.addEventListener('touchstart', handleActivity);
             window.addEventListener('click', handleActivity);
-            handleActivity(); // Initialize the timer immediately
+            handleActivity();
         }
 
         return () => {
@@ -155,142 +152,112 @@ export default function Layout() {
         };
     }, [lastScrollY, isMemorizePage]);
 
-    // Ensure header is visible when location changes
     useEffect(() => {
         setShowHeader(true);
     }, [location.pathname]);
 
-    // Scroll to top on route change
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [location.pathname]);
 
     return (
-        <div className="layout" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-            <header style={{
-                position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000,
-                backgroundColor: 'var(--bg-surface)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                borderBottom: 'var(--glass-border)',
-                transform: `translateY(${showHeader ? '0' : '-100%'})`,
-                transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                boxShadow: showHeader ? '0 4px 20px rgba(0,0,0,0.06)' : 'none',
-                pointerEvents: showHeader ? 'auto' : 'none',
-            }}>
-                <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '56px' }}>
-
-                    {/* Left: back/logo */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+        <div className="flex min-h-screen flex-col">
+            <header
+                className={`fixed inset-x-0 top-0 z-[1000] border-b-[var(--glass-border)] bg-[var(--bg-surface)] backdrop-blur-xl transition-all duration-[0.4s] ${
+                    showHeader
+                        ? 'translate-y-0 shadow-[0_4px_20px_rgba(0,0,0,0.06)] pointer-events-auto'
+                        : '-translate-y-full shadow-none pointer-events-none'
+                }`}
+                style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
+            >
+                <div className="container flex h-14 items-center justify-between">
+                    <div className="flex min-w-0 items-center gap-[10px]">
                         {isImmersivePage ? (
                             <>
-                                <button className="btn-icon" onClick={handleImmersiveBack} style={{ flexShrink: 0 }} aria-label="Go back">
+                                <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]" onClick={handleImmersiveBack} aria-label="Go back">
                                     <ArrowLeft size={20} />
                                 </button>
                                 <button
                                     onClick={() => setIsNavModalOpen(true)}
-                                    style={{
-                                        background: 'none', border: 'none', padding: '4px 8px', borderRadius: '8px', cursor: 'pointer',
-                                        display: 'flex', alignItems: 'center', gap: '6px'
-                                    }}
-                                    className="interactive-hover"
+                                    className="flex cursor-pointer items-center gap-[6px] rounded-lg border-none bg-transparent px-2 py-1 transition-all duration-200 hover:bg-[var(--bg-secondary)]"
                                 >
-                                    <span style={{
-                                        fontWeight: 600, fontSize: '1.1rem', color: 'var(--text-primary)',
-                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                                    }}>
+                                    <span className="max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap text-[1.1rem] font-semibold text-[var(--text-primary)] md:max-w-[300px]">
                                         {navHeaderTitle || 'Page'}
                                     </span>
-                                    <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />
+                                    <ChevronDown size={16} className="text-[var(--text-muted)]" />
                                 </button>
                             </>
                         ) : (
                             <>
-                                <Link to="/" style={{ textDecoration: 'none' }}>
-                                    <span style={{ fontWeight: 700, fontSize: '1.5rem', color: 'var(--accent-primary)', letterSpacing: '-0.5px' }}>
+                                <Link to="/" className="no-underline">
+                                    <span className="text-[1.5rem] font-bold tracking-tight text-accent">
                                         Qur'an
                                     </span>
                                 </Link>
                                 {navHeaderTitle && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ color: 'var(--text-muted)' }}>/</span>
-                                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{navHeaderTitle}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[var(--text-muted)]">/</span>
+                                        <span className="font-semibold text-[var(--text-primary)]">{navHeaderTitle}</span>
                                     </div>
                                 )}
                             </>
                         )}
                     </div>
 
-                    {/* Right: controls */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-
-                        {/* Content controls */}
+                    <div className="flex items-center gap-[6px]">
                         {(isSurahPage || isPagePage) && (
                             <>
                                 <button
-                                    className="btn-icon"
                                     onClick={() => setAutoScroll(!autoScroll)}
                                     title={autoScroll ? 'Stop Auto-scroll' : 'Auto-scroll'}
-                                    style={{
-                                        color: autoScroll ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                        background: autoScroll ? 'var(--accent-light)' : 'transparent'
-                                    }}
+                                    className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 ${
+                                        autoScroll
+                                            ? 'bg-[var(--accent-light)] text-accent'
+                                            : 'text-[var(--text-muted)] hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]'
+                                    }`}
                                 >
                                     <ChevronsDown size={20} />
                                 </button>
                                 <button
-                                    className="btn-icon"
                                     onClick={() => setReadingMode(!readingMode)}
                                     title={readingMode ? 'Translation Mode' : 'Reading Mode'}
-                                    style={{
-                                        color: readingMode ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                        background: readingMode ? 'var(--accent-light)' : 'transparent'
-                                    }}
+                                    className={`flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 ${
+                                        readingMode
+                                            ? 'bg-[var(--accent-light)] text-accent'
+                                            : 'text-[var(--text-muted)] hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]'
+                                    }`}
                                 >
                                     <BookOpen size={20} />
                                 </button>
                             </>
                         )}
 
-                        {/* Non-surah nav links removed since they are now in the bottom nav */}
-
-                        {/* === Audio Player Toggle — hidden on main tabs and hifdh pages === */}
                         {!location.pathname.startsWith('/memorize') &&
                             !['/', '/progress', '/profile'].includes(location.pathname) && (
                                 <button
                                     id="audio-player-toggle"
-                                    className="btn-icon"
                                     onClick={() => {
                                         if (isSurahPage || isPagePage) {
-                                            // Trigger playback (Surah.jsx or Page.jsx listens)
                                             incrementPlayTrigger();
                                         } else {
-                                            // On other pages: just show/hide the player
                                             setIsPlayerVisible(!isPlayerVisible);
                                         }
                                     }}
                                     title={(isSurahPage || isPagePage) ? 'Play / Pause' : isPlayerVisible ? 'Hide Player' : 'Show Player'}
-                                    style={{
-                                        color: hasAudio ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                        background: (isPlayerVisible || isPlaying) ? 'var(--accent-light)' : 'transparent',
-                                        position: 'relative'
-                                    }}
+                                    className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 ${
+                                        (isPlayerVisible || isPlaying) ? 'bg-[var(--accent-light)]' : 'hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]'
+                                    } ${
+                                        hasAudio ? 'text-accent' : 'text-[var(--text-muted)] hover:text-accent'
+                                    }`}
                                 >
                                     <Volume2 size={20} />
-                                    {/* Pulsing dot when playing */}
                                     {isPlaying && (
-                                        <span style={{
-                                            position: 'absolute', top: '4px', right: '4px',
-                                            width: '6px', height: '6px', borderRadius: '50%',
-                                            background: 'var(--accent-primary)',
-                                            animation: 'pulse 2s infinite'
-                                        }} />
+                                        <span className="absolute right-1 top-1 h-[6px] w-[6px] animate-[pulse_2s_infinite] rounded-full bg-accent" />
                                     )}
                                 </button>
                             )}
 
-                        {/* Theme + Settings — always visible */}
-                        <button className="btn-icon" onClick={toggleTheme} aria-label="Toggle Theme">
+                        <button onClick={toggleTheme} className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--text-secondary)] transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]" aria-label="Toggle Theme">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={theme}
@@ -303,14 +270,14 @@ export default function Layout() {
                                 </motion.div>
                             </AnimatePresence>
                         </button>
-                        <button className="btn-icon" onClick={() => setIsSettingsOpen(true)}>
+                        <button onClick={() => setIsSettingsOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--text-secondary)] transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]">
                             <Settings size={20} />
                         </button>
                     </div>
                 </div>
             </header>
 
-            <main style={{ flex: 1, padding: '2rem 0', paddingTop: 'calc(56px + 2.5rem)', paddingBottom: '90px' }}>
+            <main className="flex-1 px-6 pb-[90px] pt-[calc(56px+2.5rem)]">
                 <Outlet />
             </main>
 

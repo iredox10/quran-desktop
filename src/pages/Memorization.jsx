@@ -9,7 +9,6 @@ import { getMushafById, isTajweedEnabledForMushaf } from '../config/mushaf';
 import { getVerseArabicText, sanitizeTajweedHtml } from '../utils/quranText';
 import { getLocalAudioUrl } from '../utils/localAudio';
 import confetti from 'canvas-confetti';
-import './Memorize.css';
 
 
 const DELAY_OPTIONS = [0, 1, 2, 3, 5, 10];
@@ -17,7 +16,7 @@ const RANGE_LOOP_OPTIONS = [1, 2, 3, 5, 10, -1];
 const AYAH_REPEAT_OPTIONS = [1, 2, 3, 5, 10, -1];
 
 export default function Memorization() {
-    const { id } = useParams(); // Surah ID
+    const { id } = useParams();
     const navigate = useNavigate();
     const {
         setNavHeaderTitle, arabicFont, fontSize, translationFontSize, translationId, mushafId,
@@ -29,7 +28,6 @@ export default function Memorization() {
     const mushaf = getMushafById(mushafId);
     const isTajweedActive = isTajweedEnabledForMushaf(mushafId, tajweedEnabled);
 
-    // Track memorization session duration
     useEffect(() => {
         const startTime = Date.now();
         return () => {
@@ -51,27 +49,24 @@ export default function Memorization() {
     const [showUI, setShowUI] = useState(true);
     const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
 
-    // Hide mode: 'visible' | 'blur' | 'word' | 'firstletter'
     const [hideMode, setHideMode] = useState('visible');
-    const [revealedWords, setRevealedWords] = useState({}); // { 'verseKey-wordIdx': true }
+    const [revealedWords, setRevealedWords] = useState({});
 
-    // Session timer
     const [sessionSeconds, setSessionSeconds] = useState(0);
     const sessionTimerRef = useRef(null);
 
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-    const [audioVerseIndex, setAudioVerseIndex] = useState(0); // 0 to ayahsPerSwipe - 1
-    const [rangeLoopTarget, setRangeLoopTarget] = useState(1); // 1 = play once, -1 = Infinite
+    const [audioVerseIndex, setAudioVerseIndex] = useState(0);
+    const [rangeLoopTarget, setRangeLoopTarget] = useState(1);
     const [rangeLoopCurrent, setRangeLoopCurrent] = useState(0);
-    const [ayahRepeatTarget, setAyahRepeatTarget] = useState(1); // 1 = play once, -1 = Infinite
+    const [ayahRepeatTarget, setAyahRepeatTarget] = useState(1);
     const [currentAyahPlayCount, setCurrentAyahPlayCount] = useState(0);
-    const [ayahDelay, setAyahDelay] = useState(0); // Uses DELAY_OPTIONS values in seconds
+    const [ayahDelay, setAyahDelay] = useState(0);
 
     const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
     const delayTimeoutRef = React.useRef(null);
     const audioRef = React.useRef(null);
 
-    // Stop audio when user flips pages manually
     useEffect(() => {
         setIsPlayingAudio(false);
         setAudioVerseIndex(0);
@@ -81,7 +76,6 @@ export default function Memorization() {
         if (audioRef.current) {
             audioRef.current.pause();
         }
-        // Reset word reveals on page change
         setRevealedWords({});
     }, [currentVerseIndex, ayahsPerSwipe]);
 
@@ -92,11 +86,10 @@ export default function Memorization() {
                 setIsPlayingAudio(false);
             });
         }
-    }, [isPlayingAudio, audioVerseIndex, currentVerseIndex]); // Depend on currentVerseIndex to ensure changes propagate
+    }, [isPlayingAudio, audioVerseIndex, currentVerseIndex]);
 
     const handleAudioEnded = () => {
         const nextAction = () => {
-            // Repeat current ayah if target not reached
             if (ayahRepeatTarget === -1 || currentAyahPlayCount + 1 < ayahRepeatTarget) {
                 if (ayahRepeatTarget !== -1) setCurrentAyahPlayCount(prev => prev + 1);
                 if (audioRef.current) {
@@ -106,20 +99,17 @@ export default function Memorization() {
                 return;
             }
 
-            // Move to next ayah, reset local play count
             setCurrentAyahPlayCount(0);
 
             if (audioVerseIndex < currentVerses.length - 1) {
                 setAudioVerseIndex(prev => prev + 1);
             } else {
-                // Reached end of selection mode range
-                if (rangeLoopTarget === -1) { // Infinite Loop Range
+                if (rangeLoopTarget === -1) {
                     setAudioVerseIndex(0);
-                } else if (rangeLoopCurrent + 1 < rangeLoopTarget) { // Loop Range
+                } else if (rangeLoopCurrent + 1 < rangeLoopTarget) {
                     setRangeLoopCurrent(prev => prev + 1);
                     setAudioVerseIndex(0);
                 } else {
-                    // Finished loops
                     setIsPlayingAudio(false);
                     setRangeLoopCurrent(0);
                     setAudioVerseIndex(0);
@@ -190,7 +180,7 @@ export default function Memorization() {
         window.addEventListener('mousemove', handleActivity);
         window.addEventListener('touchstart', handleActivity);
         window.addEventListener('click', handleActivity);
-        handleActivity(); // trigger immediately
+        handleActivity();
 
         return () => {
             window.removeEventListener('mousemove', handleActivity);
@@ -200,7 +190,6 @@ export default function Memorization() {
         };
     }, []);
 
-    // Session timer
     useEffect(() => {
         sessionTimerRef.current = setInterval(() => setSessionSeconds(s => s + 1), 1000);
         return () => clearInterval(sessionTimerRef.current);
@@ -212,15 +201,12 @@ export default function Memorization() {
         return `${m}:${String(sec).padStart(2, '0')}`;
     };
 
-    // Cycle hide modes: visible → blur → word → firstletter → visible
     const HIDE_MODES = ['visible', 'blur', 'word', 'firstletter'];
     const cycleHideMode = useCallback(() => {
         setHideMode(prev => {
             const idx = HIDE_MODES.indexOf(prev);
             const next = HIDE_MODES[(idx + 1) % HIDE_MODES.length];
-            // Reset revealed words when switching modes
             setRevealedWords({});
-            // Sync legacy blur state
             setIsBlurred(next === 'blur');
             return next;
         });
@@ -233,56 +219,50 @@ export default function Memorization() {
         }));
     }, []);
 
-    // Get first letter of Arabic word (skip diacritics)
     const getFirstLetter = (word) => {
         if (!word) return '';
         for (const ch of word) {
-            // Arabic base letters range
             if (ch.charCodeAt(0) >= 0x0621 && ch.charCodeAt(0) <= 0x064A) return ch;
             if (ch.charCodeAt(0) >= 0x0671 && ch.charCodeAt(0) <= 0x06D3) return ch;
         }
         return word[0] || '';
     };
 
-    // Confetti on surah completion
     const prevMemorizedCountRef = useRef(0);
     useEffect(() => {
         if (!chapter || !memorizedAyahs) return;
         const surahAyahs = (memorizedAyahs || []).filter(k => k.startsWith(`${chapter.id}:`));
         const count = surahAyahs.length;
         if (count >= chapter.verses_count && prevMemorizedCountRef.current < chapter.verses_count) {
-            // All ayahs memorized — celebrate!
             confetti({ particleCount: 120, spread: 80, origin: { y: 0.7 }, colors: ['#2E4F4A', '#B8924A', '#10b981'] });
             setTimeout(() => confetti({ particleCount: 60, spread: 120, origin: { y: 0.5 } }), 300);
         }
         prevMemorizedCountRef.current = count;
     }, [memorizedAyahs, chapter]);
 
-    // Render verse text based on hide mode
     const renderVerseText = useCallback((verse, idx) => {
         const text = getVerseArabicText(verse, mushaf);
         const computedFontSize = `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`;
 
-        // For tajweed mode with blur — use tajweed HTML
-        // For word/firstletter modes — fall through to word splitting even with tajweed
         if (isTajweedActive && tajweedMap?.[verse.verse_key] && hideMode !== 'word' && hideMode !== 'firstletter') {
             return (
                 <div
-                    className={`mem-verse-arabic quran-text tajweed-text ${isPlayingAudio && audioVerseIndex === idx ? 'is-active' : ''} ${hideMode === 'blur' ? 'is-blurred' : ''}`}
+                    className={`quran-text tajweed-text leading-[2.2] text-center [direction:rtl] transition-all duration-300 ${isPlayingAudio && audioVerseIndex === idx ? 'text-[var(--mem-teal)]' : ''} ${hideMode === 'blur' ? 'cursor-pointer blur-[8px]' : ''}`}
                     style={{ fontSize: computedFontSize, fontFamily: arabicFont }}
+                    onClick={() => hideMode === 'blur' && setHideMode('visible')}
                 >
                     <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
                 </div>
             );
         }
 
-        // Word-by-word or first-letter modes
         if (hideMode === 'word' || hideMode === 'firstletter') {
             const words = text.split(/\s+/);
             return (
                 <div
-                    className={`mem-verse-arabic quran-text ${isPlayingAudio && audioVerseIndex === idx ? 'is-active' : ''}`}
+                    className={`quran-text leading-[2.2] text-center [direction:rtl] transition-all duration-300 ${isPlayingAudio && audioVerseIndex === idx ? 'text-[var(--mem-teal)]' : ''}`}
                     style={{ fontSize: computedFontSize, fontFamily: arabicFont, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.4em' }}
+                    onClick={() => hideMode === 'blur' && setHideMode('visible')}
                 >
                     {words.map((word, wi) => {
                         const key = `${verse.verse_key}-${wi}`;
@@ -291,18 +271,25 @@ export default function Memorization() {
                             return (
                                 <span
                                     key={wi}
-                                    className={`mem-word ${isRevealed ? 'revealed' : 'hidden-word'}`}
+                                    className={`inline-block cursor-pointer select-none rounded-md px-1 py-0.5 transition-all duration-200 ${
+                                        isRevealed
+                                            ? 'text-inherit'
+                                            : 'min-w-[2em] rounded bg-[var(--mem-bone-dark)] text-[var(--mem-bone-dark)] text-[0.7em] tracking-[-0.15em] hover:bg-[var(--mem-teal-soft)] hover:shadow-[0_0_0_2px_rgba(46,79,74,0.15)] active:scale-95'
+                                    } ${isRevealed ? 'mem-word-revealed' : ''}`}
                                     onClick={(e) => { e.stopPropagation(); toggleWordReveal(verse.verse_key, wi); }}
                                 >
                                     {isRevealed ? word : '▇'.repeat(Math.max(2, Math.ceil(word.length / 3)))}
                                 </span>
                             );
                         }
-                        // firstletter mode
                         return (
                             <span
                                 key={wi}
-                                className={`mem-word ${isRevealed ? 'revealed' : 'hint-word'}`}
+                                className={`inline-block cursor-pointer select-none rounded-md px-1 py-0.5 transition-all duration-200 ${
+                                    isRevealed
+                                        ? 'text-inherit'
+                                        : 'border border-dashed border-[rgba(184,146,74,0.3)] bg-[var(--mem-gold-soft)] text-[var(--mem-gold)] text-[0.85em] hover:border-[var(--mem-gold)] hover:bg-[rgba(184,146,74,0.25)]'
+                                } ${isRevealed ? 'mem-word-revealed' : ''}`}
                                 onClick={(e) => { e.stopPropagation(); toggleWordReveal(verse.verse_key, wi); }}
                             >
                                 {isRevealed ? word : getFirstLetter(word) + '⸱'.repeat(Math.max(1, Math.ceil(word.length / 4)))}
@@ -313,11 +300,11 @@ export default function Memorization() {
             );
         }
 
-        // Default: visible or blur
         return (
             <div
-                className={`mem-verse-arabic quran-text ${isPlayingAudio && audioVerseIndex === idx ? 'is-active' : ''} ${hideMode === 'blur' ? 'is-blurred' : ''}`}
+                className={`quran-text leading-[2.2] text-center [direction:rtl] transition-all duration-300 ${isPlayingAudio && audioVerseIndex === idx ? 'text-[var(--mem-teal)]' : ''} ${hideMode === 'blur' ? 'cursor-pointer blur-[8px]' : ''}`}
                 style={{ fontSize: computedFontSize, fontFamily: arabicFont }}
+                onClick={() => hideMode === 'blur' && setHideMode('visible')}
             >
                 {text}
             </div>
@@ -342,7 +329,6 @@ export default function Memorization() {
         if (ayahsPerSwipe === -1) {
             let startIdx = currentVerseIndex;
             const currentPage = verses[startIdx].page_number;
-            // Ensure we are exactly at the start of the page
             while (startIdx > 0 && verses[startIdx - 1].page_number === currentPage) {
                 startIdx--;
             }
@@ -400,7 +386,6 @@ export default function Memorization() {
         setIsBlurred(false);
     };
 
-    // Keyboard and Swipe Navigation
     useEffect(() => {
         const surahId = Number(id);
 
@@ -412,7 +397,6 @@ export default function Memorization() {
                 e.preventDefault();
                 handleNext();
             }
-            // ArrowUp / ArrowDown are left to default browser scroll behavior
         };
 
         let touchStartX = 0;
@@ -430,9 +414,7 @@ export default function Memorization() {
             const deltaY = touchEndY - touchStartY;
             const SWIPE_THRESHOLD = 50;
 
-            // Only handle horizontal swipes — vertical is left to natural page scroll
             if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
-                // Horizontal swipe → navigate ayahs
                 if (deltaX < 0) {
                     handleNext();
                 } else {
@@ -455,7 +437,6 @@ export default function Memorization() {
     const handleMicToggle = () => {
         if (isRecording) {
             setIsRecording(false);
-            // Simulate processing then showing analysis modal
             setTimeout(() => {
                 setShowAnalysis(true);
             }, 800);
@@ -464,7 +445,6 @@ export default function Memorization() {
         }
     };
 
-    // Build the audio URL depending on custom settings
     const activeAudioVerse = currentVerses[audioVerseIndex];
     let audioUrl = activeAudioVerse?.audio?.url ? `https://verses.quran.com/${activeAudioVerse.audio.url}` : null;
 
@@ -479,7 +459,6 @@ export default function Memorization() {
         }
     }
 
-    // Resolve local-audio:// to object URL if needed
     useEffect(() => {
         if (!audioUrl) {
             setResolvedAudioUrl(null);
@@ -489,7 +468,7 @@ export default function Memorization() {
         if (audioUrl.startsWith('local-audio://') && localAudioDirHandle) {
             const fileName = audioUrl.replace('local-audio://', '');
             getLocalAudioUrl(localAudioDirHandle, fileName).then(url => {
-                setResolvedAudioUrl(url || audioUrl); // fallback
+                setResolvedAudioUrl(url || audioUrl);
             });
         } else {
             setResolvedAudioUrl(audioUrl);
@@ -498,7 +477,7 @@ export default function Memorization() {
 
 
     if (isVersesLoading || isChapterLoading) {
-        return <div className="mem-session"><div className="mem-loading">Loading Hifdh Mode...</div></div>;
+        return <div className="relative flex min-h-[80vh] flex-col"><div className="pt-[10vh] text-center text-[var(--mem-ink-muted)]">Loading Hifdh Mode...</div></div>;
     }
 
     if (verses.length === 0) return null;
@@ -507,41 +486,37 @@ export default function Memorization() {
     const hasNonDefaultAudio = ayahRepeatTarget !== 1 || ayahDelay > 0 || rangeLoopTarget !== 1;
 
     return (
-        <div className="mem-session">
-            {/* Session Progress Bar */}
-            <div className="mem-progress-track">
-                <div className="mem-progress-fill" style={{ width: `${sessionPct}%` }} />
+        <div className="relative flex min-h-[80vh] flex-col">
+            <div className="fixed left-0 right-0 top-0 z-50 h-[3px] bg-[var(--mem-bone-dark)]">
+                <div className="h-full rounded-r-sm bg-gradient-to-r from-[var(--mem-teal)] to-[var(--mem-green)] transition-all duration-[0.4s]" style={{ width: `${sessionPct}%` }} />
             </div>
 
-            {/* Hidden Audio */}
             {resolvedAudioUrl && (
                 <audio ref={audioRef} src={resolvedAudioUrl}
                     onEnded={handleAudioEnded}
                     onError={() => setIsPlayingAudio(false)} />
             )}
 
-            {/* Verse Display Area */}
-            <div className="mem-verse-area">
+            <div className="relative flex w-full flex-1 items-center justify-center px-6 py-8" style={{ marginBottom: '8rem' }}>
                 <motion.div
                     key={`${currentVerseIndex}-${ayahsPerSwipe}`}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    className="mem-verse-container"
-                    onClick={() => hideMode === 'blur' && setHideMode('visible')}
+                    className="mx-auto flex w-full max-w-[800px] flex-col items-center gap-8 text-center"
                 >
-                    <div className="mem-verse-stack">
+                    <div className="flex w-full flex-col gap-10">
                         {currentVerses.map((verse, idx) => (
-                            <div key={verse.id} className="mem-verse-block">
-                                <div className="mem-verse-text-wrap">
+                            <div key={verse.id} className="relative w-full">
+                                <div className="relative flex w-full items-center justify-center min-h-[64px]">
                                     {renderVerseText(verse, idx)}
-                                    <div className={`mem-verse-side ${hideMode === 'blur' ? 'hidden' : ''}`}>
-                                        <button className="mem-verse-side-btn" onClick={(e) => { e.stopPropagation(); toggleBookmark(verse.verse_key, chapter?.name_simple, chapter?.id); }}
+                                    <div className={`absolute left-0 top-0 flex flex-col gap-2 transition-opacity duration-300 ${hideMode === 'blur' ? 'opacity-0 pointer-events-none' : ''}`}>
+                                        <button className="cursor-pointer border-none bg-transparent p-2 transition-colors duration-150" onClick={(e) => { e.stopPropagation(); toggleBookmark(verse.verse_key, chapter?.name_simple, chapter?.id); }}
                                             style={{ color: bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'var(--mem-teal)' : 'var(--mem-ink-muted)' }}
                                             title="Bookmark">
                                             <Bookmark size={20} fill={bookmarks?.find(b => b.verseKey === verse.verse_key) ? 'currentColor' : 'none'} />
                                         </button>
-                                        <button className="mem-verse-side-btn" onClick={(e) => { e.stopPropagation(); toggleMemorizedAyah(verse.verse_key); }}
+                                        <button className="cursor-pointer border-none bg-transparent p-2 transition-colors duration-150" onClick={(e) => { e.stopPropagation(); toggleMemorizedAyah(verse.verse_key); }}
                                             style={{ color: (memorizedAyahs || []).includes(verse.verse_key) ? 'var(--mem-green)' : 'var(--mem-ink-muted)' }}
                                             title="Mark Memorized">
                                             <CheckCircle size={20} fill={(memorizedAyahs || []).includes(verse.verse_key) ? 'currentColor' : 'none'}
@@ -556,7 +531,7 @@ export default function Memorization() {
                                             initial={{ opacity: 0, height: 0 }}
                                             animate={{ opacity: 1, height: 'auto' }}
                                             exit={{ opacity: 0, height: 0 }}
-                                            className="mem-translation"
+                                            className="mt-6 overflow-hidden rounded-[14px] border border-[var(--mem-bone-dark)] bg-[var(--mem-cream)] px-6 py-5 leading-[1.6] text-[var(--mem-ink-mid)]"
                                             style={{ fontSize: `${(translationFontSize || 2) * 0.15 + 0.75}rem` }}
                                         >
                                             {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')}
@@ -569,43 +544,43 @@ export default function Memorization() {
                 </motion.div>
             </div>
 
-            {/* Info Bar */}
-            <div className={`mem-info-bar ${showUI ? '' : 'hidden'}`}>
-                <div className="mem-info-surah">
+            <div className={`fixed bottom-[5.5rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-[0.6rem] whitespace-nowrap font-mono text-[0.78rem] text-[var(--mem-ink-muted)] transition-opacity duration-[400ms] ${showUI ? '' : 'pointer-events-none opacity-0'}`}>
+                <div className="flex items-center gap-1 font-semibold text-[var(--mem-teal)]">
                     <span>Surah {chapter?.name_simple}</span>
-                    <button className="mem-info-surah-btn" onClick={() => chapter?.id && toggleMemorizedSurah(chapter.id)}
+                    <button className="flex cursor-pointer items-center border-none bg-transparent p-0 transition-colors duration-150" onClick={() => chapter?.id && toggleMemorizedSurah(chapter.id)}
                         style={{ color: (memorizedSurahs || []).includes(chapter?.id) ? 'var(--mem-green)' : 'var(--mem-ink-muted)' }}>
                         <Award size={16} fill={(memorizedSurahs || []).includes(chapter?.id) ? 'currentColor' : 'none'} />
                     </button>
                 </div>
-                <span className="mem-info-dot">·</span>
+                <span className="opacity-40">·</span>
                 <span>Page {currentVerses[0]?.page_number}</span>
-                <span className="mem-info-dot">·</span>
+                <span className="opacity-40">·</span>
                 <span>Ayah {currentVerses[0]?.verse_key.split(':')[1]}{currentVerses.length > 1 ? `–${currentVerses[currentVerses.length - 1]?.verse_key.split(':')[1]}` : ''}</span>
-                <span className="mem-info-dot">·</span>
+                <span className="opacity-40">·</span>
                 <span style={{ color: 'var(--mem-gold)', fontWeight: 600 }}>{formatTimer(sessionSeconds)}</span>
             </div>
 
-            {/* Bottom Control Dock */}
-            <div className={`mem-dock ${showUI ? '' : 'hidden'}`}>
-                <div className="mem-dock-inner" style={{ position: 'relative' }}>
-                    <button className="mem-dock-btn" onClick={handlePrev} disabled={currentVerseIndex === 0}><ChevronLeft size={20} /></button>
-                    <button className={`mem-dock-btn ${hideMode !== 'visible' ? 'active' : ''}`} onClick={cycleHideMode}
+            <div className={`fixed bottom-0 left-0 right-0 z-40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] transition-all duration-[400ms] ${showUI ? '' : 'pointer-events-none translate-y-[10px] opacity-0'}`}>
+                <div className="mx-auto flex max-w-[480px] items-center justify-center gap-[0.35rem] rounded-[20px] border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-white)] px-[0.85rem] py-[0.65rem] shadow-[0_-4px_30px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.03)]" style={{ position: 'relative' }}>
+                    <button className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] disabled:cursor-default disabled:opacity-25" onClick={handlePrev} disabled={currentVerseIndex === 0}><ChevronLeft size={20} /></button>
+                    <button className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${hideMode !== 'visible' ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={cycleHideMode}
                         title={hideMode === 'visible' ? 'Hide Text' : hideMode === 'blur' ? 'Word-by-Word' : hideMode === 'word' ? 'First Letter Hints' : 'Show All'}>
                         {hideMode === 'visible' ? <EyeOff size={18} /> : hideMode === 'blur' ? <MousePointer size={18} /> : hideMode === 'word' ? <Type size={18} /> : <Eye size={18} />}
                     </button>
-                    <button className={`mem-dock-btn ${showTranslation ? 'active' : ''}`} onClick={() => setShowTranslation(!showTranslation)}>
+                    <button className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${showTranslation ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={() => setShowTranslation(!showTranslation)}>
                         <Languages size={18} />
                     </button>
-                    <div className="mem-dock-divider" />
-                    <motion.button className={`mem-dock-play ${isPlayingAudio ? 'is-playing' : ''}`}
+                    <div className="mx-0.5 h-6 w-px shrink-0 bg-[var(--mem-bone-dark)]" />
+                    <motion.button className={`flex h-[54px] w-[54px] shrink-0 cursor-pointer items-center justify-center rounded-full border-none text-white shadow-[0_4px_16px_rgba(46,79,74,0.25)] transition-all duration-150 mx-[0.35rem] ${
+                        isPlayingAudio ? 'bg-[var(--mem-gold)] shadow-[0_4px_16px_rgba(184,146,74,0.3)]' : 'bg-[var(--mem-teal)] hover:bg-[var(--mem-teal-mid)]'
+                    }`}
                         whileTap={{ scale: 0.9 }} onClick={toggleAudio}
                         animate={isPlayingAudio ? { scale: [1, 1.08, 1] } : {}}
                         transition={{ repeat: isPlayingAudio ? Infinity : 0, duration: 1.5 }}>
                         {isPlayingAudio ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" style={{ marginLeft: '2px' }} />}
                     </motion.button>
-                    <div className="mem-dock-divider" />
-                    <div className="mem-ayah-select">
+                    <div className="mx-0.5 h-6 w-px shrink-0 bg-[var(--mem-bone-dark)]" />
+                    <div className="flex h-[42px] cursor-pointer items-center gap-[0.35rem] rounded-xl border-none bg-transparent px-2 text-[0.78rem] text-[var(--mem-ink-mid)] font-[inherit]">
                         <Layers size={14} />
                         <select value={ayahsPerSwipe} onChange={(e) => {
                             const val = Number(e.target.value);
@@ -616,35 +591,36 @@ export default function Memorization() {
                                 while (s > 0 && verses[s - 1].page_number === pg) s--;
                                 setCurrentVerseIndex(s);
                             } else setCurrentVerseIndex(0);
-                        }}>
+                        }}
+                            className="cursor-pointer border-none bg-transparent text-[0.78rem] text-inherit outline-none font-mono">
                             <option value={1}>1</option><option value={3}>3</option><option value={5}>5</option>
                             <option value={10}>10</option><option value={-1}>Page</option>
                         </select>
                     </div>
 
-                    {/* Collections popover */}
                     <div style={{ position: 'relative' }}>
-                        <button className="mem-dock-btn" onClick={() => setIsCollectionsOpen(!isCollectionsOpen)}><FolderPlus size={18} /></button>
+                        <button className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${isCollectionsOpen ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={() => setIsCollectionsOpen(!isCollectionsOpen)}><FolderPlus size={18} /></button>
                         <AnimatePresence>
                             {isCollectionsOpen && (
-                                <motion.div className="mem-collections-popover"
+                                <motion.div className="absolute bottom-full left-1/2 z-50 mb-3 w-[240px] -translate-x-1/2 rounded-2xl border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-white)] p-3.5 text-left shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
                                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
                                     onClick={e => e.stopPropagation()}>
-                                    <div className="mem-popover-header">
-                                        <span className="mem-popover-title">Add to Collection</span>
-                                        <button className="mem-popover-close" onClick={() => setIsCollectionsOpen(false)}><X size={14} /></button>
+                                    <div className="mb-1 flex items-center justify-between">
+                                        <span className="text-[0.82rem] font-semibold text-[var(--mem-ink)]">Add to Collection</span>
+                                        <button className="cursor-pointer border-none bg-transparent p-0.5 text-[var(--mem-ink-muted)]" onClick={() => setIsCollectionsOpen(false)}><X size={14} /></button>
                                     </div>
-                                    <div className="mem-collections-list">
+                                    <div className="mb-3 flex max-h-[180px] flex-col gap-1 overflow-y-auto">
                                         {(collections || []).map(c => (
-                                            <button key={c.id} className="mem-collection-btn" onClick={() => {
+                                            <button key={c.id} className="flex w-full cursor-pointer items-center gap-2 rounded-lg border-none bg-transparent px-2 py-2 text-left text-[0.82rem] text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)]" onClick={() => {
                                                 currentVerses.forEach(v => addToCollection(c.id, v.verse_key, chapter?.name_simple, chapter?.id));
                                                 setIsCollectionsOpen(false);
                                             }}><Folder size={14} /> {c.name}</button>
                                         ))}
                                     </div>
-                                    <div className="mem-new-collection">
-                                        <input type="text" placeholder="New…" value={newCollectionName} onChange={e => setNewCollectionName(e.target.value)} />
-                                        <button onClick={() => {
+                                    <div className="flex gap-1.5">
+                                        <input type="text" placeholder="New…" value={newCollectionName} onChange={e => setNewCollectionName(e.target.value)}
+                                            className="flex-1 rounded-lg border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-bone)] px-[0.6rem] py-[0.35rem] text-xs text-[var(--mem-ink)] outline-none" />
+                                        <button className="flex cursor-pointer items-center justify-center rounded-lg border-none bg-[var(--mem-teal)] p-1.5 text-white" onClick={() => {
                                             if (newCollectionName.trim()) {
                                                 const nid = Date.now();
                                                 addCollection(newCollectionName.trim(), nid);
@@ -658,76 +634,75 @@ export default function Memorization() {
                         </AnimatePresence>
                     </div>
 
-                    {/* Audio settings popover */}
                     <div style={{ position: 'relative' }}>
-                        <button className={`mem-dock-btn ${hasNonDefaultAudio ? 'active' : ''}`} onClick={() => setIsAudioSettingsOpen(!isAudioSettingsOpen)}>
+                        <button className={`flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] ${hasNonDefaultAudio ? 'bg-[var(--mem-teal-soft)] text-[var(--mem-teal)]' : ''}`} onClick={() => setIsAudioSettingsOpen(!isAudioSettingsOpen)}>
                             <Settings2 size={18} />
                         </button>
                         <AnimatePresence>
                             {isAudioSettingsOpen && (
-                                <motion.div className="mem-audio-popover"
+                                <motion.div className="absolute bottom-full left-1/2 z-50 mb-3 w-[220px] -translate-x-1/2 rounded-2xl border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-white)] p-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.12)]"
                                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
-                                    <div className="mem-popover-header">
-                                        <span className="mem-popover-title">Repeat</span>
-                                        <button className="mem-popover-close" onClick={() => setIsAudioSettingsOpen(false)}><X size={14} /></button>
+                                    <div className="mb-1 flex items-center justify-between">
+                                        <span className="text-[0.82rem] font-semibold text-[var(--mem-ink)]">Repeat</span>
+                                        <button className="cursor-pointer border-none bg-transparent p-0.5 text-[var(--mem-ink-muted)]" onClick={() => setIsAudioSettingsOpen(false)}><X size={14} /></button>
                                     </div>
-                                    <div className="mem-popover-row">
-                                        <div className="mem-popover-label"><RefreshCw size={13} /> Ayah</div>
-                                        <select className="mem-popover-select" value={ayahRepeatTarget}
-                                            onChange={e => { setAyahRepeatTarget(Number(e.target.value)); setCurrentAyahPlayCount(0); }}>
-                                            {AYAH_REPEAT_OPTIONS.map(o => <option key={o} value={o}>{o === 1 ? '1×' : o === -1 ? '∞' : `${o}×`}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="mem-popover-row">
-                                        <div className="mem-popover-label"><Clock size={13} /> Delay</div>
-                                        <select className="mem-popover-select" value={ayahDelay} onChange={e => setAyahDelay(Number(e.target.value))}>
-                                            {DELAY_OPTIONS.map(d => <option key={d} value={d}>{d === 0 ? 'None' : `${d}s`}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="mem-popover-row">
-                                        <div className="mem-popover-label"><Repeat size={13} /> Range</div>
-                                        <select className="mem-popover-select" value={rangeLoopTarget}
-                                            onChange={e => { setRangeLoopTarget(Number(e.target.value)); setRangeLoopCurrent(0); }}>
-                                            {RANGE_LOOP_OPTIONS.map(o => <option key={o} value={o}>{o === 1 ? '1×' : o === -1 ? '∞' : `${o}×`}</option>)}
-                                        </select>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5 text-[0.78rem] text-[var(--mem-ink-mid)]"><RefreshCw size={13} /> Ayah</div>
+                                            <select className="cursor-pointer rounded-lg border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-bone)] px-1.5 py-0.5 text-xs text-[var(--mem-ink)] outline-none" value={ayahRepeatTarget}
+                                                onChange={e => { setAyahRepeatTarget(Number(e.target.value)); setCurrentAyahPlayCount(0); }}>
+                                                {AYAH_REPEAT_OPTIONS.map(o => <option key={o} value={o}>{o === 1 ? '1×' : o === -1 ? '∞' : `${o}×`}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5 text-[0.78rem] text-[var(--mem-ink-mid)]"><Clock size={13} /> Delay</div>
+                                            <select className="cursor-pointer rounded-lg border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-bone)] px-1.5 py-0.5 text-xs text-[var(--mem-ink)] outline-none" value={ayahDelay} onChange={e => setAyahDelay(Number(e.target.value))}>
+                                                {DELAY_OPTIONS.map(d => <option key={d} value={d}>{d === 0 ? 'None' : `${d}s`}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5 text-[0.78rem] text-[var(--mem-ink-mid)]"><Repeat size={13} /> Range</div>
+                                            <select className="cursor-pointer rounded-lg border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-bone)] px-1.5 py-0.5 text-xs text-[var(--mem-ink)] outline-none" value={rangeLoopTarget}
+                                                onChange={e => { setRangeLoopTarget(Number(e.target.value)); setRangeLoopCurrent(0); }}>
+                                                {RANGE_LOOP_OPTIONS.map(o => <option key={o} value={o}>{o === 1 ? '1×' : o === -1 ? '∞' : `${o}×`}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
 
-                    <button className="mem-dock-btn" onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length}>
+                    <button className="flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-xl border-none bg-transparent text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone)] disabled:cursor-default disabled:opacity-25" onClick={handleNext} disabled={currentVerseIndex + currentVerses.length >= verses.length}>
                         <ChevronRight size={20} />
                     </button>
                 </div>
             </div>
 
-            {/* AI Analysis Modal */}
             <AnimatePresence>
                 {showAnalysis && (
-                    <div className="mem-analysis-backdrop">
-                        <motion.div className="mem-analysis-panel"
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(30,35,32,0.45)] backdrop-blur-sm">
+                        <motion.div className="relative w-[90%] max-w-[500px] rounded-[20px] border-[1.5px] border-[var(--mem-bone-dark)] bg-[var(--mem-white)] p-8 shadow-[0_24px_80px_rgba(0,0,0,0.18)]"
                             initial={{ opacity: 0, y: 50, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 20, scale: 0.95 }}>
-                            <button className="mem-modal-close" onClick={() => setShowAnalysis(false)}
-                                style={{ position: 'absolute', top: '1rem', right: '1rem' }}><X size={18} /></button>
-                            <h3 style={{ textAlign: 'center', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 700, color: 'var(--mem-ink)' }}>Analysis Results</h3>
-                            <div className="mem-analysis-ring" style={{ background: 'conic-gradient(var(--mem-teal) 92%, var(--mem-bone) 0)' }}>
-                                <div className="mem-analysis-ring-inner">
-                                    <span className="mem-analysis-score">92<small>%</small></span>
-                                    <span className="mem-analysis-label">Accuracy</span>
+                            <button className="absolute right-4 top-4 flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full border-none bg-[var(--mem-bone)] text-[var(--mem-ink-mid)] transition-all duration-150 hover:bg-[var(--mem-bone-dark)]" onClick={() => setShowAnalysis(false)}><X size={18} /></button>
+                            <h3 className="mb-6 text-center text-xl font-bold text-[var(--mem-ink)]">Analysis Results</h3>
+                            <div className="mx-auto mb-6 flex h-[100px] w-[100px] items-center justify-center rounded-full" style={{ background: 'conic-gradient(var(--mem-teal) 92%, var(--mem-bone) 0)' }}>
+                                <div className="flex h-[80px] w-[80px] flex-col items-center justify-center rounded-full bg-[var(--mem-white)]">
+                                    <span className="text-3xl font-extrabold leading-none text-[var(--mem-ink)]">92<small className="text-[0.8rem]">%</small></span>
+                                    <span className="text-[0.65rem] text-[var(--mem-ink-muted)]">Accuracy</span>
                                 </div>
                             </div>
-                            <div className="mem-error-card is-error">
-                                <ShieldAlert size={18} color="#dc2626" style={{ marginTop: '2px', flexShrink: 0 }} />
-                                <div><div className="mem-error-title">Missed Ghunnah</div>
-                                <div className="mem-error-detail">Verses {currentVerses.map(v => v.verse_key.split(':')[1]).join(', ')}</div></div>
+                            <div className="mb-[0.6rem] flex items-start gap-3 rounded-xl border-l-[3px] border-[#dc2626] bg-[var(--mem-cream)] p-3.5">
+                                <ShieldAlert size={18} color="#dc2626" className="mt-0.5 shrink-0" />
+                                <div><div className="text-[0.9rem] font-semibold text-[var(--mem-ink)]">Missed Ghunnah</div>
+                                <div className="mt-0.5 text-[0.78rem] text-[var(--mem-ink-muted)]">Verses {currentVerses.map(v => v.verse_key.split(':')[1]).join(', ')}</div></div>
                             </div>
-                            <div className="mem-error-card is-success">
-                                <Award size={18} color="var(--mem-teal)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                                <div><div className="mem-error-title">Perfect Makhraj</div>
-                                <div className="mem-error-detail">Pronunciation of 'Qaaf' was excellent.</div></div>
+                            <div className="flex items-start gap-3 rounded-xl border-l-[3px] border-[var(--mem-teal)] bg-[var(--mem-cream)] p-3.5">
+                                <Award size={18} color="var(--mem-teal)" className="mt-0.5 shrink-0" />
+                                <div><div className="text-[0.9rem] font-semibold text-[var(--mem-ink)]">Perfect Makhraj</div>
+                                <div className="mt-0.5 text-[0.78rem] text-[var(--mem-ink-muted)]">Pronunciation of 'Qaaf' was excellent.</div></div>
                             </div>
                         </motion.div>
                     </div>
@@ -736,4 +711,3 @@ export default function Memorization() {
         </div>
     );
 }
-

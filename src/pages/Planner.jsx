@@ -15,9 +15,7 @@ import {
     addDays,
 } from '../utils/planner';
 import { getChapters } from '../services/api/quranApi';
-import './Planner.css';
 
-/* ─── Icons as inline SVGs to avoid import overhead ─── */
 const MoonIcon = () => (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
@@ -53,32 +51,26 @@ const ClockIcon = () => (
     </svg>
 );
 
-/* ─── Circular progress SVG ─── */
 function RingProgress({ percent, size = 200, stroke = 9, children }) {
     const r = (size - stroke * 2) / 2;
     const circ = 2 * Math.PI * r;
     const offset = circ - (percent / 100) * circ;
     return (
-        <div className="ring-wrap" style={{ width: size, height: size }}>
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+        <div className="relative shrink-0" style={{ width: size, height: size }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block" style={{ transform: 'rotate(-90deg)' }}>
                 <circle cx={size / 2} cy={size / 2} r={r} fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.25)" strokeWidth={stroke} />
                 <circle
                     cx={size / 2} cy={size / 2} r={r}
-                    fill="none"
-                    stroke="#8B6B40"
-                    strokeWidth={stroke}
-                    strokeLinecap="round"
-                    strokeDasharray={circ}
-                    strokeDashoffset={offset}
+                    fill="none" stroke="#8B6B40" strokeWidth={stroke} strokeLinecap="round"
+                    strokeDasharray={circ} strokeDashoffset={offset}
                     style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)' }}
                 />
             </svg>
-            <div className="ring-inner">{children}</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">{children}</div>
         </div>
     );
 }
 
-/* ─── Pace computation helpers ─── */
 const TOTAL_QURAN_PAGES = 604;
 
 function getPaceStats(durationDays) {
@@ -90,7 +82,6 @@ function getPaceStats(durationDays) {
     return { dailyPages, perPrayer, endLabel };
 }
 
-/** Returns the current prayer name based on local time (approximate). */
 function getPrayerByTime() {
     const now = new Date();
     const t = now.getHours() * 60 + now.getMinutes();
@@ -107,7 +98,6 @@ const PACES = [
     { id: 'devotional', icon: GemIcon,  title: 'Devotional Path', duration: '1 YEAR',   durationDays: 365, badge: null },
 ];
 
-/* ─── Pace card circle — arc length proportional to pages/day ─── */
 function PaceRing({ durationDays, selected }) {
     const { dailyPages } = getPaceStats(durationDays);
     const size = 104;
@@ -118,29 +108,21 @@ function PaceRing({ durationDays, selected }) {
     const filled = circ * ratio;
     const gap = circ - filled;
     return (
-        <div className="pace-ring-wrap" style={{ width: size, height: size }}>
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(135deg)' }}>
+        <div className="relative shrink-0" style={{ width: size, height: size, margin: '0.2rem 0 0.5rem' }}>
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block" style={{ transform: 'rotate(135deg)' }}>
                 <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--plr-ring-bg)" strokeWidth={stroke} />
-                <circle
-                    cx={size/2} cy={size/2} r={r} fill="none"
+                <circle cx={size/2} cy={size/2} r={r} fill="none"
                     stroke={selected ? 'var(--plr-gold)' : 'var(--plr-ring-stroke)'}
-                    strokeWidth={stroke}
-                    strokeLinecap="round"
-                    strokeDasharray={`${filled} ${gap}`}
-                />
+                    strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${filled} ${gap}`} />
             </svg>
-            <div className="pace-ring-label">
-                <span className="pace-pages-num">{dailyPages}</span>
-                <span className="pace-pages-sub">PAGES / DAY</span>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-ui text-[2rem] font-semibold leading-none text-[var(--plr-ink)]">{dailyPages}</span>
+                <span className="mt-[3px] font-mono text-[0.48rem] tracking-[0.08em] text-[var(--plr-ink-muted)]">PAGES / DAY</span>
             </div>
         </div>
     );
 }
 
-
-/* ════════════════════════════════════════════════════════
-   INTENTION VIEW  (no active planner)
-════════════════════════════════════════════════════════ */
 function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, planners, activePlannerId, onSwitchPlan, onDeletePlan }) {
     const [selected, setSelected] = useState('steady');
     const [showCustom, setShowCustom] = useState(false);
@@ -155,7 +137,6 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
     const maxUnit = unitMeta?.max || 604;
     const safeEndPage = Math.min(Number(endPage) || maxUnit, maxUnit);
     const totalUnits = Math.max(safeEndPage - (Number(startPage) || 1) + 1, 1);
-    // Auto-calculate duration from pages per day
     const computedDuration = Math.ceil(totalUnits / Math.max(Number(pagesPerDay) || 1, 1));
 
     const handleBegin = () => {
@@ -168,12 +149,7 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
         const title = showCustom ? (customTitle.trim() || '') : pace.title;
         try {
             const built = buildReadingPlanner({
-                unitType: unit,
-                durationDays: days,
-                startDate,
-                startUnit: sUnit,
-                endUnit: eUnit,
-                customTitle: title,
+                unitType: unit, durationDays: days, startDate, startUnit: sUnit, endUnit: eUnit, customTitle: title,
             }, chapters || []);
             onBegin(built);
         } catch (e) {
@@ -182,19 +158,14 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
         }
     };
 
-    // Compute stats for the currently selected/active duration
     const activeDays = showCustom ? computedDuration : PACES.find(p => p.id === selected)?.durationDays || 60;
     const activeStats = getPaceStats(activeDays);
 
     return (
-        <div className="plr-intention">
-            {/* Continue Plan banner */}
+        <div className="flex min-h-dvh flex-col overflow-hidden bg-[var(--plr-paper)] pb-8 font-body text-[var(--plr-ink)]">
             {hasExistingPlan && onViewActive && (
-                <motion.button
-                    className="plr-continue-banner"
-                    onClick={onViewActive}
-                    initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-                >
+                <motion.button className="mx-auto mt-5 flex w-[calc(100%-2.5rem)] max-w-[480px] cursor-pointer items-center justify-between rounded-xl border-none bg-[var(--plr-teal)] px-5 py-4 text-[0.95rem] italic text-white shadow-[0_6px_20px_rgba(46,79,74,0.22)] transition-all duration-200 hover:bg-[var(--plr-teal-mid)] hover:shadow-[0_8px_24px_rgba(46,79,74,0.3)]"
+                    onClick={onViewActive} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
                     <span>Continue my active plan</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6"/>
@@ -202,63 +173,64 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                 </motion.button>
             )}
 
-            <motion.div className="plr-int-header" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}>
-                <span className="plr-int-eyebrow">THE FIRST STEP</span>
-                <h1 className="plr-int-title">Set Your Intention</h1>
-                <p className="plr-int-sub">
+            <motion.div className="px-6 pb-4 pt-6 text-center md:px-8 md:pt-14" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}>
+                <span className="mb-2 block font-mono text-[0.62rem] tracking-[0.2em] text-[var(--plr-teal)] uppercase">THE FIRST STEP</span>
+                <h1 className="mb-[0.6rem] font-ui text-[clamp(1.7rem,6vw,2.8rem)] font-semibold leading-[1.1] tracking-[-0.01em] text-[var(--plr-ink)]">Set Your Intention</h1>
+                <p className="mx-auto max-w-[480px] font-body text-[0.92rem] leading-[1.65] text-[var(--plr-ink-mid)] md:max-w-[560px]">
                     Choose a pace that resonates with your soul. Whether intensive or slow, the journey of the Quran is a dialogue of devotion.
                 </p>
             </motion.div>
 
-            <div className="plr-pace-list">
+            <div className="mx-auto flex w-full max-w-[520px] gap-4 overflow-x-auto px-5 pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:max-w-[860px] md:justify-center md:gap-5 md:overflow-x-visible md:px-8 [@media(min-width:480px)_and_(max-width:767px)]:max-w-[560px] [@media(min-width:480px)_and_(max-width:767px)]:flex-wrap [@media(min-width:480px)_and_(max-width:767px)]:justify-center [@media(min-width:480px)_and_(max-width:767px)]:overflow-x-visible"
+                style={{ scrollSnapType: 'x mandatory' }}>
                 {PACES.map((pace, i) => {
                     const Icon = pace.icon;
                     const isSelected = selected === pace.id;
                     const stats = getPaceStats(pace.durationDays);
                     return (
-                        <motion.div key={pace.id} className={`plr-pace-card ${isSelected ? 'is-selected' : ''}`}
+                        <motion.div key={pace.id} className={`flex min-w-[260px] shrink-0 cursor-pointer flex-col items-center gap-[0.4rem] rounded-[14px] border-[1.5px] bg-[var(--plr-cream)] px-5 py-6 text-center shadow-[0_3px_14px_rgba(43,63,60,0.04)] transition-all duration-200 hover:-translate-y-px hover:border-[var(--plr-gold)] hover:shadow-[0_6px_24px_rgba(184,146,74,0.12)] ${
+                            isSelected ? 'border-[var(--plr-gold)] shadow-[0_8px_28px_rgba(184,146,74,0.16)]' : 'border-[var(--plr-bone-dark)]'
+                        } md:max-w-[260px] md:flex-1 md:shrink md:px-6 md:pb-6 md:pt-8 [@media(min-width:480px)_and_(max-width:767px)]:max-w-[240px] [@media(min-width:480px)_and_(max-width:767px)]:basis-[45%] [@media(min-width:480px)_and_(max-width:767px)]:shrink`}
                             onClick={() => { setSelected(pace.id); setShowCustom(false); }}
                             initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5, delay: 0.1 + i * 0.12 }}
-                            layout
+                            transition={{ duration: 0.5, delay: 0.1 + i * 0.12 }} layout
+                            style={{ scrollSnapAlign: 'center' }}
                         >
-                            {pace.badge && <div className="plr-pace-badge">{pace.badge}</div>}
+                            {pace.badge && <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-[20px] bg-[var(--plr-teal)] px-3.5 py-[5px] font-mono text-[0.6rem] font-normal tracking-[0.12em] text-white shadow-[0_2px_8px_rgba(46,79,74,0.22)]">{pace.badge}</div>}
 
-                            {/* Ring at top */}
                             <PaceRing durationDays={pace.durationDays} selected={isSelected} />
 
-                            {/* Title + daily pages */}
-                            <p className="plr-pace-name">{pace.title}</p>
-                            <p className="plr-pace-daily">{stats.dailyPages} pages per day</p>
+                            <p className="font-ui text-[1.05rem] font-semibold tracking-[0.01em] text-[var(--plr-ink)]">{pace.title}</p>
+                            <p className="font-mono text-[0.68rem] tracking-[0.03em] text-[var(--plr-ink-mid)]">{stats.dailyPages} pages per day</p>
 
-                            {/* Per-prayer info */}
-                            <div className="plr-pace-prayer-info">
+                            <div className="mt-1 flex items-center gap-1.5 font-body text-[0.82rem] italic text-[var(--plr-ink-mid)]">
                                 <Icon />
                                 <span>{stats.perPrayer} pages per prayer</span>
                             </div>
 
-                            {/* Desktop: Select Path button (always visible) */}
                             <motion.button
-                                className={`plr-select-path-btn ${isSelected ? 'is-filled' : ''}`}
+                                className={`mt-2 hidden w-full cursor-pointer rounded-[10px] border-[1.5px] px-5 py-3 font-mono text-[0.72rem] font-medium uppercase tracking-[0.1em] transition-all duration-200 md:block ${
+                                    isSelected
+                                        ? 'border-[var(--plr-teal)] bg-[var(--plr-teal)] text-white shadow-[0_4px_16px_rgba(46,79,74,0.22)] hover:bg-[var(--plr-teal-mid)]'
+                                        : 'border-[var(--plr-bone-dark)] bg-transparent text-[var(--plr-ink-mid)] hover:border-[var(--plr-teal)] hover:text-[var(--plr-teal)]'
+                                }`}
                                 whileTap={{ scale: 0.96 }}
                                 onClick={e => { e.stopPropagation(); setSelected(pace.id); setShowCustom(false); if (isSelected) handleBegin(); }}
                             >
                                 {isSelected ? 'Begin Journey' : 'Select Path'}
                             </motion.button>
 
-                            {/* Mobile: Inline CTA — visible inside selected card only */}
                             <AnimatePresence>
                                 {isSelected && !showCustom && (
-                                    <motion.div className="plr-card-cta"
+                                    <motion.div className="mt-1.5 flex w-full flex-col items-center gap-2.5 border-t border-[var(--plr-bone-dark)] pt-2 md:hidden"
                                         initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }}
-                                    >
-                                        <div className="plr-card-stats">
+                                        exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }}>
+                                        <div className="flex flex-wrap justify-center gap-[0.3rem] font-mono text-[0.68rem] tracking-[0.03em] text-[var(--plr-ink-mid)]">
                                             <span>{stats.dailyPages} pages/day</span>
-                                            <span className="plr-card-stats-dot">·</span>
+                                            <span className="text-[var(--plr-bone-dark)]">·</span>
                                             <span>Done by {stats.endLabel}</span>
                                         </div>
-                                        <motion.button className="plr-card-begin-btn" whileTap={{ scale: 0.96 }} onClick={e => { e.stopPropagation(); handleBegin(); }}>
+                                        <motion.button className="w-full cursor-pointer rounded-xl border-none bg-[var(--plr-teal)] px-6 py-[0.85rem] font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] text-white shadow-[0_4px_16px_rgba(46,79,74,0.22)] transition-colors hover:bg-[var(--plr-teal-mid)]" whileTap={{ scale: 0.96 }} onClick={e => { e.stopPropagation(); handleBegin(); }}>
                                             BEGIN MY JOURNEY
                                         </motion.button>
                                     </motion.div>
@@ -269,37 +241,38 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                 })}
             </div>
 
-            {/* My Plans section — always visible, with + button */}
-            <div className="plr-plans-section">
-                <div className="plr-plans-header">
-                    <h2 className="plr-plans-title">My Plans</h2>
-                    <button className="plr-plans-add-btn" onClick={() => setShowCustom(true)} title="Create custom plan">
+            <div className="mx-auto mt-6 w-full max-w-[480px] px-5 pb-8">
+                <div className="mb-3 flex items-center justify-between border-b border-[var(--plr-bone-dark)] pb-2">
+                    <h2 className="font-ui text-[1.15rem] font-semibold text-[var(--plr-ink)] m-0">My Plans</h2>
+                    <button className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-full border-[1.5px] border-[var(--plr-bone-dark)] bg-transparent text-[var(--plr-teal)] transition-all duration-200 hover:border-[var(--plr-teal)] hover:bg-[var(--plr-teal)] hover:text-white hover:shadow-[0_4px_14px_rgba(46,79,74,0.2)]" onClick={() => setShowCustom(true)} title="Create custom plan">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                         </svg>
                     </button>
                 </div>
                 {planners && planners.length > 0 ? (
-                    <div className="plr-plans-list">
+                    <div className="flex flex-col gap-2.5">
                         {planners.map(p => {
                             const overview = getPlannerOverview(p);
                             const pct = overview ? Math.round(overview.completionRatio * 100) : 0;
                             const isActive = p.id === activePlannerId;
                             return (
-                                <motion.div key={p.id} className={`plr-plan-item ${isActive ? 'is-active' : ''}`}
+                                <motion.div key={p.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border-[1.5px] bg-[var(--plr-cream)] px-4 py-[0.85rem] transition-all duration-200 hover:border-[var(--plr-teal)] ${
+                                    isActive ? 'border-[var(--plr-gold)] shadow-[0_3px_12px_rgba(184,146,74,0.12)]' : 'border-[var(--plr-bone-dark)]'
+                                }`}
                                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                                    <div className="plr-plan-info" onClick={() => { onSwitchPlan(p.id); onViewActive?.(); }}>
-                                        <p className="plr-plan-name">{p.title || 'Unnamed Plan'}</p>
-                                        <p className="plr-plan-meta">
+                                    <div className="min-w-0 flex-1" onClick={() => { onSwitchPlan(p.id); onViewActive?.(); }}>
+                                        <p className="truncate font-body text-[0.92rem] font-semibold text-[var(--plr-ink)]">{p.title || 'Unnamed Plan'}</p>
+                                        <p className="mt-0.5 font-mono text-[0.62rem] tracking-[0.04em] text-[var(--plr-ink-muted)]">
                                             {p.durationDays} days · {p.unitType} · {pct}% complete
                                         </p>
-                                        <div className="plr-plan-bar">
-                                            <div className="plr-plan-bar-fill" style={{ width: `${pct}%` }} />
+                                        <div className="mt-1.5 h-[3px] overflow-hidden rounded-sm bg-[var(--plr-bone-dark)]">
+                                            <div className="h-full min-w-[2px] rounded-sm bg-[var(--plr-teal)] transition-all duration-300" style={{ width: `${pct}%` }} />
                                         </div>
                                     </div>
-                                    <div className="plr-plan-actions">
-                                        {isActive && <span className="plr-plan-active-badge">Active</span>}
-                                        <button className="plr-plan-delete-btn" onClick={() => onDeletePlan(p.id)}
+                                    <div className="flex shrink-0 items-center gap-2">
+                                        {isActive && <span className="rounded-[10px] bg-[rgba(184,146,74,0.14)] px-2 py-0.5 font-mono text-[0.55rem] font-medium uppercase tracking-[0.1em] text-[var(--plr-gold)]">Active</span>}
+                                        <button className="flex cursor-pointer items-center rounded-md border-none bg-transparent p-1 text-[var(--plr-ink-muted)] transition-all duration-200 hover:bg-[rgba(192,57,43,0.08)] hover:text-[#c0392b]" onClick={() => onDeletePlan(p.id)}
                                             title="Delete this plan" aria-label="Delete plan">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                                                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
@@ -312,103 +285,99 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                         })}
                     </div>
                 ) : (
-                    <p className="plr-plans-empty">No plans yet. Select a path above or tap + to create a custom plan.</p>
+                    <p className="py-6 text-center font-body text-[0.85rem] italic leading-[1.6] text-[var(--plr-ink-muted)]">No plans yet. Select a path above or tap + to create a custom plan.</p>
                 )}
             </div>
 
-            {/* Custom Plan Modal */}
             <AnimatePresence>
                 {showCustom && (
-                    <motion.div className="plr-modal-overlay"
+                    <motion.div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(30,35,32,0.45)] p-4 backdrop-blur-sm"
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={e => { if (e.target === e.currentTarget) setShowCustom(false); }}
                     >
-                        <motion.div className="plr-modal"
+                        <motion.div className="flex max-h-[90vh] w-full max-w-[460px] flex-col overflow-hidden rounded-[20px] bg-[var(--plr-cream)] shadow-[0_24px_80px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.05)]"
                             initial={{ opacity: 0, y: 40, scale: 0.96 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 30, scale: 0.96 }}
-                            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                        >
-                            <div className="plr-modal-header">
-                                <h2 className="plr-modal-title">Create Custom Plan</h2>
-                                <button className="plr-modal-close" onClick={() => setShowCustom(false)} aria-label="Close">
+                            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+                            <div className="flex items-center justify-between border-b border-[var(--plr-bone-dark)] px-6 py-5">
+                                <h2 className="font-ui text-xl font-semibold text-[var(--plr-ink)]">Create Custom Plan</h2>
+                                <button className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-none bg-[var(--plr-bone)] text-[var(--plr-ink-mid)] transition-all duration-150 hover:bg-[var(--plr-bone-dark)] hover:text-[var(--plr-ink)]" onClick={() => setShowCustom(false)} aria-label="Close">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                                     </svg>
                                 </button>
                             </div>
 
-                            <div className="plr-modal-body">
-                                {/* Plan title */}
-                                <div className="plr-form-group">
-                                    <label className="plr-form-label">Plan name (optional)</label>
-                                    <input type="text" className="plr-text-input" value={customTitle}
-                                        onChange={e => setCustomTitle(e.target.value)}
-                                        placeholder="e.g. Morning Routine, Juz Amma..." />
+                            <div className="flex-1 overflow-y-auto px-6 py-5">
+                                <div className="mb-5 flex flex-col gap-2">
+                                    <label className="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-[var(--plr-ink-muted)]">Plan name (optional)</label>
+                                    <input type="text" className="w-full rounded-[10px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] px-4 py-3 font-body text-[0.95rem] text-[var(--plr-ink)] outline-none transition-all duration-200 focus:border-[var(--plr-gold)] placeholder:text-[var(--plr-ink-muted)] placeholder:opacity-60" value={customTitle}
+                                        onChange={e => setCustomTitle(e.target.value)} placeholder="e.g. Morning Routine, Juz Amma..." />
                                 </div>
-                                {/* Unit type */}
-                                <div className="plr-form-group">
-                                    <label className="plr-form-label">Reading unit</label>
-                                    <div className="plr-unit-pills">
+                                <div className="mb-5 flex flex-col gap-2">
+                                    <label className="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-[var(--plr-ink-muted)]">Reading unit</label>
+                                    <div className="flex flex-wrap gap-2">
                                         {Object.entries(PLANNER_UNITS).map(([key, meta]) => (
-                                            <button key={key} className={`plr-unit-pill ${unitType === key ? 'active' : ''}`}
+                                            <button key={key} className={`cursor-pointer rounded-[20px] border-[1.5px] px-4 py-[7px] font-body text-[0.85rem] transition-all duration-200 ${
+                                                unitType === key
+                                                    ? 'border-[var(--plr-teal)] bg-[var(--plr-teal)] text-white'
+                                                    : 'border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] text-[var(--plr-ink-mid)]'
+                                            }`}
                                                 onClick={() => { setUnitType(key); setStartPage(1); setEndPage(meta.max); }}>
                                                 {meta.label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
-                                {/* Page range */}
-                                <div className="plr-form-group">
-                                    <label className="plr-form-label">{unitMeta.label} range</label>
-                                    <div className="plr-range-inputs">
-                                        <div className="plr-range-field">
-                                            <span className="plr-range-field-label">From</span>
-                                            <input type="number" className="plr-num-input" min={1} max={safeEndPage}
+                                <div className="mb-5 flex flex-col gap-2">
+                                    <label className="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-[var(--plr-ink-muted)]">{unitMeta.label} range</label>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex flex-1 flex-col gap-1">
+                                            <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[var(--plr-ink-muted)]">From</span>
+                                            <input type="number" className="w-full appearance-none rounded-[10px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] px-3 py-2.5 text-center font-body text-base text-[var(--plr-ink)] outline-none transition-all duration-200 focus:border-[var(--plr-gold)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" min={1} max={safeEndPage}
                                                 value={startPage}
                                                 onChange={e => setStartPage(e.target.value === '' ? '' : Number(e.target.value))}
                                                 onBlur={() => setStartPage(prev => Math.max(1, Math.min(Number(prev) || 1, safeEndPage)))} />
                                         </div>
-                                        <span className="plr-range-arrow">→</span>
-                                        <div className="plr-range-field">
-                                            <span className="plr-range-field-label">To</span>
-                                            <input type="number" className="plr-num-input" min={startPage} max={maxUnit}
+                                        <span className="shrink-0 pt-4 text-[1.1rem] text-[var(--plr-ink-muted)]">→</span>
+                                        <div className="flex flex-1 flex-col gap-1">
+                                            <span className="font-mono text-[0.6rem] uppercase tracking-[0.08em] text-[var(--plr-ink-muted)]">To</span>
+                                            <input type="number" className="w-full appearance-none rounded-[10px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] px-3 py-2.5 text-center font-body text-base text-[var(--plr-ink)] outline-none transition-all duration-200 focus:border-[var(--plr-gold)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" min={startPage} max={maxUnit}
                                                 value={endPage}
                                                 onChange={e => setEndPage(e.target.value === '' ? '' : Number(e.target.value))}
                                                 onBlur={() => setEndPage(prev => Math.max(Number(startPage) || 1, Math.min(Number(prev) || maxUnit, maxUnit)))} />
                                         </div>
                                     </div>
-                                    <p className="plr-range-hint">{Math.max((Number(safeEndPage) || 0) - (Number(startPage) || 0) + 1, 0)} {unitMeta.plural} selected</p>
+                                    <p className="mt-0.5 text-center font-mono text-[0.65rem] text-[var(--plr-ink-muted)]">{Math.max((Number(safeEndPage) || 0) - (Number(startPage) || 0) + 1, 0)} {unitMeta.plural} selected</p>
                                 </div>
-                                {/* Pages per day */}
-                                <div className="plr-form-group">
-                                    <label className="plr-form-label">{unitMeta.plural} per day</label>
-                                    <div className="plr-perday-row">
-                                        <input type="number" className="plr-num-input plr-num-perday" min={1} max={totalUnits}
+                                <div className="mb-5 flex flex-col gap-2">
+                                    <label className="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-[var(--plr-ink-muted)]">{unitMeta.plural} per day</label>
+                                    <div className="flex items-center gap-3">
+                                        <input type="number" className="w-[70px] shrink-0 appearance-none rounded-[10px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] px-3 py-2.5 text-center font-body text-base text-[var(--plr-ink)] outline-none transition-all duration-200 focus:border-[var(--plr-gold)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" min={1} max={totalUnits}
                                             value={pagesPerDay}
                                             onChange={e => setPagesPerDay(e.target.value === '' ? '' : Number(e.target.value))}
                                             onBlur={() => setPagesPerDay(prev => Math.max(1, Math.min(Number(prev) || 1, totalUnits)))} />
                                         <input type="range" min={1} max={Math.min(totalUnits, 50)} value={Math.min(Number(pagesPerDay) || 1, 50)}
-                                            onChange={e => setPagesPerDay(Number(e.target.value))} className="plr-range plr-range-perday" />
+                                            onChange={e => setPagesPerDay(Number(e.target.value))}
+                                            className="h-[5px] w-full cursor-pointer appearance-none rounded-[3px] bg-[var(--plr-bone-dark)] outline-none [&::-webkit-slider-thumb]:h-[18px] [&::-webkit-slider-thumb]:w-[18px] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[var(--plr-teal)] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.2)]" />
                                     </div>
                                 </div>
-                                {/* Start date */}
-                                <div className="plr-form-group">
-                                    <label className="plr-form-label">Start date</label>
-                                    <input type="date" className="plr-date-input" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                                <div className="flex flex-col gap-2">
+                                    <label className="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-[var(--plr-ink-muted)]">Start date</label>
+                                    <input type="date" className="w-full rounded-[10px] border-[1.5px] border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] px-4 py-3 font-body text-[0.95rem] text-[var(--plr-ink)] outline-none transition-all duration-200 focus:border-[var(--plr-gold)]" value={startDate} onChange={e => setStartDate(e.target.value)} />
                                 </div>
                             </div>
 
-                            {/* Stats + CTA */}
-                            <div className="plr-modal-footer">
-                                <div className="plr-card-stats">
+                            <div className="flex flex-col items-center gap-3 border-t border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] px-6 py-4 pb-5">
+                                <div className="flex flex-wrap justify-center gap-1 font-mono text-[0.68rem] tracking-[0.03em] text-[var(--plr-ink-mid)]">
                                     <span>{pagesPerDay} {unitMeta.plural}/day</span>
-                                    <span className="plr-card-stats-dot">·</span>
+                                    <span className="text-[var(--plr-bone-dark)]">·</span>
                                     <span>{computedDuration} days</span>
-                                    <span className="plr-card-stats-dot">·</span>
+                                    <span className="text-[var(--plr-bone-dark)]">·</span>
                                     <span>Done by {activeStats.endLabel}</span>
                                 </div>
-                                <motion.button className="plr-card-begin-btn" whileTap={{ scale: 0.96 }}
+                                <motion.button className="w-full cursor-pointer rounded-xl border-none bg-[var(--plr-teal)] px-6 py-[0.85rem] font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] text-white shadow-[0_4px_16px_rgba(46,79,74,0.22)] transition-colors hover:bg-[var(--plr-teal-mid)]" whileTap={{ scale: 0.96 }}
                                     onClick={() => { handleBegin(); setShowCustom(false); }}>
                                     CREATE PLAN
                                 </motion.button>
@@ -418,10 +387,9 @@ function IntentionView({ onBegin, onViewActive, chapters, hasExistingPlan, plann
                 )}
             </AnimatePresence>
 
-            {/* Bottom quote */}
-            <div className="plr-int-quote-section">
-                <p className="plr-int-wisdom">"The best of deeds are those that are consistent, even if they are few."</p>
-                <span className="plr-int-wisdom-source">Prophetic Wisdom</span>
+            <div className="mx-auto max-w-[480px] px-6 pt-10 pb-6 text-center">
+                <p className="font-body text-[0.95rem] italic leading-[1.65] text-[var(--plr-ink-mid)] mb-1">"The best of deeds are those that are consistent, even if they are few."</p>
+                <span className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-[var(--plr-ink-muted)]">Prophetic Wisdom</span>
             </div>
         </div>
     );
@@ -441,26 +409,20 @@ function buildPrayerSlots(planner, todayAssignment) {
         const slotStart = Math.floor((i / 5) * total);
         const slotItems = items.slice(slotStart, slotEnd);
         const count = Math.max(slotEnd - slotStart, total > 0 ? 0 : 1);
-        // Count how many items within THIS slot are completed
         const doneInSlot = slotItems.filter(item => completedRangeValues.includes(item.rangeValue)).length;
         const isComplete = doneInSlot >= count && count > 0;
         const isCurrent = !isComplete && doneInSlot > 0;
-        // First unread item in this slot (for linking)
         const firstUnread = slotItems.find(item => !completedRangeValues.includes(item.rangeValue));
         const slotRoute = (firstUnread || slotItems[0])?.route || null;
         return { name, count, doneInSlot, completedUpTo: slotEnd, slotStartCount: slotStart, slotRoute, status: isComplete ? 'completed' : isCurrent ? 'current' : 'upcoming' };
     });
     const firstIncomplete = slots.findIndex(s => s.status !== 'completed');
     if (firstIncomplete !== -1 && slots[firstIncomplete].status === 'upcoming') {
-        // Always start from the first incomplete slot (Fajr first)
         slots[firstIncomplete] = { ...slots[firstIncomplete], status: 'current' };
     }
     return slots;
 }
 
-/* ════════════════════════════════════════════════════════
-   ACTIVE PLANNER VIEW
-════════════════════════════════════════════════════════ */
 function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePlannerDayComplete }) {
     const overview = useMemo(() => getPlannerOverview(planner), [planner]);
     const metrics = useMemo(() => getPlannerSuccessMetrics(planner), [planner]);
@@ -482,7 +444,6 @@ function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePla
     const todayProgress = useMemo(() => todayAssignment ? getAssignmentProgress(planner, todayAssignment) : null, [planner, todayAssignment]);
     const todayComplete = todayProgress?.isComplete ?? false;
 
-    // Find next unfinished assignment (for read-ahead when today is done)
     const nextAssignment = useMemo(() => {
         if (!planner || !todayComplete) return null;
         return planner.assignments.find(a => {
@@ -496,16 +457,13 @@ function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePla
         ? (nextAssignmentProgress?.nextItem?.route || nextAssignment?.primaryRoute || null)
         : (todayProgress?.nextItem?.route || todayAssignment?.primaryRoute || null);
 
-    // Ring shows TODAY's page progress (not overall day-completion)
     const todayDone = todayProgress?.completedCount ?? 0;
     const todayTotal = todayProgress?.totalCount ?? 1;
     const todayPct = Math.round((todayDone / todayTotal) * 100);
 
-    // Resume: prefer lastReadPage if user was reading, else fallback to next unread
     const resumeRoute = planner?.lastReadPage ? `/page/${planner.lastReadPage}` : nextReadRoute;
     const hasStartedReading = todayDone > 0 || !!planner?.lastReadPage;
 
-    // Overall plan progress for stats row
     const overallPct = overview ? Math.round(overview.completionRatio * 100) : 0;
     const completedDays = overview?.completedCount ?? 0;
 
@@ -520,7 +478,6 @@ function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePla
         setPlannerAssignmentProgress(todayAssignment.dayNumber, slot.slotStartCount);
     };
 
-    // Dynamic subtitle
     const nextPrayer = prayerSlots.find(s => s.status === 'current' || s.status === 'upcoming');
     const daySubtitle = (() => {
         if (overview?.isFinishedWindow && !nextAssignment) return 'Plan complete! 🎉';
@@ -535,47 +492,43 @@ function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePla
     const ringLabel = `${todayDone} OF ${todayTotal} ${PLANNER_UNITS[planner.unitType]?.label.toUpperCase()}S TODAY`;
 
     return (
-        <div className="plr-active">
-            <div className="plr-active-bg" aria-hidden="true" />
-            <motion.div className="plr-active-inner" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
-
-                {/* Desktop two-column wrapper */}
-                <div className="plr-active-columns">
-
-                    {/* Left column: Ring + Stats + CTA */}
-                    <div className="plr-active-left">
-                        {/* Day header */}
-                        <div className="plr-day-header">
-                            <h1 className="plr-day-title">Day {currentDay} of {planner.durationDays}</h1>
-                            <p className="plr-day-sub">{daySubtitle}</p>
+        <div className="relative min-h-dvh overflow-hidden font-body text-[var(--plr-ink)]">
+            <div className="pointer-events-none absolute inset-0 z-0" style={{
+                background: `
+                    radial-gradient(ellipse 80% 55% at 50% -10%, rgba(178,160,110,0.55) 0%, transparent 70%),
+                    radial-gradient(ellipse 90% 60% at 80% 20%, rgba(200,184,130,0.3) 0%, transparent 60%),
+                    linear-gradient(175deg, #9A9483 0%, #B8A882 18%, #D4C49A 36%, #E8DEBA 55%, #F2EDD8 72%, #F7F3E8 100%)
+                `
+            }} aria-hidden="true" />
+            <motion.div className="relative z-10 mx-auto flex w-full max-w-[960px] flex-col items-center px-5 pt-10 pb-24 md:px-8 md:pb-16" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
+                <div className="flex w-full flex-col items-center gap-0 md:flex-row md:items-start md:gap-10">
+                    <div className="w-full max-w-[480px] md:sticky md:top-8 md:max-w-[340px] md:shrink-0 md:basis-[340px]">
+                        <div className="mb-8 text-center">
+                            <h1 className="mb-[0.55rem] font-ui text-[clamp(1.9rem,6vw,2.4rem)] font-semibold leading-none tracking-[-0.01em] text-[var(--plr-teal)]">Day {currentDay} of {planner.durationDays}</h1>
+                            <p className="font-body text-[0.9rem] text-[var(--plr-ink-mid)]">{daySubtitle}</p>
                         </div>
 
-                        {/* Ring */}
-                        <div className="plr-ring-section">
+                        <div className="mb-8 flex justify-center">
                             <RingProgress percent={todayPct} size={200} stroke={9}>
-                                <span className="plr-pct">{todayPct}%</span>
-                                <span className="plr-juz-label">{ringLabel}</span>
+                                <span className="font-ui text-[2.6rem] font-semibold leading-none text-[var(--plr-teal)]">{todayPct}%</span>
+                                <span className="font-mono text-[0.58rem] font-normal tracking-[0.1em] text-[#7A6540]">{ringLabel}</span>
                             </RingProgress>
                         </div>
 
-                        {/* Stats */}
-                        <div className="plr-stat-row">
-                            <div className="plr-stat-pill">
-                                <span className="plr-stat-label">Overall</span>
-                                <span className="plr-stat-val">{completedDays}/{planner.durationDays} Days ({overallPct}%)</span>
-                            </div>
-                            <div className="plr-stat-pill">
-                                <span className="plr-stat-label">Finish by</span>
-                                <span className="plr-stat-val">{completionDate}</span>
-                            </div>
-                            <div className="plr-stat-pill">
-                                <span className="plr-stat-label">Streak</span>
-                                <span className="plr-stat-val">{streakDays} Day{streakDays !== 1 ? 's' : ''}</span>
-                            </div>
+                        <div className="mb-8 flex w-full gap-[0.9rem]">
+                            {[
+                                { label: 'Overall', val: `${completedDays}/${planner.durationDays} Days (${overallPct}%)` },
+                                { label: 'Finish by', val: completionDate },
+                                { label: 'Streak', val: `${streakDays} Day${streakDays !== 1 ? 's' : ''}` },
+                            ].map(s => (
+                                <div key={s.label} className="flex flex-1 flex-col gap-[0.4rem] rounded-xl bg-[rgba(250,247,240,0.82)] p-[1.1rem] shadow-[0_2px_12px_rgba(43,63,60,0.05)] backdrop-blur-md">
+                                    <span className="font-body text-[0.78rem] leading-[1.3] text-[var(--plr-ink-muted)]">{s.label}</span>
+                                    <span className="font-ui text-[1.45rem] font-semibold leading-none text-[var(--plr-ink)]">{s.val}</span>
+                                </div>
+                            ))}
                         </div>
 
-                        {/* CTA button (desktop: inside left column) */}
-                        <div className="plr-left-cta">
+                        <div className="hidden py-4 md:block md:w-full md:text-center">
                             {(() => {
                                 const planDone = overview?.isFinishedWindow && !nextAssignment;
                                 const ctaRoute = todayComplete ? (nextReadRoute || resumeRoute) : (resumeRoute || nextReadRoute);
@@ -583,110 +536,120 @@ function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePla
                                     ? 'Plan Complete ✓'
                                     : todayComplete && nextAssignment
                                         ? `Continue to Day ${nextAssignment.dayNumber}`
-                                        : todayComplete
-                                            ? 'All Caught Up'
+                                        : todayComplete ? 'All Caught Up'
                                             : hasStartedReading ? 'Resume Reading' : 'Open Al-Quran';
-                                if (planDone) {
-                                    return <button className="plr-open-btn" disabled>{ctaLabel}</button>;
+                                if (planDone || !ctaRoute) {
+                                    return <button className="w-full cursor-pointer rounded-[40px] border-none bg-[var(--plr-teal)] p-[1.1rem] font-ui text-[1.05rem] font-semibold tracking-[0.02em] text-white shadow-[0_8px_22px_rgba(46,79,74,0.24)] transition-all duration-200 hover:bg-[var(--plr-teal-mid)] hover:shadow-[0_10px_28px_rgba(46,79,74,0.3)] disabled:opacity-70" disabled>{ctaLabel}</button>;
                                 }
                                 return ctaRoute
-                                    ? <Link to={ctaRoute} className="plr-open-btn">{ctaLabel}</Link>
-                                    : <button className="plr-open-btn" disabled>{ctaLabel}</button>;
+                                    ? <Link to={ctaRoute} className="inline-flex w-full items-center justify-center rounded-[40px] bg-[var(--plr-teal)] p-[1.1rem] font-ui text-[1.05rem] font-semibold tracking-[0.02em] text-white no-underline shadow-[0_8px_22px_rgba(46,79,74,0.24)] transition-all duration-200 hover:bg-[var(--plr-teal-mid)] hover:shadow-[0_10px_28px_rgba(46,79,74,0.3)]">{ctaLabel}</Link>
+                                    : <button className="w-full cursor-pointer rounded-[40px] border-none bg-[var(--plr-teal)] p-[1.1rem] font-ui text-[1.05rem] font-semibold tracking-[0.02em] text-white shadow-[0_8px_22px_rgba(46,79,74,0.24)] transition-all duration-200 hover:bg-[var(--plr-teal-mid)] hover:shadow-[0_10px_28px_rgba(46,79,74,0.3)] disabled:opacity-70" disabled>{ctaLabel}</button>;
                             })()}
                         </div>
                     </div>
 
-                    {/* Right column: Tracker + Ritual */}
-                    <div className="plr-active-right">
-                        {/* Day Tracker */}
-                        <div className="plr-tracker-section">
-                            <div className="plr-tracker-header">
-                                <h2 className="plr-tracker-title">Day Tracker</h2>
-                                <span className="plr-tracker-summary">{completedDays} of {planner.durationDays} completed</span>
+                    <div className="w-full max-w-[480px] md:min-w-0 md:flex-1 md:max-w-full">
+                        <div className="mx-auto mb-5 w-full max-w-[480px] px-0 md:max-w-full md:px-0">
+                            <div className="mb-3 flex items-baseline justify-between">
+                                <h2 className="font-ui text-[1.1rem] font-semibold text-[var(--plr-ink)]">Day Tracker</h2>
+                                <span className="font-mono text-[0.62rem] tracking-[0.05em] text-[var(--plr-ink-muted)]">{completedDays} of {planner.durationDays} completed</span>
                             </div>
-                            <div className="plr-tracker-grid">
+                            <div className="flex flex-wrap gap-[6px] rounded-[14px] border border-[var(--plr-bone-dark)] bg-[var(--plr-cream)] p-3 md:gap-[7px]">
                                 {planner.assignments.map(a => {
                                     const status = getAssignmentStatus(planner, a, today);
                                     const progress = getAssignmentProgress(planner, a);
                                     const isToday = a.date === today;
                                     const pct = progress.totalCount ? Math.round((progress.completedCount / progress.totalCount) * 100) : 0;
+                                    const statusStyles = {
+                                        completed: 'bg-[var(--plr-teal)] text-white',
+                                        today: 'shadow-[0_0_0_2px_var(--plr-gold)] bg-[rgba(184,146,74,0.12)] text-[var(--plr-gold)]',
+                                        overdue: 'shadow-[0_0_0_1.5px_rgba(192,57,43,0.3)] bg-[rgba(192,57,43,0.1)] text-[#c0392b]',
+                                        upcoming: 'bg-[var(--plr-bone)] text-[var(--plr-ink-muted)]',
+                                    };
                                     return (
-                                        <motion.div
-                                            key={a.dayNumber}
-                                            className={`plr-tracker-day plr-tracker-${status} ${isToday ? 'plr-tracker-today' : ''}`}
+                                        <motion.div key={a.dayNumber}
+                                            className={`relative flex h-8 w-8 cursor-default flex-col items-center justify-center rounded-full transition-all duration-200 md:h-[34px] md:w-[34px] ${statusStyles[status] || statusStyles.upcoming}`}
                                             title={`Day ${a.dayNumber}: ${a.title} — ${status === 'completed' ? '✓ Done' : status === 'today' ? `${pct}%` : status}`}
-                                            whileHover={{ scale: 1.15 }}
-                                            whileTap={{ scale: 0.9 }}
-                                        >
-                                            <span className="plr-tracker-num">{a.dayNumber}</span>
+                                            whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }}>
+                                            <span className="relative z-10 font-mono text-[0.55rem] font-medium leading-none">{a.dayNumber}</span>
                                             {status === 'completed' && (
-                                                <svg className="plr-tracker-check" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <svg className="absolute bottom-px right-px opacity-85" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                                     <polyline points="20 6 9 17 4 12"/>
                                                 </svg>
                                             )}
                                             {isToday && status !== 'completed' && pct > 0 && (
-                                                <div className="plr-tracker-progress" style={{ '--pct': `${pct}%` }} />
+                                                <div className="pointer-events-none absolute inset-0 rounded-full opacity-25" style={{ background: `conic-gradient(var(--plr-gold) ${pct}%, transparent ${pct}%)` }} />
                                             )}
                                         </motion.div>
                                     );
                                 })}
                             </div>
-                            <div className="plr-tracker-legend">
-                                <span className="plr-tracker-legend-item"><span className="plr-legend-dot plr-legend-completed" /> Done</span>
-                                <span className="plr-tracker-legend-item"><span className="plr-legend-dot plr-legend-today" /> Today</span>
-                                <span className="plr-tracker-legend-item"><span className="plr-legend-dot plr-legend-overdue" /> Missed</span>
-                                <span className="plr-tracker-legend-item"><span className="plr-legend-dot plr-legend-upcoming" /> Upcoming</span>
+                            <div className="mt-2.5 flex flex-wrap justify-center gap-4">
+                                {[
+                                    { label: 'Done', color: 'var(--plr-teal)' },
+                                    { label: 'Today', color: 'var(--plr-gold)' },
+                                    { label: 'Missed', color: '#c0392b' },
+                                    { label: 'Upcoming', color: 'var(--plr-bone-dark)' },
+                                ].map(item => (
+                                    <span key={item.label} className="flex items-center gap-1 font-mono text-[0.58rem] tracking-[0.04em] text-[var(--plr-ink-muted)]">
+                                        <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
+                                        {item.label}
+                                    </span>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Daily Ritual */}
-                        <div className="plr-ritual-section">
-                            <div className="plr-ritual-header">
-                                <h2 className="plr-ritual-title">Daily Ritual</h2>
-                                <span className="plr-ritual-status">
-                                    <span className="plr-ritual-dot" />
+                        <div className="mb-6 w-full max-w-[480px] md:max-w-full md:px-0">
+                            <div className="mb-4 flex items-center justify-between">
+                                <h2 className="font-ui text-[1.35rem] font-semibold tracking-[0.01em] text-[var(--plr-ink)]">Daily Ritual</h2>
+                                <span className="flex items-center gap-[0.45rem] font-body text-[0.78rem] text-[#7A6540]">
+                                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#B8924A]" />
                                     {todayAssignment && getAssignmentProgress(planner, todayAssignment).isComplete ? 'Complete' : 'In Progress'}
                                 </span>
                             </div>
 
-                            <div className="plr-prayers">
+                            <div className="flex flex-col gap-[0.7rem]">
                                 {prayerSlots.map((slot, i) => (
                                     <motion.div key={slot.name}
-                                        className={`plr-prayer-card plr-prayer-${slot.status}`}
+                                        className={`flex items-center gap-[0.85rem] rounded-xl px-4 py-4 shadow-[0_2px_10px_rgba(43,63,60,0.04)] transition-shadow ${
+                                            slot.status === 'current'
+                                                ? 'bg-[rgba(232,224,206,0.75)] shadow-[0_4px_18px_rgba(184,146,74,0.12)]'
+                                                : 'bg-[rgba(250,247,240,0.88)] backdrop-blur-md'
+                                        }`}
                                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                                         transition={{ delay: 0.05 * i, duration: 0.35 }}
                                     >
-                                        <div className={`plr-prayer-icon plr-prayer-icon-${slot.status}`}>
+                                        <div className={`flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full transition-colors duration-200 text-white ${
+                                            slot.status === 'completed' ? 'bg-[var(--plr-check-bg)]' : slot.status === 'current' ? 'bg-[var(--plr-book-bg)]' : 'bg-[var(--plr-clock-bg)] text-[var(--plr-ink-muted)]'
+                                        }`}>
                                             {slot.status === 'completed' && <CheckIcon size={18} />}
                                             {slot.status === 'current' && <BookIcon />}
                                             {slot.status === 'upcoming' && <ClockIcon />}
                                         </div>
-                                        <div className="plr-prayer-info">
-                                            <span className={`plr-prayer-name ${slot.status === 'completed' ? 'is-done' : ''}`}>{slot.name}</span>
-                                            <span className="plr-prayer-meta">
+                                        <div className="flex min-w-0 flex-1 flex-col gap-[0.18rem]">
+                                            <span className={`font-ui text-base font-semibold tracking-[0.01em] text-[var(--plr-ink)] ${slot.status === 'completed' ? 'line-through opacity-55' : ''}`}>{slot.name}</span>
+                                            <span className={`font-body text-[0.78rem] leading-[1.3] ${slot.status === 'current' ? 'text-[#7A6540]' : 'text-[var(--plr-ink-muted)]'}`}>
                                                 {slot.status === 'completed' && `${slot.doneInSlot}/${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} ✓`}
                                                 {slot.status === 'current' && `${slot.doneInSlot} of ${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} read`}
                                                 {slot.status === 'upcoming' && `${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} · not started`}
                                             </span>
                                         </div>
-                                        <div className="plr-prayer-action">
+                                        <div className="shrink-0">
                                             {slot.status === 'completed' && (
-                                                <button
-                                                    className="plr-check-badge"
-                                                    onClick={() => handleUndoPrayer(slot)}
-                                                    title="Undo this prayer"
-                                                >
+                                                <button className="flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-full border-none bg-[rgba(77,122,114,0.12)] text-[var(--plr-check-bg)] transition-all duration-[0.18s] hover:scale-110 hover:bg-[rgba(192,57,43,0.1)] hover:text-[#c0392b]"
+                                                    onClick={() => handleUndoPrayer(slot)} title="Undo this prayer">
                                                     <CheckIcon size={14} />
                                                 </button>
                                             )}
                                             {slot.status === 'current' && slot.slotRoute && (
-                                                <Link to={hasStartedReading ? (resumeRoute || slot.slotRoute) : slot.slotRoute} className="plr-start-btn">
+                                                <Link to={hasStartedReading ? (resumeRoute || slot.slotRoute) : slot.slotRoute}
+                                                    className="inline-flex cursor-pointer items-center rounded-[20px] border-none bg-[var(--plr-teal)] px-[18px] py-[7px] font-body text-[0.82rem] italic text-white no-underline transition-all duration-200 hover:bg-[var(--plr-teal-mid)]">
                                                     {hasStartedReading ? 'Resume' : 'Start'}
                                                 </Link>
                                             )}
                                             {slot.status === 'upcoming' && (
-                                                <button className="plr-mark-btn" onClick={() => handleMarkPrayer(slot)} title="Mark done">
-                                                    <div className="plr-empty-ring" />
+                                                <button className="flex cursor-pointer items-center border-none bg-transparent p-0.5" onClick={() => handleMarkPrayer(slot)} title="Mark done">
+                                                    <div className="h-5 w-5 rounded-full border-[1.5px] border-[rgba(43,63,60,0.25)]" />
                                                 </button>
                                             )}
                                         </div>
@@ -697,10 +660,9 @@ function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePla
                     </div>
                 </div>
 
-                {/* Footer — below both columns */}
-                <div className="plr-active-footer">
-                    <p className="plr-ayah-quote">"Recite what has been revealed to you of the Book…" (29:45)</p>
-                    <button className="plr-delete-link" onClick={onDelete}
+                <div className="flex w-full flex-col items-center gap-[0.9rem] mt-2">
+                    <p className="px-2 text-center font-body text-[0.82rem] italic leading-[1.55] text-[var(--plr-ink-muted)]">"Recite what has been revealed to you of the Book…" (29:45)</p>
+                    <button className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border-none bg-transparent px-3 py-1.5 font-body text-[0.78rem] text-[var(--plr-ink-muted)] opacity-50 transition-all duration-200 hover:opacity-100 hover:text-[#c0392b]" onClick={onDelete}
                         title="Delete plan" aria-label="Delete plan">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
@@ -714,13 +676,10 @@ function ActiveView({ planner, onDelete, setPlannerAssignmentProgress, togglePla
     );
 }
 
-/* ════════════════════════════════════════════════════════
-   ACTIVE VIEW — add back button
-════════════════════════════════════════════════════════ */
 function ActiveViewWrapper({ planner, onDelete, onBack, setPlannerAssignmentProgress, togglePlannerDayComplete }) {
     return (
         <div style={{ position: 'relative' }}>
-            <button className="plr-back-btn" onClick={onBack} aria-label="Back to intention">
+            <button className="absolute left-5 top-6 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-none bg-[rgba(250,247,240,0.7)] text-[var(--plr-teal)] shadow-[0_2px_10px_rgba(43,63,60,0.1)] backdrop-blur-md transition-all duration-200 hover:bg-[rgba(250,247,240,0.95)] hover:-translate-x-0.5" onClick={onBack} aria-label="Back to intention">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="15 18 9 12 15 6"/>
                 </svg>
@@ -734,6 +693,7 @@ function ActiveViewWrapper({ planner, onDelete, onBack, setPlannerAssignmentProg
         </div>
     );
 }
+
 export default function Planner() {
     const {
         setNavHeaderTitle, planner, planners, activePlannerId,
@@ -742,7 +702,6 @@ export default function Planner() {
     } = useAppStore();
 
     const { data: chapters = [] } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
-    // If user has an active plan with any progress, go straight to the active dashboard
     const hasProgress = planner && (
         (planner.completedDays && planner.completedDays.length > 0) ||
         (planner.assignmentProgress && Object.keys(planner.assignmentProgress).length > 0) ||
@@ -757,7 +716,6 @@ export default function Planner() {
     }, [setNavHeaderTitle]);
 
     const handleBegin = (built) => {
-        // Check for duplicate — same title already exists
         const existing = (planners || []).find(p => p.title && built.title && p.title === built.title);
         if (existing) {
             if (!window.confirm(`You already have a "${built.title}" plan. Replace it with a new one?`)) {
@@ -778,7 +736,6 @@ export default function Planner() {
     const handleDeletePlan = (id) => {
         if (window.confirm('Delete this plan? All progress will be lost.')) {
             deletePlanner(id);
-            // If we deleted the active plan and there are none left, go to intention
             const remaining = (planners || []).filter(p => p.id !== id);
             if (!remaining.length) {
                 setView('intention');
@@ -817,15 +774,15 @@ export default function Planner() {
 
             <AnimatePresence>
                 {confirmDelete && (
-                    <motion.div className="plr-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    <motion.div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(43,63,60,0.45)] p-6 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={() => setConfirmDelete(false)}>
-                        <motion.div className="plr-modal" initial={{ scale: 0.92, y: 16 }} animate={{ scale: 1, y: 0 }}
+                        <motion.div className="w-full max-w-[360px] rounded-[18px] bg-[var(--plr-cream)] p-8 shadow-[0_24px_60px_rgba(43,63,60,0.22)]" initial={{ scale: 0.92, y: 16 }} animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.92, y: 16 }} onClick={e => e.stopPropagation()}>
-                            <h3 className="plr-modal-title">Delete this plan?</h3>
-                            <p className="plr-modal-body">All progress will be permanently lost. This cannot be undone.</p>
-                            <div className="plr-modal-actions">
-                                <button className="plr-modal-cancel" onClick={() => setConfirmDelete(false)}>Cancel</button>
-                                <button className="plr-modal-confirm" onClick={handleDelete}>Delete</button>
+                            <h3 className="mb-3 font-ui text-[1.4rem] font-semibold text-[var(--plr-ink)]">Delete this plan?</h3>
+                            <p className="mb-7 font-body text-[0.9rem] leading-[1.6] text-[var(--plr-ink-mid)]">All progress will be permanently lost. This cannot be undone.</p>
+                            <div className="flex gap-3">
+                                <button className="flex-1 cursor-pointer rounded-[30px] border-[1.5px] border-[var(--plr-bone-dark)] bg-transparent p-[0.85rem] font-body text-[0.9rem] text-[var(--plr-ink-mid)] transition-all duration-200 hover:bg-[var(--plr-bone)]" onClick={() => setConfirmDelete(false)}>Cancel</button>
+                                <button className="flex-1 cursor-pointer rounded-[30px] border-none bg-[#c0392b] p-[0.85rem] font-body text-[0.9rem] font-semibold text-white transition-all duration-200 hover:bg-[#a93226]" onClick={handleDelete}>Delete</button>
                             </div>
                         </motion.div>
                     </motion.div>
@@ -834,6 +791,3 @@ export default function Planner() {
         </>
     );
 }
-
-
-

@@ -16,72 +16,50 @@ export default function AudioSetupModal({
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={onClose}
-                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, backdropFilter: 'blur(4px)' }}
+                        className="fixed inset-0 z-[1100] bg-black/60 backdrop-blur-sm"
                     />
-                    {/* Bottom Drawer */}
                     <motion.div
                         initial={{ y: '100%' }}
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                        style={{
-                            position: 'fixed',
-                            bottom: 0, left: 0, right: 0,
-                            display: 'flex',
-                            justifyContent: 'center',
-                            zIndex: 1101,
-                        }}
+                        className="fixed inset-x-0 bottom-0 z-[1101] flex justify-center"
                     >
-                        <div style={{
-                            width: '100%',
-                            maxWidth: '520px',
-                            maxHeight: '85vh',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            background: 'var(--bg-surface)',
-                            borderTopLeftRadius: '24px',
-                            borderTopRightRadius: '24px',
-                            boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-                            border: '1px solid var(--border-color)',
-                            borderBottom: 'none',
-                            overflow: 'hidden',
-                        }}>
-                            {/* Drag handle */}
-                            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '0.75rem', paddingBottom: '0.25rem', flexShrink: 0 }}>
-                                <div style={{ width: '40px', height: '5px', borderRadius: '9999px', background: 'var(--border-color)' }} />
+                        <div className="flex w-full max-w-[520px] flex-col overflow-hidden rounded-t-[24px] border border-[var(--border-color)] border-b-0 bg-[var(--bg-surface)] shadow-[0_-8px_40px_rgba(0,0,0,0.25)]"
+                            style={{ maxHeight: '85vh' }}
+                        >
+                            <div className="flex shrink-0 justify-center pb-1 pt-3">
+                                <div className="h-[5px] w-10 rounded-[9999px] bg-[var(--border-color)]" />
                             </div>
-                            {/* Sticky Header */}
-                            <div style={{ padding: '0 1.5rem 1rem', flexShrink: 0 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+
+                            <div className="shrink-0 px-6 pb-4">
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Audio Setup</h3>
-                                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                                        <h3 className="m-0 text-[1.2rem] font-bold text-[var(--text-primary)]">Audio Setup</h3>
+                                        <p className="m-0 mt-1 text-[0.82rem] text-[var(--text-muted)]">
                                             Configure before playing · {pendingPlaylist.length} Ayahs
                                         </p>
                                     </div>
-                                    <button className="btn-icon" onClick={onClose} style={{ background: 'var(--bg-secondary)', width: '36px', height: '36px', flexShrink: 0 }}>
+                                    <button onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--bg-secondary)] text-[var(--text-secondary)] transition-all duration-200 hover:text-accent">
                                         <X size={18} />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Scrollable settings body */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6">
 
-                                {/* Range */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                                    <label className="mb-[0.6rem] block text-[0.8rem] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
                                         Ayah Range
                                     </label>
-                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>From</label>
+                                    <div className="flex gap-3">
+                                        <div className="flex-1">
+                                            <label className="mb-1 block text-[0.8rem] text-[var(--text-muted)]">From</label>
                                             <select
-                                                className="form-input"
+                                                className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[0.95rem] text-[var(--text-primary)] outline-none"
                                                 value={audioSettings.startRange ?? 0}
                                                 onChange={(e) => updateAudioSettings({ startRange: Number(e.target.value) })}
                                             >
@@ -90,10 +68,10 @@ export default function AudioSetupModal({
                                                 ))}
                                             </select>
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>To</label>
+                                        <div className="flex-1">
+                                            <label className="mb-1 block text-[0.8rem] text-[var(--text-muted)]">To</label>
                                             <select
-                                                className="form-input"
+                                                className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[0.95rem] text-[var(--text-primary)] outline-none"
                                                 value={audioSettings.endRange ?? pendingPlaylist.length - 1}
                                                 onChange={(e) => updateAudioSettings({ endRange: Number(e.target.value) })}
                                             >
@@ -105,70 +83,78 @@ export default function AudioSetupModal({
                                     </div>
                                 </div>
 
-                                {/* Repeat */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                                    <label className="mb-[0.6rem] block text-[0.8rem] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
                                         Repeat
                                     </label>
-                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Each Ayah</label>
-                                            <select className="form-input" value={audioSettings.repeatAya} onChange={(e) => updateAudioSettings({ repeatAya: Number(e.target.value) })}>
+                                    <div className="flex gap-3">
+                                        <div className="flex-1">
+                                            <label className="mb-1 block text-[0.8rem] text-[var(--text-muted)]">Each Ayah</label>
+                                            <select className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[0.95rem] text-[var(--text-primary)] outline-none"
+                                                value={audioSettings.repeatAya}
+                                                onChange={(e) => updateAudioSettings({ repeatAya: Number(e.target.value) })}
+                                            >
                                                 {[1, 2, 3, 5, 10, -1].map(opt => <option key={opt} value={opt}>{opt === -1 ? '∞ Infinite' : `${opt}×`}</option>)}
                                             </select>
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Full Selection</label>
-                                            <select className="form-input" value={audioSettings.repeatSelection} onChange={(e) => updateAudioSettings({ repeatSelection: Number(e.target.value) })}>
+                                        <div className="flex-1">
+                                            <label className="mb-1 block text-[0.8rem] text-[var(--text-muted)]">Full Selection</label>
+                                            <select className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[0.95rem] text-[var(--text-primary)] outline-none"
+                                                value={audioSettings.repeatSelection}
+                                                onChange={(e) => updateAudioSettings({ repeatSelection: Number(e.target.value) })}
+                                            >
                                                 {[1, 2, 3, 5, 10, -1].map(opt => <option key={opt} value={opt}>{opt === -1 ? '∞ Infinite' : `${opt}×`}</option>)}
                                             </select>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Advanced */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem' }}>
+                                    <label className="mb-[0.6rem] block text-[0.8rem] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
                                         Advanced
                                     </label>
-                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Delay Between Ayahs</label>
-                                            <select className="form-input" value={audioSettings.delayBetweenAyas} onChange={(e) => updateAudioSettings({ delayBetweenAyas: Number(e.target.value) })}>
+                                    <div className="flex gap-3">
+                                        <div className="flex-1">
+                                            <label className="mb-1 block text-[0.8rem] text-[var(--text-muted)]">Delay Between Ayahs</label>
+                                            <select className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[0.95rem] text-[var(--text-primary)] outline-none"
+                                                value={audioSettings.delayBetweenAyas}
+                                                onChange={(e) => updateAudioSettings({ delayBetweenAyas: Number(e.target.value) })}
+                                            >
                                                 {[0, 1, 2, 3, 5, 10].map(opt => <option key={opt} value={opt}>{opt === 0 ? 'None' : `${opt}s`}</option>)}
                                             </select>
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Playback Speed</label>
-                                            <select className="form-input" value={audioSettings.playbackSpeed} onChange={(e) => updateAudioSettings({ playbackSpeed: Number(e.target.value) })}>
+                                        <div className="flex-1">
+                                            <label className="mb-1 block text-[0.8rem] text-[var(--text-muted)]">Playback Speed</label>
+                                            <select className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[0.95rem] text-[var(--text-primary)] outline-none"
+                                                value={audioSettings.playbackSpeed}
+                                                onChange={(e) => updateAudioSettings({ playbackSpeed: Number(e.target.value) })}
+                                            >
                                                 {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(opt => <option key={opt} value={opt}>{opt}×</option>)}
                                             </select>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Auto-scroll toggle */}
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.75rem', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
+                                <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[var(--bg-secondary)] px-3 py-3">
                                     <input
                                         type="checkbox"
                                         checked={audioSettings.scrollWhilePlaying ?? true}
                                         onChange={(e) => updateAudioSettings({ scrollWhilePlaying: e.target.checked })}
-                                        style={{ width: '18px', height: '18px', accentColor: 'var(--accent-primary)', flexShrink: 0 }}
+                                        className="h-[18px] w-[18px] shrink-0 cursor-pointer"
+                                        style={{ accentColor: 'var(--accent-primary)' }}
                                     />
                                     <div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Auto-scroll while playing</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Highlights and scrolls to each Ayah</div>
+                                        <div className="text-[0.9rem] font-semibold text-[var(--text-primary)]">Auto-scroll while playing</div>
+                                        <div className="text-[0.75rem] text-[var(--text-muted)]">Highlights and scrolls to each Ayah</div>
                                     </div>
                                 </label>
 
                             </div>
 
-                            {/* Pinned Start Playing button */}
-                            <div style={{ padding: '1rem 1.5rem 1.5rem', flexShrink: 0 }}>
+                            <div className="shrink-0 px-6 pb-6 pt-4">
                                 <button
-                                    className="btn-primary"
                                     onClick={handleStartPlaying}
-                                    style={{ width: '100%', padding: '0.9rem', borderRadius: '14px', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[14px] bg-accent px-4 py-[0.9rem] text-base font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)]"
                                 >
                                     <Play size={20} fill="currentColor" />
                                     Start Playing

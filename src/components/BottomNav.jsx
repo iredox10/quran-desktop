@@ -5,18 +5,16 @@ import { BookOpen, Brain, CalendarDays, TrendingUp, User } from 'lucide-react';
 export default function BottomNav() {
     const location = useLocation();
 
-    // Hide BottomNav if we are actively reading a Surah to maximize screen real estate
     const isSurahPage = /^\/surah\/\d+/.test(location.pathname);
     const isMemorizePage = /^\/memorize\/\d+/.test(location.pathname);
     const isPagePage = /^\/page\/\d+/.test(location.pathname);
 
-    // Check if a path is active
     const isActive = (path) => {
         if (path === '/' && location.pathname !== '/') return false;
         return location.pathname.startsWith(path);
     };
 
-    if (isSurahPage || isMemorizePage || isPagePage) return null; // Hide on immersive views
+    if (isSurahPage || isMemorizePage || isPagePage) return null;
 
     const tabs = [
         { path: '/', icon: BookOpen, label: 'Quran' },
@@ -26,73 +24,32 @@ export default function BottomNav() {
         { path: '/profile', icon: User, label: 'Profile' }
     ];
 
-    const labelStyle = {
-        fontSize: '0.65rem',
-        fontWeight: 600,
-        opacity: 0.9,
-    };
-
     return (
-        <div
-            className="glass-panel"
-            style={{
-                position: 'fixed',
-                bottom: '12px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 'calc(100% - 32px)',
-                maxWidth: '500px',
-                height: '64px',
-                borderRadius: '100px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                zIndex: 1000,
-                padding: '0 8px',
-                gap: '4px'
-            }}
-        >
+        <div className="fixed bottom-3 left-1/2 z-[1000] flex h-16 w-[calc(100%-32px)] max-w-[500px] -translate-x-1/2 items-center justify-between gap-1 rounded-[100px] border-[var(--glass-border)] bg-[var(--glass-bg)] px-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
             {tabs.map((tab) => {
                 const active = isActive(tab.path);
                 const Icon = tab.icon;
 
                 if (active) {
                     return (
-                        <div 
-                            key={tab.path} 
-                            style={{ flex: '1.5', display: 'flex', justifyContent: 'center', cursor: 'pointer' }}
+                        <div
+                            key={tab.path}
+                            className="flex flex-1 cursor-pointer justify-center"
+                            style={{ flex: '1.5' }}
                             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                         >
-                            <div style={{
-                                background: 'var(--accent-light)',
-                                borderRadius: '999px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '10px 16px',
-                                color: 'var(--accent-primary)'
-                            }}>
+                            <div className="flex items-center gap-2 rounded-[999px] bg-[var(--accent-light)] px-4 py-[10px] text-accent">
                                 <Icon size={22} color="currentColor" />
-                                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{tab.label}</span>
+                                <span className="text-[0.8rem] font-bold">{tab.label}</span>
                             </div>
                         </div>
                     );
                 }
 
                 return (
-                    <Link key={tab.path} to={tab.path} style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        textDecoration: 'none',
-                        color: 'var(--text-muted)',
-                        flex: '1',
-                        transition: 'color 0.2s',
-                    }}>
+                    <Link key={tab.path} to={tab.path} className="flex flex-1 flex-col items-center justify-center gap-[6px] text-[var(--text-muted)] no-underline transition-colors duration-200 hover:text-accent">
                         <Icon size={22} />
-                        <span style={{ fontSize: '0.65rem', fontWeight: 600, opacity: 0.9 }}>{tab.label}</span>
+                        <span className="text-[0.65rem] font-semibold opacity-90">{tab.label}</span>
                     </Link>
                 );
             })}

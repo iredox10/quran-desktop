@@ -416,11 +416,11 @@ export default function Surah() {
     };
 
     if (isChapterLoading || isVersesLoading) return (
-        <div className="container" style={{ textAlign: 'center', padding: '10vh 0', color: 'var(--text-muted)' }}>
+        <div className="container text-center py-[10vh] text-[var(--text-muted)]">
             <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                style={{ display: 'inline-block', width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTopColor: 'var(--accent-primary)', borderRadius: '50%', marginBottom: '1rem' }}
+                className="inline-block w-10 h-10 border-[3px] border-[var(--border-color)] border-t-[var(--accent-primary)] rounded-full mb-4"
             />
             <h2>Loading Ayahs...</h2>
         </div>
@@ -428,25 +428,17 @@ export default function Surah() {
 
     return (
         <div
-            className="container"
+            className="container overflow-hidden"
             {...swipeHandlers}
-            style={{ overflow: 'hidden' }} // Prevent horizontal scrollbar during animation
         >
             {/* Subtle refetch indicator — only shows when re-loading in background (not initial load) */}
             {isVersesFetching && !isVersesLoading && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, height: '3px',
-                    zIndex: 2000, overflow: 'hidden', pointerEvents: 'none'
-                }}>
+                <div className="fixed top-0 left-0 right-0 h-[3px] z-[2000] overflow-hidden pointer-events-none">
                     <motion.div
                         initial={{ x: '-100%' }}
                         animate={{ x: '100%' }}
                         transition={{ duration: 0.9, ease: 'easeInOut', repeat: Infinity }}
-                        style={{
-                            height: '100%', width: '40%',
-                            background: 'linear-gradient(90deg, transparent, var(--accent-primary), transparent)',
-                            borderRadius: '4px'
-                        }}
+                        className="h-full w-[40%] bg-[linear-gradient(90deg,transparent,var(--accent-primary),transparent)] rounded"
                     />
                 </div>
             )}
@@ -464,7 +456,7 @@ export default function Surah() {
                     animate="center"
                     exit="exit"
                     transition={pageTransition}
-                    style={{ willChange: 'transform, opacity' }}
+                    className="will-change-[transform,opacity]"
                 >
 
 
@@ -473,82 +465,48 @@ export default function Surah() {
                         <div className="surah-bg-glow" />
 
                         {/* Subtle decorative background Arabic text */}
-                        <div style={{
-                            fontFamily: "'Amiri Quran', serif",
-                            fontSize: 'clamp(8rem, 25vw, 15rem)',
-                            position: 'absolute',
-                            opacity: 0.04,
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                            whiteSpace: 'nowrap',
-                            color: 'var(--text-primary)'
-                        }}>
+                        <div
+                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.04] pointer-events-none select-none whitespace-nowrap text-[var(--text-primary)]"
+                            style={{ fontFamily: 'var(--font-arabic)', fontSize: 'clamp(8rem, 25vw, 15rem)' }}
+                        >
                             {chapter?.name_arabic}
                         </div>
 
-                        <div style={{ position: 'relative', zIndex: 1 }}>
-                            <div style={{
-                                display: 'inline-block',
-                                padding: '0.4rem 1rem',
-                                borderRadius: '999px',
-                                background: 'var(--accent-light)',
-                                color: 'var(--accent-primary)',
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                letterSpacing: '1px',
-                                textTransform: 'uppercase',
-                                marginBottom: '1.5rem'
-                            }}>
+                        <div className="relative z-[1]">
+                            <div className="inline-block px-4 py-[0.4rem] rounded-full bg-[var(--accent-light)] text-accent text-[0.85rem] font-bold tracking-[1px] uppercase mb-6">
                                 Surah {chapter?.id}
                             </div>
 
                             <h1
-                                className="surah-title"
+                                className="surah-title font-extrabold mb-2 text-[var(--text-primary)] tracking-[-1px]"
                                 style={{
                                     fontSize: 'clamp(2.5rem, 8vw, 4rem)',
-                                    fontWeight: 800,
-                                    marginBottom: '0.5rem',
-                                    color: 'var(--text-primary)',
-                                    letterSpacing: '-1px'
                                 }}
                             >
                                 {chapter?.name_simple}
                             </h1>
-                            <p style={{
-                                fontSize: 'clamp(1rem, 3vw, 1.25rem)',
-                                color: 'var(--text-secondary)',
-                                marginBottom: '2rem',
-                                fontWeight: 500
-                            }}>
+                            <p
+                                className="text-[var(--text-secondary)] mb-8 font-medium"
+                                style={{
+                                    fontSize: 'clamp(1rem, 3vw, 1.25rem)',
+                                }}
+                            >
                                 {chapter?.translated_name.name} • {chapter?.verses_count} Ayahs • {chapter?.revelation_place}
                             </p>
 
-                            <div style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                gap: '1rem',
-                                flexWrap: 'wrap'
-                            }}>
+                            <div className="flex justify-center gap-4 flex-wrap">
                                 <button
-                                    className="btn-primary"
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                                    className="btn-primary flex items-center gap-2"
                                     onClick={handlePlayClick}
                                 >
                                     {isCurrentAudio && isPlaying ? <Pause size={18} /> : <Play size={18} />}
                                     {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
                                 </button>
                                 <button
-                                    className="btn-primary"
+                                    className="btn-primary flex items-center gap-2 border border-[var(--border-color)]"
                                     style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
                                         backgroundColor: isDownloaded ? 'var(--accent-light)' : 'var(--bg-primary)',
                                         color: isDownloaded ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        border: '1px solid var(--border-color)',
                                         opacity: isDownloading ? 0.7 : 1
                                     }}
                                     onClick={handleDownloadSurah}
@@ -560,16 +518,16 @@ export default function Surah() {
                         </div>
                     </div>
 
-                    <div style={{ padding: '0 1rem', display: readingMode ? 'block' : 'flex', flexDirection: 'column' }}>
+                    <div className="px-4 flex-col" style={{ display: readingMode ? 'block' : 'flex' }}>
                         {/* Bismillah before Surah text (except Fatiha and Tawbah) */}
                         {chapter?.id !== 1 && chapter?.id !== 9 && (
-                            <div className="quran-text" style={{
-                                textAlign: 'center',
-                                marginBottom: '3rem',
-                                fontSize: `${fontSize * 0.4 + 1.5}rem`,
-                                color: 'var(--accent-primary)',
-                                fontFamily: arabicFont
-                            }}>
+                            <div
+                                className="quran-text text-center mb-12 text-accent"
+                                style={{
+                                    fontSize: `${fontSize * 0.4 + 1.5}rem`,
+                                    fontFamily: arabicFont
+                                }}
+                            >
                                 بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ
                             </div>
                         )}
@@ -613,23 +571,15 @@ export default function Surah() {
                         </div>
 
                         {/* Infinite Scroll trigger area */}
-                        <div ref={observerRef} style={{ padding: '2rem 0', textAlign: 'center' }}>
+                        <div ref={observerRef} className="py-8 text-center">
                             {isFetchingNextPage && (
-                                <div style={{ color: 'var(--text-muted)' }}>Loading more Ayahs...</div>
+                                <div className="text-[var(--text-muted)]">Loading more Ayahs...</div>
                             )}
                         </div>
 
                         {/* Footer Navigation */}
                         {!hasNextPage && !isVersesLoading && (
-                            <div style={{
-                                marginTop: '3rem',
-                                paddingTop: '2rem',
-                                borderTop: '1px solid var(--border-color)',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                gap: '1rem',
-                                paddingBottom: '2rem'
-                            }}>
+                            <div className="mt-12 pt-8 border-t border-[var(--border-color)] flex justify-between gap-4 pb-8">
                                 {parseInt(id) > 1 ? (
                                     <button
                                         onClick={() => {
@@ -637,18 +587,11 @@ export default function Surah() {
                                             swipeDirectionRef.current = -1;
                                             navigate(`/surah/${parseInt(id) - 1}`);
                                         }}
-                                        className="interactive-hover"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '8px',
-                                            padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px',
-                                            textDecoration: 'none', color: 'var(--text-primary)', fontWeight: 600,
-                                            border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center',
-                                            cursor: 'pointer'
-                                        }}
+                                        className="interactive-hover flex items-center gap-2 p-4 bg-[var(--bg-secondary)] rounded-xl text-[var(--text-primary)] font-semibold border border-[var(--border-color)] flex-1 justify-center cursor-pointer"
                                     >
                                         <ArrowLeft size={18} /> Previous Surah
                                     </button>
-                                ) : <div style={{ flex: 1 }} />}
+                                ) : <div className="flex-1" />}
 
                                 {parseInt(id) < 114 ? (
                                     <button
@@ -657,18 +600,11 @@ export default function Surah() {
                                             swipeDirectionRef.current = 1;
                                             navigate(`/surah/${parseInt(id) + 1}`);
                                         }}
-                                        className="interactive-hover"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '8px',
-                                            padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px',
-                                            textDecoration: 'none', color: 'var(--text-primary)', fontWeight: 600,
-                                            border: '1px solid var(--border-color)', flex: 1, justifyContent: 'center',
-                                            cursor: 'pointer'
-                                        }}
+                                        className="interactive-hover flex items-center gap-2 p-4 bg-[var(--bg-secondary)] rounded-xl text-[var(--text-primary)] font-semibold border border-[var(--border-color)] flex-1 justify-center cursor-pointer"
                                     >
                                         Next Surah <ArrowRight size={18} />
                                     </button>
-                                ) : <div style={{ flex: 1 }} />}
+                                ) : <div className="flex-1" />}
                             </div>
                         )}
                     </div>
@@ -684,91 +620,63 @@ export default function Surah() {
                         animate={{ opacity: 1, y: 0, x: '-50%' }}
                         exit={{ opacity: 0, y: 40, x: '-50%' }}
                         transition={{ duration: 0.25 }}
+                        className="fixed left-1/2 -translate-x-1/2 z-[100]"
                         style={{
-                            position: 'fixed',
                             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            zIndex: 100,
                         }}
                     >
                         {/* Controls Panel */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.6rem 1rem',
-                            borderRadius: '9999px',
-                            background: 'var(--glass-bg)',
-                            backdropFilter: 'blur(16px)',
-                            WebkitBackdropFilter: 'blur(16px)',
-                            border: 'var(--glass-border)',
-                            boxShadow: 'var(--shadow-xl)'
-                        }}>
+                        <div className="flex items-center gap-3 px-4 py-[0.6rem] rounded-full bg-[var(--glass-bg)] backdrop-blur-[16px] border-[var(--glass-border)] shadow-[var(--shadow-xl)]">
                             {/* Manual scroll buttons */}
-                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <div className="flex gap-1">
                                 <button
-                                    className="btn-icon"
-                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    className="btn-icon w-7 h-7 bg-[var(--bg-secondary)] text-[var(--text-primary)]"
                                     onClick={() => window.scrollBy({ top: -200, behavior: 'smooth' })}
                                 >
-                                    <ArrowLeft size={14} style={{ transform: 'rotate(90deg)' }} />
+                                    <ArrowLeft size={14} className="rotate-90" />
                                 </button>
                                 <button
-                                    className="btn-icon"
-                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    className="btn-icon w-7 h-7 bg-[var(--bg-secondary)] text-[var(--text-primary)]"
                                     onClick={() => window.scrollBy({ top: 200, behavior: 'smooth' })}
                                 >
-                                    <ArrowRight size={14} style={{ transform: 'rotate(90deg)' }} />
+                                    <ArrowRight size={14} className="rotate-90" />
                                 </button>
                             </div>
 
-                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+                            <div className="w-px h-6 bg-[var(--border-color)]" />
 
                             {/* Speed Control & Pause */}
                             <button
-                                className="btn-icon"
-                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                className="btn-icon w-7 h-7 border border-[var(--border-color)] rounded-full"
                                 onClick={() => setAutoScrollSpeed(Math.max(1, autoScrollSpeed - 1))}
                             >
                                 <Minus size={14} />
                             </button>
-                            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>
+                            <span className="font-semibold text-[0.9rem] text-[var(--text-primary)] min-w-[40px] text-center">
                                 {autoScrollSpeed}x
                             </span>
                             <button
-                                className="btn-icon"
-                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                className="btn-icon w-7 h-7 border border-[var(--border-color)] rounded-full"
                                 onClick={() => setAutoScrollSpeed(Math.min(7, autoScrollSpeed + 1))}
                             >
                                 <Plus size={14} />
                             </button>
 
                             <button
-                                className="btn-icon"
+                                className="btn-icon w-8 h-8 text-accent"
                                 style={{
-                                    width: '32px', height: '32px',
                                     background: isAutoScrollPaused ? 'var(--accent-light)' : 'transparent',
-                                    color: 'var(--accent-primary)'
                                 }}
                                 onClick={() => setIsAutoScrollPaused(!isAutoScrollPaused)}
                             >
                                 {isAutoScrollPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
                             </button>
 
-                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+                            <div className="w-px h-6 bg-[var(--border-color)]" />
 
                             <button
                                 onClick={() => setAutoScroll(false)}
-                                style={{
-                                    width: '32px', height: '32px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    borderRadius: '50%',
-                                    background: 'rgba(239, 68, 68, 0.1)',
-                                    color: 'rgb(239, 68, 68)',
-                                    border: 'none',
-                                    cursor: 'pointer'
-                                }}
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-[rgba(239,68,68,0.1)] text-[rgb(239,68,68)] border-none cursor-pointer"
                                 title="Stop Scroll"
                             >
                                 <X size={16} />
@@ -787,14 +695,7 @@ export default function Surah() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setActiveTafsir(null)}
-                            style={{
-                                position: 'fixed',
-                                inset: 0,
-                                background: 'rgba(0, 0, 0, 0.5)',
-                                zIndex: 999,
-                                backdropFilter: 'blur(4px)',
-                                WebkitBackdropFilter: 'blur(4px)'
-                            }}
+                            className="fixed inset-0 bg-black/50 z-[999] backdrop-blur-sm"
                         />
                         {/* Drawer */}
                         <motion.div
@@ -802,39 +703,17 @@ export default function Surah() {
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            style={{
-                                position: 'fixed',
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                background: 'var(--bg-surface)',
-                                zIndex: 1000,
-                                borderTopLeftRadius: '24px',
-                                borderTopRightRadius: '24px',
-                                padding: '1.5rem 1.5rem 2rem 1.5rem',
-                                boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.1)',
-                                maxHeight: '80vh',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                borderTop: '1px solid var(--border-color)'
-                            }}
+                            className="fixed bottom-0 left-0 right-0 bg-[var(--bg-surface)] z-[1000] rounded-t-3xl p-6 pb-8 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] max-h-[80vh] flex flex-col border-t border-[var(--border-color)]"
                         >
-                            <div style={{
-                                width: '40px',
-                                height: '5px',
-                                background: 'var(--border-color)',
-                                borderRadius: '3px',
-                                margin: '0 auto 1.5rem auto'
-                            }} />
+                            <div className="w-10 h-[5px] bg-[var(--border-color)] rounded-[3px] mx-auto mb-6" />
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-[var(--text-primary)] m-0">
                                     Tafsir (Ayah {activeTafsir.verse_key.split(':')[1]})
                                 </h3>
                                 <button
-                                    className="btn-icon"
+                                    className="btn-icon bg-[var(--bg-secondary)]"
                                     onClick={() => setActiveTafsir(null)}
-                                    style={{ background: 'var(--bg-secondary)' }}
                                     aria-label="Close Tafsir"
                                 >
                                     <X size={20} />
@@ -842,14 +721,7 @@ export default function Surah() {
                             </div>
 
                             <div
-                                className="tafsir-content"
-                                style={{
-                                    overflowY: 'auto',
-                                    paddingRight: '0.5rem',
-                                    color: 'var(--text-secondary)',
-                                    lineHeight: 1.8,
-                                    fontSize: '1rem'
-                                }}
+                                className="tafsir-content overflow-y-auto pr-2 text-[var(--text-secondary)] leading-[1.8] text-base"
                                 dangerouslySetInnerHTML={{ __html: activeTafsir.text }}
                             />
                         </motion.div>

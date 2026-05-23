@@ -127,7 +127,6 @@ export default function TajweedTooltip() {
             return;
         }
 
-        // Get the class which represents the tajweed rule
         const ruleClass = tajweedEl.getAttribute('class');
         const rule = TAJWEED_RULES[ruleClass];
 
@@ -145,7 +144,6 @@ export default function TajweedTooltip() {
         });
     }, []);
 
-    // Close on click outside or scroll
     const handleDismiss = useCallback((e) => {
         if (tooltipRef.current && !tooltipRef.current.contains(e.target) && !e.target.closest('tajweed')) {
             setTooltip(null);
@@ -153,11 +151,8 @@ export default function TajweedTooltip() {
     }, []);
 
     useEffect(() => {
-        // Desktop: mouseover for hover
         document.addEventListener('mouseover', handleTajweedInteraction);
-        // Mobile: click/tap
         document.addEventListener('click', handleTajweedInteraction);
-        // Dismiss
         document.addEventListener('scroll', () => setTooltip(null), true);
         window.addEventListener('resize', () => setTooltip(null));
 
@@ -169,7 +164,6 @@ export default function TajweedTooltip() {
         };
     }, [handleTajweedInteraction]);
 
-    // Also dismiss on outside click
     useEffect(() => {
         if (tooltip) {
             document.addEventListener('click', handleDismiss);
@@ -179,7 +173,6 @@ export default function TajweedTooltip() {
 
     if (!tooltip) return null;
 
-    // Calculate position — keep tooltip on screen
     const tooltipWidth = 280;
     let left = tooltip.x - tooltipWidth / 2;
     if (left < 12) left = 12;
@@ -188,74 +181,51 @@ export default function TajweedTooltip() {
     return (
         <div
             ref={tooltipRef}
+            className="fixed z-[9999] pointer-events-auto"
             style={{
-                position: 'fixed',
                 top: `${tooltip.y - 8}px`,
                 left: `${left}px`,
                 width: `${tooltipWidth}px`,
                 transform: 'translateY(-100%)',
-                zIndex: 9999,
-                pointerEvents: 'auto',
                 animation: 'tajweedFadeIn 0.15s ease-out'
             }}
         >
-            <div style={{
-                backgroundColor: 'var(--bg-secondary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '12px',
-                padding: '1rem',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-                backdropFilter: 'blur(12px)'
-            }}>
-                {/* Header with colored dot + name */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <div style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        backgroundColor: tooltip.rule.color,
-                        flexShrink: 0
-                    }} />
-                    <span style={{
-                        fontFamily: "'Outfit', sans-serif",
-                        fontWeight: 700,
-                        fontSize: '0.95rem',
-                        color: 'var(--text-primary)'
-                    }}>
+            <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.2)] backdrop-blur-xl">
+                <div className="mb-2 flex items-center gap-2">
+                    <div
+                        className="h-[10px] w-[10px] shrink-0 rounded-full"
+                        style={{ backgroundColor: tooltip.rule.color }}
+                    />
+                    <span className="font-['Outfit',sans-serif] text-[0.95rem] font-bold text-[var(--text-primary)]">
                         {tooltip.rule.name}
                     </span>
-                    <span style={{
-                        fontFamily: "'Amiri Quran', serif",
-                        fontSize: '1rem',
-                        color: tooltip.rule.color,
-                        marginRight: 'auto',
-                        direction: 'rtl'
-                    }}>
+                    <span
+                        className="mr-auto"
+                        style={{
+                            fontFamily: 'var(--font-arabic)',
+                            fontSize: '1rem',
+                            color: tooltip.rule.color,
+                            direction: 'rtl'
+                        }}
+                    >
                         {tooltip.rule.nameAr}
                     </span>
                 </div>
-                {/* Description */}
-                <p style={{
-                    fontFamily: "'Outfit', sans-serif",
-                    fontSize: '0.82rem',
-                    lineHeight: 1.6,
-                    color: 'var(--text-secondary)',
-                    margin: 0
-                }}>
+                <p className="m-0 font-['Outfit',sans-serif] text-[0.82rem] leading-[1.6] text-[var(--text-secondary)]">
                     {tooltip.rule.description}
                 </p>
             </div>
-            {/* Arrow pointer */}
-            <div style={{
-                width: 0,
-                height: 0,
-                borderLeft: '8px solid transparent',
-                borderRight: '8px solid transparent',
-                borderTop: '8px solid var(--bg-secondary)',
-                margin: '0 auto',
-                position: 'relative',
-                top: '-1px'
-            }} />
+            <div
+                className="relative mx-auto"
+                style={{
+                    width: 0,
+                    height: 0,
+                    borderLeft: '8px solid transparent',
+                    borderRight: '8px solid transparent',
+                    borderTop: '8px solid var(--bg-secondary)',
+                    top: '-1px'
+                }}
+            />
         </div>
     );
 }

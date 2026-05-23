@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { User, Settings, Bookmark, Folder, Download, Moon, Sun, ChevronRight, HardDrive, LogOut, CloudUpload, CloudDownload, Mail, Lock, Loader2 } from 'lucide-react';
 import { authService, syncService } from '../services/appwrite';
-import './Profile.css';
 
 export default function Profile() {
     const store = useAppStore();
@@ -19,12 +18,12 @@ export default function Profile() {
     } = store;
 
     const [user, setUser] = useState(null);
-    const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+    const [authMode, setAuthMode] = useState('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [isLoading, setIsLoading] = useState(true);
-    const [syncStatus, setSyncStatus] = useState(null); // 'pushing', 'pulling', 'success', 'error'
+    const [syncStatus, setSyncStatus] = useState(null);
     const [authError, setAuthError] = useState('');
 
     useEffect(() => {
@@ -79,7 +78,6 @@ export default function Profile() {
         setSyncStatus('pushing');
         try {
             const state = useAppStore.getState();
-            // We use partialized state exactly how persist middleware handles it
             const dataToSync = {
                 theme: state.theme,
                 translationId: state.translationId,
@@ -136,35 +134,32 @@ export default function Profile() {
 
     if (isLoading && !user && !authError && email === '') {
         return (
-            <div className="container" style={{ display: 'flex', justifyContent: 'center', paddingTop: '4rem' }}>
-                <Loader2 size={32} className="animate-spin" color="var(--accent-primary)" />
+            <div className="container flex justify-center pt-16">
+                <Loader2 size={32} className="animate-spin text-accent" />
             </div>
         );
     }
 
     return (
-        <div className="profile-container container">
+        <div className="mx-auto mb-24 max-w-[1000px] px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
 
                 {!user ? (
-                    <div className="profile-card">
-                        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-                            <div style={{
-                                width: '80px', height: '80px', background: 'var(--accent-light)',
-                                borderRadius: '50%', display: 'flex', alignItems: 'center',
-                                justifyContent: 'center', margin: '0 auto 1rem', color: 'var(--accent-primary)'
-                            }}>
+                    <div className="relative mb-8 overflow-hidden rounded-[28px] border border-[var(--border-color)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-secondary)] p-10 text-center shadow-[var(--shadow-md)]">
+                        <div className="absolute inset-0 z-0 opacity-[0.08]" style={{ backgroundImage: 'radial-gradient(var(--accent-primary) 1.5px, transparent 1.5px)', backgroundSize: '32px 32px' }} />
+                        <div className="relative z-[2] mb-8">
+                            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--accent-light)] text-accent">
                                 <User size={40} />
                             </div>
-                            <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>Cloud Sync</h1>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginTop: '0.4rem', maxWidth: '400px', margin: '0.5rem auto 0' }}>
+                            <h1 className="text-[2rem] font-extrabold text-[var(--text-primary)]">Cloud Sync</h1>
+                            <p className="mx-auto mt-2 max-w-[400px] text-[1.05rem] text-[var(--text-secondary)]">
                                 Sign in to save your bookmarks, reading progress, and settings to the cloud. Access them from any device.
                             </p>
                         </div>
 
-                        <form onSubmit={handleAuth} className="auth-form">
+                        <form onSubmit={handleAuth} className="relative z-[2] mx-auto mb-8 max-w-[440px] rounded-[24px] border border-black/5 bg-[var(--bg-primary)] p-8 shadow-[var(--shadow-lg)]">
                             {authError && (
-                                <div style={{ padding: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: 'rgb(239, 68, 68)', borderRadius: '12px', fontSize: '0.9rem', marginBottom: '1.2rem', fontWeight: 600 }}>
+                                <div className="mb-5 rounded-xl bg-red-500/10 px-4 py-3 text-[0.9rem] font-semibold text-red-500">
                                     {authError}
                                 </div>
                             )}
@@ -175,7 +170,7 @@ export default function Profile() {
                                     placeholder="Your Name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="auth-input"
+                                    className="mb-4 w-full rounded-2xl border border-black/8 bg-[var(--bg-surface)] px-5 py-4 text-base font-medium text-[var(--text-primary)] outline-none transition-all duration-200 focus:border-accent focus:shadow-[0_0_0_4px_var(--accent-light)]"
                                     required
                                 />
                             )}
@@ -184,7 +179,7 @@ export default function Profile() {
                                 placeholder="Email Address"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="auth-input"
+                                className="mb-4 w-full rounded-2xl border border-black/8 bg-[var(--bg-surface)] px-5 py-4 text-base font-medium text-[var(--text-primary)] outline-none transition-all duration-200 focus:border-accent focus:shadow-[0_0_0_4px_var(--accent-light)]"
                                 required
                             />
                             <input
@@ -192,19 +187,19 @@ export default function Profile() {
                                 placeholder="Password (min 8 chars)"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="auth-input"
+                                className="mb-4 w-full rounded-2xl border border-black/8 bg-[var(--bg-surface)] px-5 py-4 text-base font-medium text-[var(--text-primary)] outline-none transition-all duration-200 focus:border-accent focus:shadow-[0_0_0_4px_var(--accent-light)]"
                                 minLength={8}
                                 required
                             />
 
-                            <button type="submit" className="auth-btn" disabled={isLoading}>
+                            <button type="submit" disabled={isLoading} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-none bg-accent px-4 py-4 text-[1.05rem] font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)] hover:shadow-[0_4px_15px_var(--accent-light)] hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-60">
                                 {isLoading ? <Loader2 size={20} className="animate-spin" /> : (authMode === 'login' ? 'Sign In' : 'Create Account')}
                             </button>
 
                             <button
                                 type="button"
                                 onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}
-                                className="auth-switch"
+                                className="mt-4 w-full cursor-pointer border-none bg-transparent text-[0.9rem] font-semibold text-[var(--text-secondary)] transition-colors duration-200 hover:text-accent"
                             >
                                 {authMode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
                             </button>
@@ -212,56 +207,47 @@ export default function Profile() {
                     </div>
                 ) : (
                     <>
-                        {/* Logged in Header Info */}
-                        <div className="profile-card" style={{ padding: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                                <div style={{
-                                    width: '80px',
-                                    height: '80px',
-                                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-hover))',
-                                    borderRadius: '50%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: 'white',
-                                    boxShadow: '0 8px 24px rgba(var(--accent-primary-rgb, 14, 165, 233), 0.3)',
-                                    flexShrink: 0
-                                }}>
+                        <div className="mb-8 flex flex-wrap items-center justify-between gap-6 rounded-[28px] border border-[var(--border-color)] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-secondary)] p-10 shadow-[var(--shadow-md)]">
+                            <div className="flex items-center gap-6">
+                                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-white shadow-[0_8px_24px_rgba(198,168,124,0.3)]"
+                                    style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-hover))' }}
+                                >
                                     <User size={40} />
                                 </div>
                                 <div>
-                                    <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px', marginBottom: '0.2rem' }}>
+                                    <h1 className="mb-1 text-[1.8rem] font-extrabold tracking-tight text-[var(--text-primary)]">
                                         {user.name || 'Quran Student'}
                                     </h1>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', fontWeight: 500 }}>{user.email}</p>
+                                    <p className="text-[1.05rem] font-medium text-[var(--text-muted)]">{user.email}</p>
                                 </div>
                             </div>
 
-                            <button onClick={handleLogout} className="btn-outline" style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: 'rgb(239, 68, 68)', flexShrink: 0 }} disabled={isLoading}>
+                            <button onClick={handleLogout} disabled={isLoading} className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-[14px] border-2 px-5 py-[0.85rem] font-bold transition-all duration-200 hover:bg-[var(--accent-light)] disabled:pointer-events-none disabled:opacity-50"
+                                style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: 'rgb(239, 68, 68)' }}
+                            >
                                 <LogOut size={18} /> Logout
                             </button>
                         </div>
 
-                        {/* Data Sync Panel */}
-                        <div className="data-sync-card">
-                            <div className="data-sync-info">
-                                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.3rem' }}>Cloud Synchronization</h3>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5 }}>
+                        <div className="mb-4 flex items-center justify-between gap-6 rounded-[20px] border border-black/4 bg-[var(--bg-primary)] p-6 shadow-[0_4px_15px_rgba(0,0,0,0.03)]">
+                            <div className="flex-1">
+                                <h3 className="mb-1 text-[1.2rem] font-extrabold text-[var(--text-primary)]">Cloud Synchronization</h3>
+                                <p className="text-[0.95rem] leading-[1.5] text-[var(--text-secondary)]">
                                     Keep your bookmarks, planners, and app settings synced across all your devices seamlessly.
                                 </p>
 
                                 <AnimatePresence mode="wait">
-                                    {syncStatus === 'pushing' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: 'var(--accent-primary)', fontSize: '0.9rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Loader2 size={16} className="animate-spin" /> Saving data securely to cloud...</motion.div>}
-                                    {syncStatus === 'pulling' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: 'var(--accent-primary)', fontSize: '0.9rem', fontWeight: 700, marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Loader2 size={16} className="animate-spin" /> Fetching data from cloud...</motion.div>}
-                                    {syncStatus === 'success' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: '#22c55e', fontSize: '0.9rem', fontWeight: 700, marginTop: '0.5rem' }}>Sync completed successfully!</motion.div>}
-                                    {syncStatus === 'error' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: 'rgb(239, 68, 68)', fontSize: '0.9rem', fontWeight: 700, marginTop: '0.5rem' }}>Failed to sync. Please try again later.</motion.div>}
+                                    {syncStatus === 'pushing' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-2 flex items-center gap-1 text-[0.9rem] font-bold text-accent"><Loader2 size={16} className="animate-spin" /> Saving data securely to cloud...</motion.div>}
+                                    {syncStatus === 'pulling' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-2 flex items-center gap-1 text-[0.9rem] font-bold text-accent"><Loader2 size={16} className="animate-spin" /> Fetching data from cloud...</motion.div>}
+                                    {syncStatus === 'success' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-2 text-[0.9rem] font-bold text-green-500">Sync completed successfully!</motion.div>}
+                                    {syncStatus === 'error' && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-2 text-[0.9rem] font-bold text-red-500">Failed to sync. Please try again later.</motion.div>}
                                 </AnimatePresence>
                             </div>
-                            <div className="data-sync-actions">
-                                <button onClick={handlePullSync} disabled={!!syncStatus} className="btn-outline">
+                            <div className="flex gap-3 max-sm:w-full max-sm:*:flex-1 max-sm:*:justify-center">
+                                <button onClick={handlePullSync} disabled={!!syncStatus} className="inline-flex cursor-pointer items-center gap-2 rounded-[14px] border-2 border-accent bg-transparent px-5 py-[0.85rem] font-bold text-accent transition-all duration-200 hover:bg-[var(--accent-light)] disabled:pointer-events-none disabled:opacity-50">
                                     <CloudDownload size={20} /> Restore
                                 </button>
-                                <button onClick={handlePushSync} disabled={!!syncStatus} style={{ background: 'var(--accent-primary)', color: 'white', border: 'none' }} className="btn-outline">
+                                <button onClick={handlePushSync} disabled={!!syncStatus} className="inline-flex cursor-pointer items-center gap-2 rounded-[14px] border-none bg-accent px-5 py-[0.85rem] font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)] disabled:pointer-events-none disabled:opacity-50">
                                     <CloudUpload size={20} /> Backup
                                 </button>
                             </div>
@@ -269,62 +255,56 @@ export default function Profile() {
                     </>
                 )}
 
-                {/* Statistics Grid */}
-                <div className="stat-grid">
-                    <div className="settings-list" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                        <Bookmark size={26} color="var(--accent-primary)" style={{ marginBottom: '0.25rem' }} />
-                        <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>{bookmarks.length}</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>Bookmarks</span>
-                    </div>
-                    <div className="settings-list" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                        <Folder size={26} color="var(--accent-primary)" style={{ marginBottom: '0.25rem' }} />
-                        <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>{collections.length}</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>Collections</span>
-                    </div>
-                    <div className="settings-list" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                        <Download size={26} color="var(--accent-primary)" style={{ marginBottom: '0.25rem' }} />
-                        <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>{downloadedSurahs.length}</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>Downloads</span>
-                    </div>
+                <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
+                    {[
+                        { icon: Bookmark, label: 'Bookmarks', count: bookmarks.length },
+                        { icon: Folder, label: 'Collections', count: collections.length },
+                        { icon: Download, label: 'Downloads', count: downloadedSurahs.length },
+                    ].map((item, i) => (
+                        <div key={i} className="flex flex-col items-center justify-center gap-2 rounded-[24px] border border-[var(--border-color)] bg-[var(--bg-secondary)] p-6 shadow-[var(--shadow-sm)]">
+                            <item.icon size={26} className="mb-1 text-accent" />
+                            <span className="text-[1.6rem] font-extrabold text-[var(--text-primary)]">{item.count}</span>
+                            <span className="text-[0.8rem] font-bold uppercase tracking-[0.5px] text-[var(--text-muted)]">{item.label}</span>
+                        </div>
+                    ))}
                 </div>
 
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '1.25rem', paddingLeft: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <h2 className="mb-5 pl-2 text-[1.15rem] font-extrabold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
                     Preferences
                 </h2>
 
-                {/* Actions / Settings list */}
-                <div className="settings-list">
-                    <button onClick={toggleTheme} className="settings-item">
-                        <div className="settings-item-title">
-                            <div className="settings-item-icon">
+                <div className="overflow-hidden rounded-[24px] border border-[var(--border-color)] bg-[var(--bg-secondary)] shadow-[var(--shadow-sm)]">
+                    <button onClick={toggleTheme} className="flex w-full cursor-pointer items-center justify-between border-b border-[var(--border-color)] bg-transparent px-7 py-5 text-left text-[var(--text-primary)] no-underline transition-colors duration-200 hover:bg-[var(--bg-primary)] last:border-b-0">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[var(--accent-light)] text-accent">
                                 {theme === 'light' ? <Moon size={24} /> : <Sun size={24} />}
                             </div>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Appearance</span>
+                            <span className="text-[1.1rem] font-bold">Appearance</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        <div className="flex items-center gap-2 font-semibold text-[var(--text-muted)]">
                             {theme === 'light' ? 'Light' : 'Dark'}
                             <ChevronRight size={20} />
                         </div>
                     </button>
 
-                    <button onClick={() => setIsSettingsOpen(true)} className="settings-item">
-                        <div className="settings-item-title">
-                            <div className="settings-item-icon">
+                    <button onClick={() => setIsSettingsOpen(true)} className="flex w-full cursor-pointer items-center justify-between border-b border-[var(--border-color)] bg-transparent px-7 py-5 text-left text-[var(--text-primary)] no-underline transition-colors duration-200 hover:bg-[var(--bg-primary)] last:border-b-0">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[var(--accent-light)] text-accent">
                                 <Settings size={24} />
                             </div>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Reading Settings</span>
+                            <span className="text-[1.1rem] font-bold">Reading Settings</span>
                         </div>
-                        <ChevronRight size={20} color="var(--text-muted)" />
+                        <ChevronRight size={20} className="text-[var(--text-muted)]" />
                     </button>
 
-                    <Link to="/offline-library" className="settings-item">
-                        <div className="settings-item-title">
-                            <div className="settings-item-icon">
+                    <Link to="/offline-library" className="flex w-full cursor-pointer items-center justify-between border-b border-[var(--border-color)] bg-transparent px-7 py-5 text-left text-[var(--text-primary)] no-underline transition-colors duration-200 hover:bg-[var(--bg-primary)] last:border-b-0">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[var(--accent-light)] text-accent">
                                 <HardDrive size={24} />
                             </div>
-                            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Offline Library</span>
+                            <span className="text-[1.1rem] font-bold">Offline Library</span>
                         </div>
-                        <ChevronRight size={20} color="var(--text-muted)" />
+                        <ChevronRight size={20} className="text-[var(--text-muted)]" />
                     </Link>
                 </div>
 

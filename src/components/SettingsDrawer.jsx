@@ -12,7 +12,6 @@ import { saveLocalAudioDirHandle } from '../utils/localAudio';
 import { getOfflinePackStats } from '../utils/offlineLibrary';
 import { authService, syncService } from '../services/appwrite';
 import { getSyncableState } from '../store/useAppStore';
-import './SettingsDrawer.css';
 
 const RECITERS = [
     { id: 7, name: 'Mishary Rashid Alafasy' },
@@ -46,20 +45,22 @@ const VIEWS = { root: 'root', mushaf: 'mushaf', translation: 'translation', reci
 
 function SelectionRow({ label, value, hint, onClick }) {
     return (
-        <button type="button" className="sd-row" onClick={onClick}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="sd-row-label">{label}</div>
-                {value && <div className="sd-row-value">{value}</div>}
-                {!value && hint && <div className="sd-row-hint">{hint}</div>}
+        <button type="button" onClick={onClick} className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-4 py-3 text-left text-[var(--sd-ink)] transition-colors duration-200 hover:bg-[var(--bg-primary)]">
+            <div className="min-w-0 flex-1">
+                <div className="text-[0.9rem] font-medium text-[var(--sd-ink)]">{label}</div>
+                {value && <div className="mt-px text-[0.75rem] text-[var(--sd-ink-muted)]">{value}</div>}
+                {!value && hint && <div className="mt-px text-[0.75rem] text-[var(--sd-ink-muted)]">{hint}</div>}
             </div>
-            <ChevronRight size={16} className="sd-row-chevron" />
+            <ChevronRight size={16} className="shrink-0 text-[var(--sd-ink-muted)]" />
         </button>
     );
 }
 
 function SegmentedOption({ active, icon, label, onClick }) {
     return (
-        <button type="button" className={`sd-segment ${active ? 'active' : ''}`} onClick={onClick}>
+        <button type="button" onClick={onClick} className={`flex flex-1 cursor-pointer items-center justify-center gap-[6px] border-none px-4 py-[10px] text-[0.82rem] font-semibold transition-all duration-200 first:rounded-l-[12px] last:rounded-r-[12px] ${
+            active ? 'bg-accent text-white shadow-[0_4px_8px_rgba(198,168,124,0.25)]' : 'bg-transparent text-[var(--sd-ink-muted)] hover:text-[var(--sd-ink)]'
+        }`}>
             {icon}<span>{label}</span>
         </button>
     );
@@ -67,13 +68,17 @@ function SegmentedOption({ active, icon, label, onClick }) {
 
 function ToggleRow({ label, hint, checked, onToggle, disabled = false }) {
     return (
-        <button type="button" className="sd-toggle-row" disabled={disabled} onClick={() => !disabled && onToggle()}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="sd-row-label">{label}</div>
-                <div className="sd-row-hint">{hint}</div>
+        <button type="button" disabled={disabled} onClick={() => !disabled && onToggle()} className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-4 py-3 text-left transition-colors duration-200 hover:bg-[var(--bg-primary)] disabled:opacity-50">
+            <div className="min-w-0 flex-1">
+                <div className="text-[0.9rem] font-medium text-[var(--sd-ink)]">{label}</div>
+                <div className="mt-px text-[0.75rem] text-[var(--sd-ink-muted)]">{hint}</div>
             </div>
-            <div className={`sd-toggle-track ${checked ? 'on' : ''}`}>
-                <div className="sd-toggle-knob" />
+            <div className={`flex h-6 w-10 shrink-0 items-center rounded-[999px] px-[3px] transition-all duration-200 ${
+                checked ? 'bg-accent' : 'bg-[var(--sd-bone-dark)]'
+            }`}>
+                <div className={`h-[18px] w-[18px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.15)] transition-transform duration-200 ${
+                    checked ? 'translate-x-4' : 'translate-x-0'
+                }`} />
             </div>
         </button>
     );
@@ -81,12 +86,14 @@ function ToggleRow({ label, hint, checked, onToggle, disabled = false }) {
 
 function PickerOption({ title, subtitle, active, onClick, sampleStyle }) {
     return (
-        <button type="button" className={`sd-picker-option ${active ? 'active' : ''}`} onClick={onClick}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-                <div className="sd-picker-title" style={sampleStyle || {}}>{title}</div>
-                {subtitle && <div className="sd-picker-subtitle">{subtitle}</div>}
+        <button type="button" onClick={onClick} className={`flex w-full cursor-pointer items-center gap-3 border-none px-4 py-3 text-left transition-all duration-200 ${
+            active ? 'rounded-[10px] bg-[var(--sd-gold-soft)]' : 'rounded-[10px] bg-transparent hover:bg-[var(--bg-primary)]'
+        }`}>
+            <div className="min-w-0 flex-1">
+                <div className="text-[0.9rem] font-medium text-[var(--sd-ink)]" style={sampleStyle || {}}>{title}</div>
+                {subtitle && <div className="mt-px text-[0.75rem] text-[var(--sd-ink-muted)]">{subtitle}</div>}
             </div>
-            {active && <Check size={16} />}
+            {active && <Check size={16} className="shrink-0 text-accent" />}
         </button>
     );
 }
@@ -158,58 +165,58 @@ function CloudSyncView({ currentUser, setCurrentUser }) {
 
     if (currentUser) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <div className="sd-card-padded">
-                    <div className="sd-user-card">
-                        <div className="sd-user-avatar">{currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}</div>
-                        <div className="sd-user-info">
-                            <div className="sd-user-name">{currentUser.name || 'User'}</div>
-                            <div className="sd-user-email">{currentUser.email}</div>
+            <div className="flex flex-col gap-3 px-4 py-4">
+                <div className="rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">{currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}</div>
+                        <div className="flex-1">
+                            <div className="text-[0.9rem] font-semibold text-[var(--sd-ink)]">{currentUser.name || 'User'}</div>
+                            <div className="text-[0.75rem] text-[var(--sd-ink-muted)]">{currentUser.email}</div>
                         </div>
-                        <button type="button" className="sd-logout-btn" onClick={handleLogout} disabled={loading} aria-label="Logout"><LogOut size={18} /></button>
+                        <button type="button" onClick={handleLogout} disabled={loading} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-[var(--sd-ink-muted)] transition-colors duration-200 hover:bg-red-50 hover:text-red-500" aria-label="Logout"><LogOut size={18} /></button>
                     </div>
                 </div>
 
-                <div className="sd-card-padded">
-                    <div className="sd-row-label" style={{ marginBottom: '0.2rem' }}>Cloud Backup</div>
-                    <div className="sd-row-hint" style={{ marginBottom: '0.85rem' }}>Securely back up your bookmarks, memorization progress, planners, and reading history.</div>
+                <div className="rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-4">
+                    <div className="mb-1 text-[0.9rem] font-medium text-[var(--sd-ink)]">Cloud Backup</div>
+                    <div className="mb-3 text-[0.75rem] text-[var(--sd-ink-muted)]">Securely back up your bookmarks, memorization progress, planners, and reading history.</div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                        <button type="button" className="sd-btn-primary" onClick={handlePush} disabled={syncLoading}>
+                    <div className="flex flex-col gap-2">
+                        <button type="button" onClick={handlePush} disabled={syncLoading} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-none bg-accent px-4 py-[10px] text-[0.85rem] font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)] disabled:opacity-60">
                             <UploadCloud size={16} /> {syncLoading ? 'Syncing...' : 'Backup to Cloud'}
                         </button>
-                        <button type="button" className="sd-btn-outline" onClick={handlePull} disabled={syncLoading}>
+                        <button type="button" onClick={handlePull} disabled={syncLoading} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-2 border-accent bg-transparent px-4 py-[10px] text-[0.85rem] font-bold text-accent transition-all duration-200 hover:bg-[var(--accent-light)] disabled:opacity-60">
                             <DownloadCloud size={16} /> Restore from Cloud
                         </button>
                     </div>
 
-                    {syncStatus && <div className={`sd-sync-status ${syncStatus.includes('Failed') ? 'error' : ''}`}>{syncStatus}</div>}
+                    {syncStatus && <div className={`mt-2 text-[0.78rem] font-semibold ${syncStatus.includes('Failed') ? 'text-red-500' : 'text-green-600'}`}>{syncStatus}</div>}
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="sd-card-padded" style={{ textAlign: 'center' }}>
-            <div className="sd-auth-icon-wrap"><Cloud size={22} /></div>
-            <h3 style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.2rem', color: 'var(--sd-ink)' }}>Cloud Sync</h3>
-            <p style={{ color: 'var(--sd-ink-muted)', fontSize: '0.78rem', lineHeight: 1.4, marginBottom: '1.25rem' }}>
+        <div className="mx-4 mb-4 mt-4 rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-6 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent-light)] text-accent"><Cloud size={22} /></div>
+            <h3 className="mb-1 text-base font-semibold text-[var(--sd-ink)]">Cloud Sync</h3>
+            <p className="mb-5 text-[0.78rem] leading-[1.4] text-[var(--sd-ink-muted)]">
                 Create an account to securely back up and sync your reading progress across devices.
             </p>
 
-            <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', textAlign: 'left' }}>
-                {!isLoginMode && <input type="text" placeholder="Your Name" value={name} onChange={(e) => setName(e.target.value)} required className="sd-auth-input" />}
-                <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} required className="sd-auth-input" />
-                <input type="password" placeholder="Password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="sd-auth-input" />
+            <form onSubmit={handleAuth} className="flex flex-col gap-2 text-left">
+                {!isLoginMode && <input type="text" placeholder="Your Name" value={name} onChange={(e) => setName(e.target.value)} required className="w-full rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-surface)] px-4 py-3 text-[0.85rem] text-[var(--sd-ink)] outline-none" />}
+                <input type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-surface)] px-4 py-3 text-[0.85rem] text-[var(--sd-ink)] outline-none" />
+                <input type="password" placeholder="Password (min 8 chars)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} className="w-full rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-surface)] px-4 py-3 text-[0.85rem] text-[var(--sd-ink)] outline-none" />
 
-                {error && <div className="sd-auth-error">{error}</div>}
+                {error && <div className="rounded-[8px] bg-red-500/10 px-3 py-2 text-[0.78rem] font-semibold text-red-500">{error}</div>}
 
-                <button type="submit" disabled={loading} className="sd-btn-primary" style={{ marginTop: '0.35rem' }}>
+                <button type="submit" disabled={loading} className="mt-1 flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-none bg-accent px-4 py-3 text-[0.85rem] font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)] disabled:opacity-60">
                     {loading ? 'Processing...' : (isLoginMode ? 'Sign In' : 'Create Account')}
                 </button>
 
-                <div style={{ textAlign: 'center', marginTop: '0.3rem' }}>
-                    <button type="button" className="sd-auth-toggle" onClick={() => { setIsLoginMode(!isLoginMode); setError(''); }}>
+                <div className="mt-1 text-center">
+                    <button type="button" onClick={() => { setIsLoginMode(!isLoginMode); setError(''); }} className="cursor-pointer border-none bg-transparent text-[0.78rem] font-semibold text-[var(--sd-ink-muted)] transition-colors duration-200 hover:text-accent">
                         {isLoginMode ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
                     </button>
                 </div>
@@ -263,7 +270,6 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         } catch (error) { console.error('Failed to get directory', error); }
     };
 
-    /* ── Picker Views ── */
     const renderPickerView = () => {
         const pickers = {
             [VIEWS.mushaf]: { title: 'Choose Mushaf', items: MUSHAFS, idKey: mushafId, onSelect: (id) => { setSelectedMushaf(id); setActiveView(VIEWS.root); }, getSubtitle: (i) => i.description },
@@ -281,7 +287,7 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         return {
             title: p.title,
             content: (
-                <div className="sd-picker-list">
+                <div className="flex flex-col gap-1 px-3 py-3">
                     {p.items.map(item => (
                         <PickerOption
                             key={item.id}
@@ -303,67 +309,64 @@ export default function SettingsDrawer({ isOpen, onClose }) {
 
     return (
         <>
-            <div className="sd-overlay" onClick={onClose} />
+            <div className="fixed inset-0 z-[3000] bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-            <aside className="sd-drawer" aria-label="Reading settings">
-                {/* Header */}
-                <div className="sd-header">
-                    <div className="sd-header-left">
+            <aside className="fixed inset-y-0 right-0 z-[3001] flex w-full max-w-[380px] flex-col bg-[var(--sd-paper)] shadow-[-8px_0_40px_rgba(0,0,0,0.1)]" aria-label="Reading settings"
+                style={{ '--sd-paper': '#F6F2E8', '--sd-ink': '#2D2D2A', '--sd-ink-muted': '#8E9B97', '--sd-bone-dark': '#DDD7C7', '--sd-gold-soft': 'rgba(198,168,124,0.15)' }}
+            >
+                <div className="flex shrink-0 items-center justify-between border-b border-[var(--border-color)] px-4 py-4">
+                    <div className="flex items-center gap-3">
                         {activeView !== VIEWS.root && (
-                            <button type="button" className="sd-back-btn" onClick={() => setActiveView(VIEWS.root)} aria-label="Back">
+                            <button type="button" onClick={() => setActiveView(VIEWS.root)} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-[var(--sd-ink-muted)] transition-colors duration-200 hover:bg-[var(--bg-primary)] hover:text-accent" aria-label="Back">
                                 <ArrowLeft size={16} />
                             </button>
                         )}
                         <div>
-                            <h2 className="sd-title">{pickerView?.title || 'Settings'}</h2>
-                            {activeView === VIEWS.root && <p className="sd-subtitle">Customize your reading experience</p>}
+                            <h2 className="text-[1.1rem] font-bold text-[var(--sd-ink)]">{pickerView?.title || 'Settings'}</h2>
+                            {activeView === VIEWS.root && <p className="m-0 text-[0.75rem] text-[var(--sd-ink-muted)]">Customize your reading experience</p>}
                         </div>
                     </div>
-                    <button type="button" className="sd-close-btn" onClick={onClose} aria-label="Close settings">✕</button>
+                    <button type="button" onClick={onClose} className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-none bg-transparent text-lg text-[var(--sd-ink-muted)] transition-colors duration-200 hover:bg-[var(--bg-primary)] hover:text-accent" aria-label="Close settings">✕</button>
                 </div>
 
-                {/* Body */}
-                <div className="sd-body">
+                <div className="flex-1 overflow-y-auto">
                     {pickerView ? pickerView.content : (
-                        <div>
-                            {/* Theme */}
-                            <div className="sd-section">
-                                <div className="sd-section-title">Appearance</div>
-                                <div className="sd-card sd-segment-wrap">
+                        <div className="flex flex-col gap-5 px-4 py-4">
+                            <div>
+                                <div className="mb-3 px-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--sd-ink-muted)]">Appearance</div>
+                                <div className="flex overflow-hidden rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)]">
                                     <SegmentedOption active={theme === 'light'} icon={<Sun size={15} />} label="Light" onClick={() => theme !== 'light' && toggleTheme()} />
                                     <SegmentedOption active={theme === 'dark'} icon={<Moon size={15} />} label="Dark" onClick={() => theme !== 'dark' && toggleTheme()} />
                                 </div>
                             </div>
 
-                            {/* Quick Settings */}
-                            <div className="sd-section">
-                                <div className="sd-section-title">Essentials</div>
-                                <div className="sd-card">
+                            <div>
+                                <div className="mb-3 px-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--sd-ink-muted)]">Essentials</div>
+                                <div className="overflow-hidden rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)]">
                                     <SelectionRow label="Mushaf" value={mushaf.name} onClick={() => setActiveView(VIEWS.mushaf)} />
                                     <SelectionRow label="Translation" value={selectedTranslation?.name} onClick={() => setActiveView(VIEWS.translation)} />
                                     <SelectionRow label="Reciter" value={selectedReciter?.name} onClick={() => setActiveView(VIEWS.reciter)} />
                                     <SelectionRow label="Cloud Sync" hint={currentUser ? `Signed in as ${currentUser.name || currentUser.email}` : 'Backup your progress'} onClick={() => setActiveView(VIEWS.sync)} />
 
-                                    {/* Arabic Size Slider */}
-                                    <div className="sd-slider-row">
-                                        <div className="sd-slider-header">
+                                    <div className="border-t border-[var(--border-color)] px-4 py-3">
+                                        <div className="mb-2 flex items-center justify-between">
                                             <div>
-                                                <div className="sd-slider-label">Arabic Size</div>
-                                                <div className="sd-slider-hint">Adjust Quran text size</div>
+                                                <div className="text-[0.9rem] font-medium text-[var(--sd-ink)]">Arabic Size</div>
+                                                <div className="text-[0.72rem] text-[var(--sd-ink-muted)]">Adjust Quran text size</div>
                                             </div>
-                                            <span className="sd-slider-value"><Type size={13} style={{ marginRight: '0.2rem', verticalAlign: '-2px' }} />{fontSize}</span>
+                                            <span className="text-[0.85rem] font-semibold text-[var(--sd-ink-muted)]"><Type size={13} className="mr-1 inline align-text-bottom" />{fontSize}</span>
                                         </div>
                                         <input type="range" min="1" max="8" step="1" value={fontSize}
                                             onChange={(e) => setFontSize(Number(e.target.value))}
-                                            className="settings-slider" aria-label="Arabic font size" style={{ width: '100%' }} />
+                                            className="w-full cursor-pointer outline-none"
+                                            style={{ accentColor: 'var(--accent-primary)' }} aria-label="Arabic font size" />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Reading */}
-                            <div className="sd-section">
-                                <div className="sd-section-title">Reading</div>
-                                <div className="sd-card">
+                            <div>
+                                <div className="mb-3 px-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--sd-ink-muted)]">Reading</div>
+                                <div className="overflow-hidden rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)]">
                                     <ToggleRow
                                         label="Tajweed"
                                         hint={mushaf.supportsTajweedToggle ? 'Color cues for pronunciation' : 'Not available for this Mushaf'}
@@ -371,79 +374,83 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                         disabled={!mushaf.supportsTajweedToggle}
                                         onToggle={() => setTajweed(!tajweedEnabled)}
                                     />
-                                    <button type="button" className="sd-row" onClick={() => setShowAdvanced(v => !v)} aria-expanded={showAdvanced}>
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div className="sd-row-label">Advanced</div>
-                                            <div className="sd-row-hint">Arabic font, tafsir, offline & audio</div>
+                                    <button type="button" onClick={() => setShowAdvanced(v => !v)} aria-expanded={showAdvanced} className="flex w-full cursor-pointer items-center justify-between border-none bg-transparent px-4 py-3 text-left transition-colors duration-200 hover:bg-[var(--bg-primary)]">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-[0.9rem] font-medium text-[var(--sd-ink)]">Advanced</div>
+                                            <div className="text-[0.72rem] text-[var(--sd-ink-muted)]">Arabic font, tafsir, offline & audio</div>
                                         </div>
-                                        <ChevronDown size={16} className={`sd-expand-icon ${showAdvanced ? 'open' : ''}`} />
+                                        <ChevronDown size={16} className={`shrink-0 text-[var(--sd-ink-muted)] transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`} />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Advanced (collapsible) */}
                             {showAdvanced && (
                                 <>
-                                    <div className="sd-section">
-                                        <div className="sd-section-title">Advanced Reading</div>
-                                        <div className="sd-card">
+                                    <div>
+                                        <div className="mb-3 px-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--sd-ink-muted)]">Advanced Reading</div>
+                                        <div className="overflow-hidden rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)]">
                                             <SelectionRow label="Arabic Font" value={selectedFont?.name || 'Default'} onClick={() => setActiveView(VIEWS.arabicFont)} />
                                             <SelectionRow label="Tafsir" value={selectedTafsir ? `${selectedTafsir.name}` : ''} onClick={() => setActiveView(VIEWS.tafsir)} />
-                                            <div className="sd-slider-row">
-                                                <div className="sd-slider-header">
+                                            <div className="border-t border-[var(--border-color)] px-4 py-3">
+                                                <div className="mb-2 flex items-center justify-between">
                                                     <div>
-                                                        <div className="sd-slider-label">Translation Size</div>
-                                                        <div className="sd-slider-hint">Subtle or more readable</div>
+                                                        <div className="text-[0.9rem] font-medium text-[var(--sd-ink)]">Translation Size</div>
+                                                        <div className="text-[0.72rem] text-[var(--sd-ink-muted)]">Subtle or more readable</div>
                                                     </div>
-                                                    <span className="sd-slider-value">{translationFontSize || 2}</span>
+                                                    <span className="text-[0.85rem] font-semibold text-[var(--sd-ink-muted)]">{translationFontSize || 2}</span>
                                                 </div>
                                                 <input type="range" min="1" max="8" step="1" value={translationFontSize || 2}
                                                     onChange={(e) => setTranslationFontSize(Number(e.target.value))}
-                                                    className="settings-slider" aria-label="Translation font size" style={{ width: '100%' }} />
+                                                    className="w-full cursor-pointer outline-none"
+                                                    style={{ accentColor: 'var(--accent-primary)' }} aria-label="Translation font size" />
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="sd-section">
-                                        <div className="sd-section-title">Audio</div>
-                                        <div className="sd-card-padded">
-                                            <div className="sd-row-label">Local Offline Audio</div>
-                                            <div className="sd-row-hint" style={{ marginBottom: '0.75rem' }}>Connect a folder of ayah MP3 files for native offline playback.</div>
-                                            <button type="button" className={`sd-btn-folder ${localAudioDirHandle ? 'connected' : ''}`} onClick={handleSelectAudioFolder}>
+                                    <div>
+                                        <div className="mb-3 px-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--sd-ink-muted)]">Audio</div>
+                                        <div className="rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-4">
+                                            <div className="text-[0.9rem] font-medium text-[var(--sd-ink)]">Local Offline Audio</div>
+                                            <div className="mb-3 text-[0.72rem] text-[var(--sd-ink-muted)]">Connect a folder of ayah MP3 files for native offline playback.</div>
+                                            <button type="button" onClick={handleSelectAudioFolder} className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 px-4 py-[10px] text-[0.82rem] font-bold transition-all duration-200 ${
+                                                localAudioDirHandle ? 'border-green-500 bg-green-50 text-green-600' : 'border-[var(--border-color)] bg-transparent text-[var(--sd-ink)] hover:bg-[var(--bg-secondary)]'
+                                            }`}>
                                                 {localAudioDirHandle ? <CheckCircle size={16} /> : <FolderOpen size={16} />}
                                                 {localAudioDirHandle ? 'Folder Connected' : 'Choose Audio Folder'}
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="sd-section">
-                                        <div className="sd-section-title">Offline</div>
-                                        <div className="sd-card-padded">
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                                    <div>
+                                        <div className="mb-3 px-1 text-[0.72rem] font-bold uppercase tracking-[0.08em] text-[var(--sd-ink-muted)]">Offline</div>
+                                        <div className="rounded-[12px] border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 py-4">
+                                            <div className="mb-3 flex items-start justify-between">
                                                 <div>
-                                                    <div className="sd-row-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                                    <div className="flex items-center gap-1 text-[0.9rem] font-medium text-[var(--sd-ink)]">
                                                         <HardDrive size={14} /> Offline Library
                                                     </div>
-                                                    <div className="sd-row-hint">Manage downloadable Quran packs.</div>
+                                                    <div className="text-[0.72rem] text-[var(--sd-ink-muted)]">Manage downloadable Quran packs.</div>
                                                 </div>
-                                                <div className={`sd-online-badge ${navigator.onLine ? 'online' : 'offline'}`}>
+                                                <div className={`flex shrink-0 items-center gap-1 rounded-[6px] px-2 py-1 text-[0.65rem] font-semibold ${
+                                                    navigator.onLine ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                                                }`}>
                                                     <WifiOff size={11} />
                                                     {navigator.onLine ? 'Online' : 'Offline'}
                                                 </div>
                                             </div>
 
-                                            <div className="sd-stats-grid">
-                                                <div className="sd-stat-card">
-                                                    <div className="sd-stat-label">Quran text</div>
-                                                    <div className="sd-stat-value">{offlineStats?.quranText?.downloaded ? offlineStats.quranText.sizeLabel : 'Not downloaded'}</div>
+                                            <div className="mb-3 flex gap-2">
+                                                <div className="flex-1 rounded-[8px] bg-[var(--bg-secondary)] px-3 py-2">
+                                                    <div className="text-[0.65rem] font-medium text-[var(--sd-ink-muted)]">Quran text</div>
+                                                    <div className="text-[0.82rem] font-semibold text-[var(--sd-ink)]">{offlineStats?.quranText?.downloaded ? offlineStats.quranText.sizeLabel : 'Not downloaded'}</div>
                                                 </div>
-                                                <div className="sd-stat-card">
-                                                    <div className="sd-stat-label">Tajweed</div>
-                                                    <div className="sd-stat-value">{offlineStats?.tajweed?.downloaded ? offlineStats.tajweed.sizeLabel : 'Not downloaded'}</div>
+                                                <div className="flex-1 rounded-[8px] bg-[var(--bg-secondary)] px-3 py-2">
+                                                    <div className="text-[0.65rem] font-medium text-[var(--sd-ink-muted)]">Tajweed</div>
+                                                    <div className="text-[0.82rem] font-semibold text-[var(--sd-ink)]">{offlineStats?.tajweed?.downloaded ? offlineStats.tajweed.sizeLabel : 'Not downloaded'}</div>
                                                 </div>
                                             </div>
 
-                                            <button type="button" className="sd-btn-primary" onClick={() => { onClose(); navigate('/offline-library'); }}>
+                                            <button type="button" onClick={() => { onClose(); navigate('/offline-library'); }} className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[12px] border-none bg-accent px-4 py-[10px] text-[0.85rem] font-bold text-white transition-all duration-200 hover:bg-[var(--accent-hover)]">
                                                 <CheckCircle size={16} /> Open Offline Library
                                             </button>
                                         </div>
@@ -451,9 +458,8 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                 </>
                             )}
 
-                            {/* Footer */}
-                            <div className="sd-footer">
-                                <a href="https://iredox.tech" target="_blank" rel="noopener noreferrer">built by iredox.tech</a>
+                            <div className="py-4 text-center">
+                                <a href="https://iredox.tech" target="_blank" rel="noopener noreferrer" className="text-[0.72rem] text-[var(--sd-ink-muted)] no-underline transition-colors duration-200 hover:text-accent">built by iredox.tech</a>
                             </div>
                         </div>
                     )}

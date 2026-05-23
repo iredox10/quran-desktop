@@ -319,8 +319,7 @@ export default function Page() {
     return (
         <div
             {...swipeHandlers}
-            className="surah-container container stretch-reading"
-            style={{ overflow: 'hidden' }}
+            className="surah-container container stretch-reading overflow-hidden"
         >
             <Helmet>
                 <title>{`Page ${pageNumber} - ${mushaf?.name || ''} - The Noble Qur'an`}</title>
@@ -335,41 +334,18 @@ export default function Page() {
                     animate="center"
                     exit="exit"
                     transition={pageTransition}
-                    style={{ willChange: 'transform, opacity' }}
+                    className="will-change-[transform,opacity]"
                 >
-                    <div className="surah-hero-card" style={{ padding: 'clamp(1rem, 3vw, 2rem) 1.5rem', marginBottom: '2rem' }}>
+                    <div className="surah-hero-card mb-8" style={{ padding: 'clamp(1rem, 3vw, 2rem) 1.5rem' }}>
                         <div className="surah-bg-glow" />
-                        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                            <div style={{
-                                display: 'inline-block',
-                                padding: '0.4rem 1rem',
-                                borderRadius: '999px',
-                                background: 'var(--accent-light)',
-                                color: 'var(--accent-primary)',
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                letterSpacing: '1px',
-                                textTransform: 'uppercase',
-                                marginBottom: '0.5rem'
-                            }}>
+                        <div className="relative z-[1] text-center">
+                            <div className="inline-block px-4 py-[0.4rem] rounded-full bg-[var(--accent-light)] text-[var(--accent-primary)] text-[0.85rem] font-bold tracking-[1px] uppercase mb-2">
                                 {mushaf.name} Mushaf
                             </div>
-                            <h1 style={{
-                                fontSize: 'clamp(2rem, 5vw, 3rem)',
-                                fontWeight: 800,
-                                margin: 0,
-                                lineHeight: 1.2,
-                                color: 'var(--text-primary)',
-                                letterSpacing: '-1px'
-                            }}>
+                            <h1 className="font-extrabold m-0 leading-[1.2] text-[var(--text-primary)] tracking-[-1px]" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)' }}>
                                 Page {pageNumber}
                             </h1>
-                            <p style={{
-                                color: 'var(--text-muted)',
-                                marginTop: '0.8rem',
-                                fontSize: '1.1rem',
-                                fontWeight: 500
-                            }}>
+                            <p className="text-[var(--text-muted)] mt-[0.8rem] text-[1.1rem] font-medium">
                                 {activeSurah ? `${activeSurah.name_simple} (${activeSurah.translated_name.name})` : 'Loading...'}
                             </p>
                         </div>
@@ -377,44 +353,27 @@ export default function Page() {
 
                     {/* Planner context bar — shown at top when reading from a plan */}
                     {plannerPageContext && plannerAssignmentProgress && (
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            marginBottom: '1.25rem',
-                            padding: '0.75rem 1rem',
-                            borderRadius: '14px',
-                            background: 'var(--bg-surface)',
-                            border: '1px solid var(--border-color)',
-                            boxShadow: 'var(--shadow-sm)',
-                            flexWrap: 'wrap',
-                        }}>
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.15rem', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.88rem' }}>
+                        <div className="flex justify-between items-center gap-3 mb-5 p-3 px-4 rounded-[14px] bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-[var(--shadow-sm)] flex-wrap">
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-[0.4rem] mb-[0.15rem] text-[var(--text-primary)] font-bold text-[0.88rem]">
                                     <Target size={13} aria-hidden="true" />
                                     <span>{plannerPageContext.assignment.title}</span>
                                     {plannerAssignmentProgress.isComplete && (
-                                        <span style={{ marginLeft: '0.3rem', color: '#22c55e', fontSize: '0.78rem', fontWeight: 600 }}>✓ Done</span>
+                                        <span className="ml-[0.3rem] text-[#22c55e] text-[0.78rem] font-semibold">✓ Done</span>
                                     )}
                                 </div>
-                                <div style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>
+                                <div className="text-[var(--text-muted)] text-[0.76rem]">
                                     {plannerAssignmentProgress.isComplete
                                         ? 'Day completed 🎉'
                                         : `Page ${plannerAssignmentProgress.completedCount + 1} of ${plannerAssignmentProgress.totalCount} · ${plannerAssignmentProgress.remainingCount} remaining`}
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <div className="flex gap-[0.4rem] items-center flex-wrap">
                                 {!plannerAssignmentProgress.isComplete && !plannerPageContext.isCurrentItemComplete && (
                                     <button
                                         type="button"
                                         onClick={() => markPlannerItemComplete(plannerPageContext.assignment.dayNumber, plannerPageContext.currentItem?.rangeValue)}
-                                        style={{
-                                            minHeight: '36px', padding: '0.5rem 0.8rem', borderRadius: '999px',
-                                            background: 'var(--accent-light)', color: 'var(--accent-primary)',
-                                            fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-                                            fontSize: '0.82rem', border: 'none', cursor: 'pointer',
-                                        }}
+                                        className="min-h-9 px-[0.8rem] py-2 rounded-full bg-[var(--accent-light)] text-[var(--accent-primary)] font-bold inline-flex items-center gap-[0.35rem] text-[0.82rem] border-none cursor-pointer"
                                     >
                                         <CheckCircle2 size={13} aria-hidden="true" />
                                         Mark done
@@ -422,12 +381,7 @@ export default function Page() {
                                 )}
                                 <Link
                                     to="/planner"
-                                    style={{
-                                        minHeight: '36px', padding: '0.5rem 0.8rem', borderRadius: '999px',
-                                        background: 'var(--bg-secondary)', color: 'var(--text-muted)',
-                                        fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                                        fontSize: '0.78rem', textDecoration: 'none',
-                                    }}
+                                    className="min-h-9 px-[0.8rem] py-2 rounded-full bg-[var(--bg-secondary)] text-[var(--text-muted)] font-semibold inline-flex items-center gap-[0.3rem] text-[0.78rem] no-underline"
                                 >
                                     ← Planner
                                 </Link>
@@ -435,10 +389,10 @@ export default function Page() {
                         </div>
                     )}
 
-                    <div style={{ position: 'relative', zIndex: 5, paddingBottom: '4rem' }}>
+                    <div className="relative z-[5] pb-16">
                         {mushaf.renderMode === 'qcf-page' && !readingMode ? (
                             isPageLoading && verses.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '10vh 0', color: 'var(--text-muted)' }}>
+                                <div className="text-center py-[10vh] text-[var(--text-muted)]">
                                     <span className="ui-text">Loading page {pageNumber}...</span>
                                 </div>
                             ) : (
@@ -451,14 +405,13 @@ export default function Page() {
                                 />
                             )
                         ) : (
-                            <div style={{
+                            <div className="w-full" style={{
                                 display: readingMode ? 'inline-block' : 'block',
                                 textAlign: readingMode ? 'justify' : 'left',
                                 direction: readingMode ? 'rtl' : 'ltr',
-                                width: '100%',
                             }}>
                                 {isPageLoading && verses.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: '10vh 0', color: 'var(--text-muted)' }}>
+                                    <div className="text-center py-[10vh] text-[var(--text-muted)]">
                                         <span className="ui-text">Loading page {pageNumber}...</span>
                                     </div>
                                 ) : (
@@ -499,56 +452,38 @@ export default function Page() {
 
             {/* Old planner bar removed — now shown at top */}
 
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: '1rem',
-                borderTop: '1px solid var(--border-color)',
-                paddingTop: '3rem',
-                paddingBottom: '2rem'
-            }}>
+            <div className="flex justify-between items-center mt-4 border-t border-[var(--border-color)] pt-12 pb-8">
                 <button
                     onClick={handleNextPage}
                     disabled={pageNumber >= maxPageNumber}
-                    className="interactive-hover"
+                    className="interactive-hover flex items-center gap-2 p-4 px-6 rounded-2xl border-none bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold text-[0.95rem] transition-all duration-200"
                     style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '1rem 1.5rem', borderRadius: '16px', border: 'none',
-                        background: 'var(--bg-secondary)', color: 'var(--text-primary)',
                         cursor: pageNumber >= maxPageNumber ? 'not-allowed' : 'pointer',
                         opacity: pageNumber >= maxPageNumber ? 0.5 : 1,
-                        fontWeight: 600, fontSize: '0.95rem',
-                        transition: 'all 0.2s ease'
                     }}
                 >
                     <ChevronLeft size={20} />
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Next</span>
+                    <div className="flex flex-col items-start text-left">
+                        <span className="text-xs text-[var(--text-muted)] uppercase tracking-[0.5px]">Next</span>
                         <span>Page {pageNumber + 1 > maxPageNumber ? maxPageNumber : pageNumber + 1}</span>
                     </div>
                 </button>
 
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>
+                <div className="text-center text-[var(--text-muted)] text-[0.85rem] font-medium">
                     {pageNumber} / {maxPageNumber}
                 </div>
 
                 <button
                     onClick={handlePrevPage}
                     disabled={pageNumber <= 1}
-                    className="interactive-hover"
+                    className="interactive-hover flex items-center gap-2 p-4 px-6 rounded-2xl border-none bg-[var(--bg-secondary)] text-[var(--text-primary)] font-semibold text-[0.95rem] transition-all duration-200"
                     style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '1rem 1.5rem', borderRadius: '16px', border: 'none',
-                        background: 'var(--bg-secondary)', color: 'var(--text-primary)',
                         cursor: pageNumber <= 1 ? 'not-allowed' : 'pointer',
                         opacity: pageNumber <= 1 ? 0.5 : 1,
-                        fontWeight: 600, fontSize: '0.95rem',
-                        transition: 'all 0.2s ease'
                     }}
                 >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', textAlign: 'right' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Previous</span>
+                    <div className="flex flex-col items-end text-right">
+                        <span className="text-xs text-[var(--text-muted)] uppercase tracking-[0.5px]">Previous</span>
                         <span>Page {pageNumber - 1 < 1 ? 1 : pageNumber - 1}</span>
                     </div>
                     <ChevronRight size={20} />
@@ -571,61 +506,43 @@ export default function Page() {
                         animate={{ opacity: 1, y: 0, x: '-50%' }}
                         exit={{ opacity: 0, y: 40, x: '-50%' }}
                         transition={{ duration: 0.25 }}
+                        className="fixed left-1/2 -translate-x-1/2 z-[100]"
                         style={{
-                            position: 'fixed',
                             bottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            zIndex: 100,
                         }}
                     >
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.6rem 1rem',
-                            borderRadius: '9999px',
-                            background: 'var(--glass-bg)',
-                            backdropFilter: 'blur(16px)',
-                            WebkitBackdropFilter: 'blur(16px)',
-                            border: 'var(--glass-border)',
-                            boxShadow: 'var(--shadow-lg)'
-                        }}>
-                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <div className="flex items-center gap-3 px-4 py-[0.6rem] rounded-full bg-[var(--glass-bg)] backdrop-blur-lg border-[var(--glass-border)] shadow-[var(--shadow-lg)]">
+                            <div className="flex gap-1">
                                 <button
-                                    className="btn-icon"
-                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    className="btn-icon w-7 h-7 bg-[var(--bg-secondary)] text-[var(--text-primary)]"
                                     onClick={() => window.scrollBy({ top: -200, behavior: 'smooth' })}
                                     aria-label="Scroll up"
                                 >
-                                    <ArrowLeft size={14} style={{ transform: 'rotate(90deg)' }} />
+                                    <ArrowLeft size={14} className="rotate-90" />
                                 </button>
                                 <button
-                                    className="btn-icon"
-                                    style={{ width: '28px', height: '28px', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                                    className="btn-icon w-7 h-7 bg-[var(--bg-secondary)] text-[var(--text-primary)]"
                                     onClick={() => window.scrollBy({ top: 200, behavior: 'smooth' })}
                                     aria-label="Scroll down"
                                 >
-                                    <ArrowRight size={14} style={{ transform: 'rotate(90deg)' }} />
+                                    <ArrowRight size={14} className="rotate-90" />
                                 </button>
                             </div>
 
-                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+                            <div className="w-px h-6 bg-[var(--border-color)]" />
 
                             <button
-                                className="btn-icon"
-                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                className="btn-icon w-7 h-7 border border-[var(--border-color)] rounded-full"
                                 onClick={() => setAutoScrollSpeed(Math.max(1, autoScrollSpeed - 1))}
                                 aria-label="Decrease auto-scroll speed"
                             >
                                 <Minus size={14} />
                             </button>
-                            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)', minWidth: '40px', textAlign: 'center' }}>
+                            <span className="font-semibold text-[0.9rem] text-[var(--text-primary)] min-w-[40px] text-center">
                                 {autoScrollSpeed}x
                             </span>
                             <button
-                                className="btn-icon"
-                                style={{ width: '28px', height: '28px', border: '1px solid var(--border-color)', borderRadius: '50%' }}
+                                className="btn-icon w-7 h-7 border border-[var(--border-color)] rounded-full"
                                 onClick={() => setAutoScrollSpeed(Math.min(7, autoScrollSpeed + 1))}
                                 aria-label="Increase auto-scroll speed"
                             >
@@ -633,12 +550,9 @@ export default function Page() {
                             </button>
 
                             <button
-                                className="btn-icon"
+                                className="btn-icon w-8 h-8 text-[var(--accent-primary)]"
                                 style={{
-                                    width: '32px',
-                                    height: '32px',
                                     background: isAutoScrollPaused ? 'var(--accent-light)' : 'transparent',
-                                    color: 'var(--accent-primary)'
                                 }}
                                 onClick={() => setIsAutoScrollPaused(!isAutoScrollPaused)}
                                 aria-label={isAutoScrollPaused ? 'Resume auto-scroll' : 'Pause auto-scroll'}
@@ -646,22 +560,11 @@ export default function Page() {
                                 {isAutoScrollPaused ? <Play size={16} fill="currentColor" /> : <Pause size={16} fill="currentColor" />}
                             </button>
 
-                            <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+                            <div className="w-px h-6 bg-[var(--border-color)]" />
 
                             <button
                                 onClick={() => setAutoScroll(false)}
-                                style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    borderRadius: '50%',
-                                    background: 'rgba(239, 68, 68, 0.1)',
-                                    color: 'rgb(239, 68, 68)',
-                                    border: 'none',
-                                    cursor: 'pointer'
-                                }}
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-[rgba(239,68,68,0.1)] text-[rgb(239,68,68)] border-none cursor-pointer"
                                 aria-label="Stop auto-scroll"
                                 title="Stop auto-scroll"
                             >

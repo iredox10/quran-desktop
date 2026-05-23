@@ -54,20 +54,11 @@ const VerseRow = ({
                 width: '100%'
             }}
         >
-            <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, var(--accent-primary), transparent)' }} />
-            <span style={{
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: 'var(--accent-primary)',
-                backgroundColor: 'var(--accent-light)',
-                padding: '0.25rem 0.75rem',
-                borderRadius: '9999px',
-                whiteSpace: 'nowrap',
-                fontFamily: "'Outfit', sans-serif"
-            }}>
+            <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, var(--accent-primary), transparent)' }} />
+            <span className="whitespace-nowrap rounded-[9999px] bg-[var(--accent-light)] px-3 py-1 font-['Outfit',sans-serif] text-[0.8rem] font-semibold text-accent">
                 Page {verse.page_number}
             </span>
-            <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, var(--accent-primary), transparent)' }} />
+            <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, var(--accent-primary), transparent)' }} />
         </div>
     ) : null;
 
@@ -83,9 +74,9 @@ const VerseRow = ({
                     className="quran-text tajweed-text"
                     style={{
                         fontSize: `clamp(${0.9 + fontSize * 0.15}rem, ${fontSize * 1.2}vw, ${fontSize * 0.4 + 1.5}rem)`,
+                        fontFamily: arabicFont,
                         marginRight: '0.4rem',
                         display: 'inline',
-                        fontFamily: arabicFont,
                         transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                         backgroundColor: isAudioPlaying ? 'var(--accent-light)' : 'transparent',
                         borderRadius: '8px',
@@ -108,22 +99,10 @@ const VerseRow = ({
     return (
         <React.Fragment key={`translation-${verse.verse_key}`}>
             {pageDivider}
-            {/* Ayah Divider */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                padding: '0.5rem 0'
-            }}>
-                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, var(--accent-light), var(--border-color), var(--accent-light), transparent)' }} />
-                <div style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: 'var(--accent-primary)',
-                    opacity: 0.4
-                }} />
-                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, var(--accent-light), var(--border-color), var(--accent-light), transparent)' }} />
+            <div className="flex items-center gap-4 py-2">
+                <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, var(--accent-light), var(--border-color), var(--accent-light), transparent)' }} />
+                <div className="h-[6px] w-[6px] rounded-full bg-accent opacity-40" />
+                <div className="h-px flex-1" style={{ background: 'linear-gradient(to left, transparent, var(--accent-light), var(--border-color), var(--accent-light), transparent)' }} />
             </div>
             <div
                 ref={ref}
@@ -142,53 +121,34 @@ const VerseRow = ({
                     borderRadius: '16px'
                 }}
             >
-                {/* Verse Header Row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{
-                        fontSize: '0.85rem',
-                        fontWeight: 700,
-                        color: 'var(--accent-primary)',
-                        backgroundColor: 'var(--accent-light)',
-                        border: '1px solid rgba(198, 168, 124, 0.2)',
-                        padding: '0.35rem 0.85rem',
-                        borderRadius: '999px',
-                        fontFamily: "'Outfit', sans-serif",
-                        letterSpacing: '0.05em'
-                    }}>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="rounded-[999px] border bg-[var(--accent-light)] px-3 py-[0.35rem] font-['Outfit',sans-serif] text-[0.85rem] font-bold tracking-[0.05em] text-accent"
+                        style={{ borderColor: 'rgba(198, 168, 124, 0.2)' }}
+                    >
                         {verse.verse_key}
                     </div>
 
-                    <div className="verse-actions-row" style={{
-                        display: 'flex',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        flexWrap: 'wrap'
-                    }}>
+                    <div className="verse-actions-row flex flex-wrap items-center gap-2">
                         <button
-                            className="btn-icon"
-                            style={{ color: 'var(--text-muted)', width: '32px', height: '32px' }}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-muted)] transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]"
                             onClick={() => setShowCollectionModal(true)}
                             title="Add to Collection"
                         >
                             <Plus size={18} />
                         </button>
                         <button
-                            className="btn-icon"
-                            style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
+                            className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]"
+                            style={{ color: bookmark?.verseKey === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }}
                             onClick={() => setBookmark(verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id)}
                             title="Bookmark Verse"
                         >
                             <Bookmark size={18} fill={bookmark?.verseKey === verse.verse_key ? 'currentColor' : 'none'} />
                         </button>
                         <button
-                            className="btn-icon"
+                            className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200"
                             style={{
                                 color: isAudioPlaying ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                width: '32px', height: '32px',
                                 backgroundColor: isAudioPlaying ? 'var(--accent-light)' : 'transparent',
-                                borderRadius: '50%',
-                                transition: 'all 0.2s ease'
                             }}
                             title={isAudioPlaying ? "Playing" : "Play this Ayah"}
                             onClick={() => onPlayVerse?.(verse)}
@@ -199,8 +159,8 @@ const VerseRow = ({
                             }
                         </button>
                         <button
-                            className="btn-icon"
-                            style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)', width: '32px', height: '32px' }}
+                            className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:shadow-[var(--shadow-sm)]"
+                            style={{ color: activeTafsir?.verse_key === verse.verse_key ? 'var(--accent-primary)' : 'var(--text-muted)' }}
                             title="Read Tafsir"
                             onClick={() => {
                                 if (activeTafsir?.verse_key === verse.verse_key) {
@@ -224,7 +184,6 @@ const VerseRow = ({
                     </div>
                 </div>
 
-                {/* Arabic Text */}
                 <div
                     className="quran-text tajweed-text"
                     style={{
@@ -259,21 +218,16 @@ const VerseRow = ({
                             exit={{ opacity: 0, height: 0 }}
                             style={{ overflow: 'hidden' }}
                         >
-                            <div style={{
-                                marginTop: '1.5rem',
-                                padding: '1.5rem',
-                                backgroundColor: 'var(--bg-secondary)',
-                                borderRadius: '12px',
-                                borderLeft: '4px solid var(--accent-primary)',
-                                position: 'relative'
-                            }}>
+                            <div className="relative mt-6 rounded-xl bg-[var(--bg-secondary)] p-6"
+                                style={{ borderLeft: '4px solid var(--accent-primary)' }}
+                            >
                                 <button
                                     onClick={() => setActiveTafsir(null)}
-                                    style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                                    className="absolute right-4 top-4 cursor-pointer border-none bg-transparent text-[var(--text-muted)]"
                                 >
                                     <X size={18} />
                                 </button>
-                                <h4 style={{ marginBottom: '1rem', color: 'var(--text-primary)', fontSize: '1.1rem', fontWeight: 600 }}>
+                                <h4 className="mb-4 text-[1.1rem] font-semibold text-[var(--text-primary)]">
                                     📖 {TAFSIR_NAMES[tafsirId] || 'Tafsir'}
                                 </h4>
                                 <div
@@ -286,81 +240,58 @@ const VerseRow = ({
                     )}
                 </AnimatePresence>
 
-                {/* Collection Modal per verse (uses AnimatePresence) */}
                 <AnimatePresence>
                     {showCollectionModal && (
                         <>
                             <motion.div
                                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                                 onClick={() => setShowCollectionModal(false)}
-                                style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+                                className="fixed inset-0 z-[1100] bg-black/50 backdrop-blur-sm"
                             />
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                style={{
-                                    position: 'fixed',
-                                    top: 0, left: 0, right: 0, bottom: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    zIndex: 1101,
-                                    pointerEvents: 'none'
-                                }}
+                                className="fixed inset-0 z-[1101] flex items-center justify-center pointer-events-none"
                             >
-                                <div style={{
-                                    width: 'calc(100vw - 2rem)',
-                                    maxWidth: '400px',
-                                    backgroundColor: 'var(--bg-surface)',
-                                    borderRadius: '24px',
-                                    padding: '1.5rem',
-                                    border: '1px solid var(--border-color)',
-                                    boxShadow: 'var(--shadow-xl)',
-                                    pointerEvents: 'auto'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 700 }}>Add to Collection</h3>
-                                        <button className="btn-icon" onClick={() => setShowCollectionModal(false)}><X size={18} /></button>
+                                <div className="w-[calc(100vw-2rem)] max-w-[400px] rounded-[24px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 shadow-[var(--shadow-xl)] pointer-events-auto">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <h3 className="m-0 text-[1.1rem] font-bold text-[var(--text-primary)]">Add to Collection</h3>
+                                        <button onClick={() => setShowCollectionModal(false)} className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--text-secondary)] transition-all duration-200 hover:bg-[var(--bg-secondary)] hover:text-accent hover:shadow-[var(--shadow-sm)]"><X size={18} /></button>
                                     </div>
-                                    <div style={{ maxHeight: '200px', overflowY: 'auto', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <div className="mb-4 flex max-h-[200px] flex-col gap-2 overflow-y-auto">
                                         {(collections || []).map(c => {
                                             const isInCollection = c.items?.some(item => item.verseKey === verse.verse_key);
                                             return (
                                                 <button
                                                     key={c.id}
-                                                    className="interactive-hover"
                                                     onClick={() => {
                                                         addToCollection(c.id, verse.verse_key, chapter ? chapter.name_simple : `Surah ${verse.verse_key.split(':')[0]}`, chapter?.id);
                                                         setShowCollectionModal(false);
                                                     }}
-                                                    style={{
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem',
-                                                        borderRadius: '12px', background: 'var(--bg-secondary)', border: 'none', cursor: 'pointer',
-                                                        color: 'var(--text-primary)', textAlign: 'left', fontWeight: isInCollection ? 700 : 500
-                                                    }}
+                                                    className={`flex cursor-pointer items-center justify-between rounded-xl border-none bg-[var(--bg-secondary)] px-4 py-3 text-left transition-all duration-200 ${
+                                                        isInCollection ? 'font-bold text-[var(--text-primary)]' : 'font-medium text-[var(--text-primary)]'
+                                                    }`}
                                                 >
                                                     <span>{c.name}</span>
-                                                    {isInCollection && <span style={{ color: 'var(--accent-primary)', fontSize: '0.8rem' }}>Added</span>}
+                                                    {isInCollection && <span className="text-[0.8rem] text-accent">Added</span>}
                                                 </button>
                                             );
                                         })}
                                         {(!collections || collections.length === 0) && (
-                                            <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem 0' }}>No collections yet</div>
+                                            <div className="py-4 text-center text-[0.9rem] text-[var(--text-muted)]">No collections yet</div>
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <div className="flex gap-2">
                                         <input
                                             type="text"
                                             placeholder="New collection name..."
-                                            className="form-input"
                                             value={newCollectionName}
                                             onChange={(e) => setNewCollectionName(e.target.value)}
-                                            style={{ flex: 1 }}
+                                            className="min-h-10 flex-1 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-2 text-[var(--text-primary)] outline-none"
                                         />
                                         <button
-                                            className="btn-primary"
-                                            style={{ padding: '0 1rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            className="flex cursor-pointer items-center justify-center rounded-xl bg-accent px-4 font-semibold text-white transition-all duration-200 hover:bg-[var(--accent-hover)]"
                                             onClick={() => {
                                                 if (newCollectionName.trim()) {
                                                     const newId = Date.now();

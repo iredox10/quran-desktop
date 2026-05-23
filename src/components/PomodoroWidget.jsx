@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clock3, Pause, Play, PlusCircle, RotateCcw, TimerReset, Trash2 } from 'lucide-react';
+import { Clock3, Play, PlusCircle, RotateCcw, TimerReset, Trash2 } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import PomodoroConfigModal from './PomodoroConfigModal';
 
@@ -81,30 +81,24 @@ export default function PomodoroWidget({ compact = false, showConfigurator = tru
             <button
                 type="button"
                 onClick={() => setIsConfigModalOpen(true)}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: compact ? '0.6rem 0.9rem' : '0.85rem 1.25rem',
-                    borderRadius: '999px',
-                    background: pomodoroIsRunning ? 'var(--accent-primary)' : 'var(--bg-surface)',
-                    border: pomodoroIsRunning ? '1px solid transparent' : '1px solid var(--border-color)',
-                    color: pomodoroIsRunning ? '#fff' : 'var(--text-primary)',
-                    boxShadow: 'var(--shadow-sm)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    width: compact ? 'auto' : '100%',
-                    justifyContent: compact ? 'center' : 'space-between'
-                }}
+                className={`flex items-center gap-3 rounded-[999px] border shadow-[var(--shadow-sm)] transition-all duration-200 ${
+                    compact
+                        ? 'w-auto justify-center px-[0.9rem] py-[0.6rem]'
+                        : 'w-full justify-between px-5 py-[0.85rem]'
+                } ${
+                    pomodoroIsRunning
+                        ? 'border-transparent bg-accent text-white'
+                        : 'border-[var(--border-color)] bg-[var(--bg-surface)] text-[var(--text-primary)]'
+                }`}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: compact ? '0.9rem' : '1rem' }}>
+                <div className={`flex items-center gap-2 font-bold ${compact ? 'text-[0.9rem]' : 'text-base'}`}>
                     {pomodoroIsRunning ? <Play size={compact ? 16 : 18} fill="currentColor" /> : <Clock3 size={compact ? 16 : 18} />}
                     {compact ? (
                         <span>{formatTime(pomodoroSecondsLeft)}</span>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <div className="flex flex-col items-start">
                             <span>{activeProfile.name} Timer</span>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: pomodoroIsRunning ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)' }}>
+                            <span className={`text-[0.75rem] font-semibold ${pomodoroIsRunning ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
                                 {pomodoroCompletedFocusCount}/{pomodoroDailyGoal || 4} Sessions Today
                             </span>
                         </div>
@@ -112,11 +106,11 @@ export default function PomodoroWidget({ compact = false, showConfigurator = tru
                 </div>
 
                 {!compact && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '1.1rem', fontWeight: 800, fontFamily: 'monospace' }}>
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-[1.1rem] font-extrabold">
                             {formatTime(pomodoroSecondsLeft)}
                         </span>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: pomodoroIsRunning ? '#4ade80' : 'var(--text-muted)' }} />
+                        <div className={`h-2 w-2 rounded-full ${pomodoroIsRunning ? 'bg-green-400' : 'bg-[var(--text-muted)]'}`} />
                     </div>
                 )}
             </button>

@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    tailwindcss(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -45,12 +46,12 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.origin === 'https://api.quran.com',
-            handler: 'CacheFirst', // Use CacheFirst to be strictly offline-ready
+            handler: 'CacheFirst',
             options: {
               cacheName: 'quran-api-cache',
               expiration: {
-                maxEntries: 2000, // Increased to support all paginated pages of all 114 Surahs
-                maxAgeSeconds: 60 * 60 * 24 * 60, // 60 Days
+                maxEntries: 2000,
+                maxAgeSeconds: 60 * 60 * 24 * 60,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -78,7 +79,7 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 20,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 Year
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -91,13 +92,13 @@ export default defineConfig({
             options: {
               cacheName: 'quran-audio-cache',
               expiration: {
-                maxEntries: 114, // Roughly one Quran recitation
-                maxAgeSeconds: 60 * 60 * 24 * 90, // 90 Days
+                maxEntries: 114,
+                maxAgeSeconds: 60 * 60 * 24 * 90,
               },
               cacheableResponse: {
                 statuses: [0, 200],
               },
-              rangeRequests: true, // Crucial for audio/video playback
+              rangeRequests: true,
             },
           }
         ]
