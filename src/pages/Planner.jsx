@@ -970,56 +970,82 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         ))}
                                     </div>
                                 </div>
-                                <div className="flex flex-col rounded-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] p-5 shadow-[var(--shadow-glass)]">
-                                    <h3 className="mb-4 font-ui text-[1.1rem] font-semibold text-[var(--text-primary)]">Performance Insights</h3>
+                                <div className="flex flex-col rounded-[24px] bg-[rgba(255,255,255,0.02)] border border-white/5 p-6 shadow-inner backdrop-blur-xl">
+                                    <h3 className="mb-5 font-ui text-[1.25rem] font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-[var(--accent-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                                        Performance Insights
+                                    </h3>
                                     <div className="grid gap-4 md:grid-cols-3 mb-2">
-                                        <div className="flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[14px] shadow-sm">
+                                        <div className="group flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[#10b981]/30">
                                             <span className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">On-Time Completion</span>
-                                            <span className="font-ui text-[1.6rem] font-bold text-[#10b981]">{analytics.onTimeRate}%</span>
+                                            <span className="font-ui text-[1.8rem] font-bold text-[#10b981] tracking-tight">{analytics.onTimeRate}%</span>
                                         </div>
-                                        <div className="flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[14px] shadow-sm">
+                                        <div className="group flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[var(--accent-primary)]/50">
                                             <span className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">Catch-ups Used</span>
-                                            <span className="font-ui text-[1.6rem] font-bold text-[var(--accent-primary)]">{analytics.catchUpDaysCount}</span>
+                                            <span className="font-ui text-[1.8rem] font-bold text-[var(--accent-primary)] tracking-tight">{analytics.catchUpDaysCount}</span>
                                         </div>
-                                        <div className="flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[14px] shadow-sm">
+                                        <div className="group flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[var(--text-primary)]/20">
                                             <span className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">Current Pace</span>
-                                            <span className="font-ui text-[1.6rem] font-bold text-[var(--text-primary)]">{Math.round(analytics.avgUnitsPerDay)} <span className="text-[1rem] text-[var(--text-muted)] font-medium">u/day</span></span>
+                                            <span className="font-ui text-[1.8rem] font-bold text-[var(--text-primary)] tracking-tight">{Math.round(analytics.avgUnitsPerDay)} <span className="text-[1rem] text-[var(--text-muted)] font-medium">u/day</span></span>
                                         </div>
                                     </div>
                                 </div>
 
                                 
                                 {weeklySummary && weeklySummary.length > 0 && (
-                                    <div className="flex flex-col rounded-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] p-5 shadow-[var(--shadow-glass)]">
-                                        <h4 className="mb-4 font-ui text-[1.1rem] font-semibold text-[var(--text-primary)]">Weekly Progress</h4>
+                                    <div className="flex flex-col rounded-[24px] bg-[rgba(255,255,255,0.02)] border border-white/5 p-6 shadow-inner backdrop-blur-xl">
+                                        <h4 className="mb-5 font-ui text-[1.25rem] font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                            Weekly Progress
+                                        </h4>
                                         <div className="flex flex-col gap-3">
-                                            {weeklySummary.slice(-4).map((week, i) => (
-                                                <div key={i} className="flex items-center justify-between bg-[var(--bg-surface)] border border-[var(--glass-border)] px-4 py-3.5 rounded-[12px] shadow-sm">
-                                                    <span className="font-body text-[0.85rem] font-medium text-[var(--text-primary)]">{week.label}</span>
+                                            {weeklySummary.slice(-4).map((week, i) => {
+                                                const pct = Math.min(100, Math.round((week.completedUnits / week.totalUnits) * 100));
+                                                const isComplete = pct === 100;
+                                                return (
+                                                <div key={i} className="group flex items-center justify-between bg-[var(--bg-surface)] border border-[var(--glass-border)] px-5 py-4 rounded-[16px] shadow-sm transition-colors hover:border-[var(--glass-border-hover)]">
+                                                    <span className="font-ui text-[0.95rem] font-bold text-[var(--text-primary)]">{week.label}</span>
                                                     <div className="flex items-center gap-4">
-                                                        <span className="font-mono text-[0.75rem] text-[var(--text-secondary)]">{week.completedUnits} / {week.totalUnits}</span>
-                                                        <div className="w-[100px] h-2.5 bg-[var(--bg-surface)] rounded-full overflow-hidden">
-                                                            <div className="h-full bg-[var(--accent-primary)] rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.round((week.completedUnits / week.totalUnits) * 100))}%` }} />
+                                                        <span className={`font-mono text-[0.75rem] font-medium ${isComplete ? 'text-[#10b981]' : 'text-[var(--text-secondary)]'}`}>{week.completedUnits} / {week.totalUnits}</span>
+                                                        <div className="w-[120px] h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden shadow-inner">
+                                                            <div className={`h-full rounded-full transition-all duration-1000 ease-out ${isComplete ? 'bg-[#10b981] shadow-[0_0_10px_#10b981]' : 'bg-gradient-to-r from-[var(--accent-light)] to-[var(--accent-primary)]'}`} style={{ width: `${pct}%` }} />
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
 
                                 {overview?.overdueDays > 0 && (
-                                    <div className="mt-2 flex flex-col gap-3 rounded-2xl bg-[rgba(220,38,38,0.05)] border border-[rgba(220,38,38,0.1)] p-5">
-                                        <h4 className="font-ui text-[1.05rem] font-semibold text-[#dc2626]">Need to catch up?</h4>
-                                        <button onClick={() => shiftPlannerSchedule(planner.id, overview.overdueDays)} className="w-full cursor-pointer rounded-full border border-[#dc2626] bg-transparent p-[0.95rem] font-ui text-[0.95rem] font-bold text-[#dc2626] shadow-sm transition-all duration-200 hover:bg-[rgba(220,38,38,0.1)]">
-                                            Shift Plan ({overview.overdueDays} Days)
-                                        </button>
-                                        <button onClick={() => {
-                                            const updated = redistributeMissedAssignments(planner);
-                                            if (updated) setPlanner(updated);
-                                        }} className="w-full cursor-pointer rounded-full border-none bg-[rgba(220,38,38,0.12)] p-[0.95rem] font-ui text-[0.95rem] font-bold text-[#dc2626] shadow-none transition-all duration-200 hover:bg-[rgba(220,38,38,0.18)]" title="Keep the same end date, distribute missed reading across remaining days">
-                                            Redistribute Missed Pages
-                                        </button>
+                                    <div className="mt-2 flex flex-col gap-4 rounded-[24px] bg-gradient-to-b from-[rgba(220,38,38,0.05)] to-[rgba(220,38,38,0.02)] border border-red-500/20 p-6 shadow-inner relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-4 opacity-10 text-red-500 pointer-events-none">
+                                            <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-ui text-[1.25rem] font-bold text-[#dc2626] flex items-center gap-2 relative z-10">
+                                                <span className="flex h-2.5 w-2.5 relative">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                                </span>
+                                                Action Required
+                                            </h4>
+                                            <p className="font-body text-[0.9rem] text-[var(--text-secondary)] mt-1 mb-0 relative z-10">You have fallen {overview.overdueDays} day{overview.overdueDays > 1 ? 's' : ''} behind schedule.</p>
+                                        </div>
+                                        <div className="flex flex-col gap-2 relative z-10">
+                                            <button onClick={() => shiftPlannerSchedule(planner.id, overview.overdueDays)} className="w-full cursor-pointer rounded-xl border border-red-500/30 bg-[rgba(255,255,255,0.02)] backdrop-blur-md p-[1rem] font-ui text-[0.95rem] font-bold text-[#dc2626] shadow-sm transition-all duration-300 hover:bg-[rgba(220,38,38,0.08)] hover:-translate-y-0.5 flex justify-between items-center">
+                                                Shift Deadlines ({overview.overdueDays} Days)
+                                                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                            </button>
+                                            <button onClick={() => {
+                                                const updated = redistributeMissedAssignments(planner);
+                                                if (updated) setPlanner(updated);
+                                            }} className="w-full cursor-pointer rounded-xl border-none bg-[rgba(220,38,38,0.12)] p-[1rem] font-ui text-[0.95rem] font-bold text-[#dc2626] shadow-none transition-all duration-300 hover:bg-[rgba(220,38,38,0.18)] hover:-translate-y-0.5 flex justify-between items-center" title="Keep the same end date, distribute missed reading across remaining days">
+                                                Redistribute Missed Pages
+                                                <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -1027,50 +1053,68 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
 
                     {/* --- JOURNAL TAB --- */}
                     {activeTab === 'journal' && (
-                        <div className="flex flex-col gap-6">
+                        <div className="flex flex-col gap-10">
                             {/* Reflections Section */}
-                            <div className="flex flex-col rounded-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] p-5 shadow-[var(--shadow-glass)]">
-                                <h3 className="mb-4 font-ui text-[1.1rem] font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                                    <BookIcon /> Daily Reflections
-                                </h3>
-                                <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="flex flex-col rounded-[24px] bg-[rgba(255,255,255,0.02)] border border-white/5 p-6 shadow-inner backdrop-blur-xl">
+                                <div className="mb-5 flex items-baseline justify-between px-2">
+                                    <h3 className="font-ui text-[1.4rem] font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                        <span className="w-1.5 h-5 rounded-full bg-[var(--accent-primary)] inline-block" />
+                                        Daily Reflections
+                                    </h3>
+                                </div>
+                                <div className="flex flex-col gap-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
                                     {plannerReflections && plannerReflections[planner.id] && Object.keys(plannerReflections[planner.id]).length > 0 ? (
                                         Object.entries(plannerReflections[planner.id])
                                             .sort((a, b) => Number(b[0]) - Number(a[0]))
                                             .map(([dayId, ref]) => (
-                                                <div key={dayId} className="rounded-xl bg-[var(--bg-primary)] p-4 shadow-sm border border-[var(--glass-border)]">
-                                                    <div className="font-mono text-[0.65rem] text-[var(--text-muted)] mb-2">DAY {dayId}</div>
-                                                    <p className="font-body text-[0.9rem] text-[var(--text-primary)] m-0 leading-relaxed italic">"{ref.text}"</p>
+                                                <div key={dayId} className="group relative rounded-[20px] bg-[var(--bg-surface)] p-5 shadow-sm border border-[var(--glass-border)] transition-all hover:shadow-md hover:-translate-y-0.5 overflow-hidden">
+                                                    <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
+                                                        <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" /></svg>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 mb-3 relative z-10">
+                                                        <span className="flex items-center justify-center h-8 w-8 rounded-full bg-[var(--accent-light)] text-[var(--accent-primary)] font-mono text-[0.65rem] font-bold">{dayId}</span>
+                                                        <span className="font-mono text-[0.65rem] uppercase tracking-[0.05em] text-[var(--text-muted)]">Reflection</span>
+                                                    </div>
+                                                    <p className="font-body text-[0.95rem] text-[var(--text-primary)] m-0 leading-relaxed relative z-10">"{ref.text}"</p>
                                                 </div>
                                             ))
                                     ) : (
-                                        <div className="text-center py-10 text-[var(--text-muted)] font-body text-[0.9rem]">
-                                            No reflections yet. Complete a day to write one!
+                                        <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[20px]">
+                                            <BookIcon />
+                                            <p className="mt-3 text-[var(--text-muted)] font-body text-[0.9rem] max-w-[200px]">No reflections yet. Complete a day to write one!</p>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
                             {/* Bookmarks / Highlights Section */}
-                            <div className="flex flex-col rounded-2xl bg-[var(--glass-bg)] border border-[var(--glass-border)] p-5 shadow-[var(--shadow-glass)]">
-                                <h3 className="mb-4 font-ui text-[1.1rem] font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                                    <GemIcon /> Plan Highlights
-                                </h3>
-                                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="flex flex-col rounded-[24px] bg-[rgba(255,255,255,0.02)] border border-white/5 p-6 shadow-inner backdrop-blur-xl">
+                                <div className="mb-5 flex items-baseline justify-between px-2">
+                                    <h3 className="font-ui text-[1.4rem] font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                        <span className="w-1.5 h-5 rounded-full bg-[var(--accent-hover)] inline-block" />
+                                        Plan Highlights
+                                    </h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                     {plannerBookmarks && plannerBookmarks[planner.id] && plannerBookmarks[planner.id].length > 0 ? (
                                         plannerBookmarks[planner.id]
                                             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                                             .map(b => (
-                                                <Link key={b.verseKey} to={`/surah/${b.verseKey.split(':')[0]}?ayah=${b.verseKey.split(':')[1]}`} className="rounded-xl bg-[var(--bg-primary)] p-4 shadow-sm border border-[var(--glass-border)] no-underline transition-colors hover:border-[var(--accent-primary)]">
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="font-ui text-[0.95rem] font-bold text-[var(--text-primary)]">{b.surahName}</span>
-                                                        <span className="font-mono text-[0.7rem] bg-[var(--accent-light)] text-[var(--accent-primary)] px-2 py-0.5 rounded-md">{b.verseKey}</span>
+                                                <Link key={b.verseKey} to={`/surah/${b.verseKey.split(':')[0]}?ayah=${b.verseKey.split(':')[1]}`} className="group flex flex-col justify-between rounded-[16px] bg-[var(--bg-surface)] p-4 shadow-sm border border-[var(--glass-border)] no-underline transition-all duration-300 hover:border-[var(--accent-hover)] hover:shadow-md hover:-translate-y-0.5">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <span className="font-ui text-[1.05rem] font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-hover)] transition-colors">{b.surahName}</span>
+                                                        <GemIcon className="text-[var(--accent-hover)] opacity-50 group-hover:opacity-100 transition-opacity w-4 h-4" />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono text-[0.7rem] bg-[rgba(198,168,124,0.1)] text-[var(--accent-primary)] px-2.5 py-1 rounded-[6px]">{b.verseKey}</span>
+                                                        <span className="font-body text-[0.7rem] text-[var(--text-muted)] truncate flex-1">Tap to read verse →</span>
                                                     </div>
                                                 </Link>
                                             ))
                                     ) : (
-                                        <div className="text-center py-10 text-[var(--text-muted)] font-body text-[0.9rem]">
-                                            No highlighted verses. Use the bookmark icon while reading!
+                                        <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[20px]">
+                                            <GemIcon className="text-[var(--text-muted)] opacity-50 w-6 h-6" />
+                                            <p className="mt-3 text-[var(--text-muted)] font-body text-[0.9rem] max-w-[200px]">No highlighted verses. Use the bookmark icon while reading!</p>
                                         </div>
                                     )}
                                 </div>
@@ -1081,8 +1125,8 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
 
                 {/* Footer Controls */}
                 <div className="mt-12 mb-4 w-full flex justify-center">
-                    <button className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border-none bg-transparent px-4 py-2 font-body text-[0.85rem] text-[var(--text-muted)] opacity-60 transition-all duration-200 hover:opacity-100 hover:text-[#dc2626]" onClick={onDelete} title="Delete plan">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                    <button className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] px-5 py-2.5 font-body text-[0.85rem] text-[var(--text-muted)] shadow-sm backdrop-blur-md transition-all duration-300 hover:border-red-500/30 hover:bg-[rgba(220,38,38,0.05)] hover:text-[#dc2626] hover:-translate-y-0.5" onClick={onDelete} title="Delete plan">
+                        <svg className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
                             <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                         </svg>
@@ -1095,27 +1139,39 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
             {/* MODALS */}
             <AnimatePresence>
                 {showAdjustPace && (
-                    <motion.div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(0,0,0,0.5)] p-4 backdrop-blur-sm"
+                    <motion.div className="fixed inset-0 z-[1000] flex items-end justify-center bg-[rgba(0,0,0,0.4)] p-0 sm:items-center sm:p-4 backdrop-blur-md"
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={e => { if (e.target === e.currentTarget) setShowAdjustPace(false); }}>
-                        <motion.div className="w-full max-w-[400px] rounded-2xl bg-[var(--bg-primary)] border border-[var(--glass-border)] p-6 shadow-2xl"
-                            initial={{ opacity: 0, y: 20, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.98 }}>
-                            <h2 className="mb-4 font-ui text-xl font-semibold text-[var(--text-primary)]">Adjust Pace</h2>
-                            <p className="mb-5 font-body text-[0.85rem] leading-relaxed text-[var(--text-secondary)]">
-                                Change how many days you want to complete your remaining plan in. This will re-calculate your daily assignments.
-                            </p>
-                            <div className="mb-6 flex flex-col gap-2">
-                                <label className="font-mono text-[0.68rem] uppercase tracking-[0.1em] text-[var(--text-muted)]">New Total Days</label>
-                                <input type="number" min="1" max="1000" className="w-full rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-[var(--bg-surface)] px-4 py-3 font-body text-[1.1rem] text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
-                                    value={newDuration} onChange={e => setNewDuration(parseInt(e.target.value) || 1)} />
+                        <motion.div className="w-full sm:max-w-[400px] rounded-t-[32px] sm:rounded-[24px] bg-[var(--bg-primary)] border border-white/10 p-6 sm:p-8 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] sm:shadow-2xl relative overflow-hidden"
+                            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}>
+                            {/* Glass overlay effect */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+                            
+                            <div className="flex items-center justify-center w-full mb-6 sm:hidden">
+                                <div className="w-12 h-1.5 bg-[var(--glass-border)] rounded-full" />
                             </div>
-                            <div className="flex gap-3">
-                                <button className="flex-1 cursor-pointer rounded-xl border border-[var(--glass-border)] bg-transparent p-3 font-body font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface)]" onClick={() => setShowAdjustPace(false)}>Cancel</button>
-                                <button className="flex-1 cursor-pointer rounded-xl border-none bg-[var(--accent-primary)] p-3 font-body font-medium text-white transition-colors hover:bg-[var(--accent-hover)]" onClick={() => {
-                                    const updated = adjustPlannerPace(planner, newDuration);
-                                    setPlanner(updated);
-                                    setShowAdjustPace(false);
-                                }}>Apply Changes</button>
+
+                            <div className="relative z-10">
+                                <h2 className="mb-2 font-ui text-[1.4rem] font-bold text-[var(--text-primary)]">Adjust Pace</h2>
+                                <p className="mb-8 font-body text-[0.95rem] leading-relaxed text-[var(--text-secondary)]">
+                                    Change how many days you want to complete your remaining plan in. This will re-calculate your daily assignments.
+                                </p>
+                                <div className="mb-8 flex flex-col gap-3">
+                                    <label className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">New Total Days</label>
+                                    <div className="relative group">
+                                        <input type="number" min="1" max="1000" className="w-full rounded-[16px] border-[2px] border-[var(--glass-border)] bg-[var(--bg-surface)] px-5 py-4 font-ui text-[1.5rem] font-bold text-[var(--text-primary)] outline-none transition-all duration-300 focus:border-[var(--accent-primary)] focus:shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.1)]"
+                                            value={newDuration} onChange={e => setNewDuration(parseInt(e.target.value) || 1)} />
+                                        <div className="absolute right-5 top-1/2 -translate-y-1/2 font-mono text-[0.8rem] text-[var(--text-muted)] pointer-events-none">DAYS</div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <button className="flex-1 cursor-pointer rounded-[16px] border border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] p-4 font-ui text-[1rem] font-bold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)]" onClick={() => setShowAdjustPace(false)}>Cancel</button>
+                                    <button className="flex-1 cursor-pointer rounded-[16px] border-none bg-gradient-to-r from-[var(--accent-light)] to-[var(--accent-primary)] p-4 font-ui text-[1rem] font-bold text-white shadow-lg transition-all hover:opacity-90 hover:shadow-[0_5px_20px_rgba(198,168,124,0.3)] hover:-translate-y-0.5" onClick={() => {
+                                        const updated = adjustPlannerPace(planner, newDuration);
+                                        setPlanner(updated);
+                                        setShowAdjustPace(false);
+                                    }}>Apply</button>
+                                </div>
                             </div>
                         </motion.div>
                     </motion.div>
@@ -1124,64 +1180,78 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
 
             <AnimatePresence>
                 {showSettings && (
-                    <motion.div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[rgba(0,0,0,0.5)] p-4 backdrop-blur-sm"
+                    <motion.div className="fixed inset-0 z-[1000] flex items-end justify-center bg-[rgba(0,0,0,0.4)] p-0 sm:items-center sm:p-4 backdrop-blur-md"
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={e => { if (e.target === e.currentTarget) setShowSettings(false); }}>
-                        <motion.div className="w-full max-w-[400px] rounded-2xl bg-[var(--bg-primary)] border border-[var(--glass-border)] p-6 shadow-2xl"
-                            initial={{ opacity: 0, y: 20, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.98 }}>
-                            <h2 className="mb-4 font-ui text-xl font-semibold text-[var(--text-primary)]">Planner Settings</h2>
+                        <motion.div className="w-full sm:max-w-[400px] rounded-t-[32px] sm:rounded-[24px] bg-[var(--bg-primary)] border border-white/10 p-6 sm:p-8 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] sm:shadow-2xl relative overflow-hidden"
+                            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 300 }}>
+                            {/* Glass overlay effect */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
                             
-                            <div className="flex flex-col gap-5 mb-6">
-                                <div className="flex flex-col gap-2">
-                                    <h3 className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-[var(--text-muted)]">Daily Prayers</h3>
-                                    <p className="font-body text-[0.8rem] text-[var(--text-secondary)] mb-1">Select which prayers you want to distribute reading across.</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].map(p => {
-                                            const isActive = useAppStore.getState().prayerSettings?.activePrayers?.includes(p) ?? true;
-                                            return (
-                                                <button key={p} className={`cursor-pointer rounded-full border-[1.5px] px-3 py-1 font-body text-[0.8rem] transition-colors ${
-                                                    isActive ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--glass-border)] text-[var(--text-muted)]'
-                                                }`} onClick={() => {
-                                                    const s = useAppStore.getState();
-                                                    const PRAYER_ORDER = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-                                                    const current = s.prayerSettings?.activePrayers || PRAYER_ORDER;
-                                                    const next = current.includes(p) ? current.filter(x => x !== p) : [...current, p];
-                                                    if(next.length === 0) return; // Must have at least 1
-                                                    const sortedNext = next.sort((a, b) => PRAYER_ORDER.indexOf(a) - PRAYER_ORDER.indexOf(b));
-                                                    s.updatePrayerSettings({ activePrayers: sortedNext });
-                                                }}>
-                                                    {p}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <h3 className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-[var(--text-muted)]">Reading Preference</h3>
-                                    <select className="w-full rounded-[10px] border-[1.5px] border-[var(--glass-border)] bg-[var(--bg-surface)] px-3 py-2 font-body text-[0.9rem] text-[var(--text-primary)] outline-none"
-                                        value={useAppStore.getState().prayerSettings?.readPreference || 'after'}
-                                        onChange={e => useAppStore.getState().updatePrayerSettings({ readPreference: e.target.value })}>
-                                        <option value="after">Read After Prayer</option>
-                                        <option value="before">Read Before Prayer</option>
-                                        <option value="split">Split Before & After</option>
-                                    </select>
-                                </div>
-                                <div className="flex items-center justify-between border-t border-[var(--glass-border)] pt-4">
-                                    <div className="flex flex-col">
-                                        <h3 className="font-mono text-[0.7rem] uppercase tracking-[0.1em] text-[var(--text-muted)]">Intention Prompts</h3>
-                                        <p className="font-body text-[0.8rem] text-[var(--text-secondary)]">Show a mindfulness prompt before reading.</p>
-                                    </div>
-                                    <button className={`relative h-6 w-11 cursor-pointer rounded-full border-none transition-colors ${
-                                        useAppStore.getState().intentionPromptEnabled ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-surface)] border border-[var(--glass-border)]'
-                                    }`} onClick={() => useAppStore.getState().toggleIntentionPrompt()}>
-                                        <div className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform ${
-                                            useAppStore.getState().intentionPromptEnabled ? 'translate-x-5' : 'translate-x-0'
-                                        }`} />
-                                    </button>
-                                </div>
+                            <div className="flex items-center justify-center w-full mb-6 sm:hidden">
+                                <div className="w-12 h-1.5 bg-[var(--glass-border)] rounded-full" />
                             </div>
 
-                            <button className="w-full cursor-pointer rounded-xl border border-[var(--glass-border)] bg-[var(--bg-surface)] p-3 font-body font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-secondary)]" onClick={() => setShowSettings(false)}>Done</button>
+                            <div className="relative z-10">
+                                <h2 className="mb-8 font-ui text-[1.4rem] font-bold text-[var(--text-primary)]">Planner Settings</h2>
+                                
+                                <div className="flex flex-col gap-6 mb-8">
+                                    <div className="flex flex-col gap-3">
+                                        <h3 className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">Daily Prayers</h3>
+                                        <p className="font-body text-[0.85rem] text-[var(--text-secondary)] mb-1">Select which prayers you want to distribute reading across.</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].map(p => {
+                                                const isActive = useAppStore.getState().prayerSettings?.activePrayers?.includes(p) ?? true;
+                                                return (
+                                                    <button key={p} className={`cursor-pointer rounded-[12px] border-[1.5px] px-4 py-2 font-ui text-[0.9rem] font-bold transition-all duration-200 hover:-translate-y-0.5 ${
+                                                        isActive ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white shadow-md' : 'border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] text-[var(--text-muted)] hover:border-[var(--accent-hover)] hover:text-[var(--text-primary)]'
+                                                    }`} onClick={() => {
+                                                        const s = useAppStore.getState();
+                                                        const PRAYER_ORDER = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+                                                        const current = s.prayerSettings?.activePrayers || PRAYER_ORDER;
+                                                        const next = current.includes(p) ? current.filter(x => x !== p) : [...current, p];
+                                                        if(next.length === 0) return; // Must have at least 1
+                                                        const sortedNext = next.sort((a, b) => PRAYER_ORDER.indexOf(a) - PRAYER_ORDER.indexOf(b));
+                                                        s.updatePrayerSettings({ activePrayers: sortedNext });
+                                                    }}>
+                                                        {p}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-3">
+                                        <h3 className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">Reading Preference</h3>
+                                        <div className="relative">
+                                            <select className="w-full appearance-none rounded-[16px] border-[2px] border-[var(--glass-border)] bg-[var(--bg-surface)] px-4 py-3.5 font-ui text-[1rem] font-medium text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--accent-primary)] cursor-pointer"
+                                                value={useAppStore.getState().prayerSettings?.readPreference || 'after'}
+                                                onChange={e => useAppStore.getState().updatePrayerSettings({ readPreference: e.target.value })}>
+                                                <option value="after">Read After Prayer</option>
+                                                <option value="before">Read Before Prayer</option>
+                                                <option value="split">Split Before & After</option>
+                                            </select>
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-muted)]">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between border-t border-[var(--glass-border)] pt-5 mt-2">
+                                        <div className="flex flex-col gap-1">
+                                            <h3 className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">Intention Prompts</h3>
+                                            <p className="font-body text-[0.85rem] text-[var(--text-secondary)]">Show a mindfulness prompt before reading.</p>
+                                        </div>
+                                        <button className={`relative h-7 w-12 cursor-pointer rounded-full border-none transition-colors duration-300 ${
+                                            useAppStore.getState().intentionPromptEnabled ? 'bg-[#10b981]' : 'bg-[var(--bg-surface)] border-[2px] border-[var(--glass-border)]'
+                                        }`} onClick={() => useAppStore.getState().toggleIntentionPrompt()}>
+                                            <div className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
+                                                useAppStore.getState().intentionPromptEnabled ? 'translate-x-5' : 'translate-x-0'
+                                            }`} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button className="w-full cursor-pointer rounded-[16px] border border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] p-4 font-ui text-[1rem] font-bold text-[var(--text-primary)] transition-all hover:bg-[var(--bg-surface)] hover:border-[var(--accent-primary)] hover:-translate-y-0.5" onClick={() => setShowSettings(false)}>Done</button>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
