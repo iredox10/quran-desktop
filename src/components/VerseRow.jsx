@@ -31,7 +31,7 @@ const VerseRow = ({
         triggerOnce: false,
     });
 
-    const { collections, addCollection, addToCollection } = useAppStore();
+    const { collections, addCollection, addToCollection, isPlaying } = useAppStore();
     const [showCollectionModal, setShowCollectionModal] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
 
@@ -162,10 +162,10 @@ const VerseRow = ({
                                 color: isAudioPlaying ? 'var(--accent-primary)' : 'var(--text-muted)',
                                 backgroundColor: isAudioPlaying ? 'var(--accent-light)' : 'transparent',
                             }}
-                            title={isAudioPlaying ? "Playing" : "Play this Ayah"}
+                            title={isAudioPlaying && isPlaying ? "Playing" : "Play this Ayah"}
                             onClick={() => onPlayVerse?.(verse)}
                         >
-                            {isAudioPlaying
+                            {isAudioPlaying && isPlaying
                                 ? <Pause size={18} fill="currentColor" />
                                 : <Play size={18} fill="currentColor" />
                             }
