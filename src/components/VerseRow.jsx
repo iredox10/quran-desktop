@@ -214,7 +214,7 @@ const VerseRow = ({
 
                 </div>
 
-                <div className="text-english" style={{
+                <div className="text-english font-body" style={{
                     fontSize: `${(translationFontSize || 2) * 0.15 + 0.75}rem`,
                     color: 'var(--text-secondary)',
                     lineHeight: 1.6

@@ -182,8 +182,8 @@ export default function GlobalAudioPlayer() {
                                 {/* Controls */}
                                 <div className="flex items-center gap-[0.15rem] shrink-0">
                                     {audioPlaylist.length > 0 && <button className="btn-icon w-7 h-7" onClick={handlePrev}><SkipBack size={16} /></button>}
-                                    <button className="btn-primary w-9 h-9 p-0 rounded-full flex items-center justify-center mx-[0.2rem]" onClick={() => setIsPlaying(!isPlaying)}>
-                                        {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-[2px]" />}
+                                    <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--accent-primary)] text-white shadow-md transition-all hover:scale-105 hover:bg-[var(--accent-hover)] mx-1" onClick={() => setIsPlaying(!isPlaying)}>
+                                        {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-[2px]" />}
                                     </button>
                                     <button className="btn-icon w-7 h-7 text-[var(--accent-primary)]" onClick={handleStop} title="Stop"><Square size={14} fill="currentColor" /></button>
                                     {audioPlaylist.length > 0 && <button className="btn-icon w-7 h-7" onClick={handleNext}><SkipForward size={16} /></button>}

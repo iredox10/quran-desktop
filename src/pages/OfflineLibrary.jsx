@@ -13,7 +13,7 @@ function PackCard({ title, description, stats, status, onSync, onDelete }) {
         <div className="p-[1.1rem] rounded-[22px] bg-[var(--bg-surface)] border border-[var(--border-color)] shadow-[var(--shadow-sm)]">
             <div className="flex justify-between gap-4 items-start flex-wrap">
                 <div>
-                    <div className="font-extrabold text-[var(--text-primary)] mb-[0.3rem]">{title}</div>
+                    <h3 className="font-ui text-2xl font-extrabold text-[var(--text-primary)] mb-[0.3rem]">{title}</h3>
                     <div className="text-[var(--text-secondary)] leading-[1.6]">{description}</div>
                 </div>
                 {stats?.downloaded ? (
@@ -29,11 +29,11 @@ function PackCard({ title, description, stats, status, onSync, onDelete }) {
 
             <div className="grid gap-3 mt-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
                 <div className="px-[0.95rem] py-[0.85rem] rounded-2xl bg-[var(--bg-primary)] border border-[rgba(0,0,0,0.06)]">
-                    <div className="text-[var(--text-muted)] text-[0.76rem] uppercase tracking-[0.08em] font-bold mb-[0.3rem]">Entries</div>
+                    <div className="font-mono text-[var(--text-muted)] text-[0.7rem] uppercase tracking-[0.1em] font-bold mb-[0.3rem]">Entries</div>
                     <div className="text-[var(--text-primary)] font-extrabold">{stats?.entryCount || 0}</div>
                 </div>
                 <div className="px-[0.95rem] py-[0.85rem] rounded-2xl bg-[var(--bg-primary)] border border-[rgba(0,0,0,0.06)]">
-                    <div className="text-[var(--text-muted)] text-[0.76rem] uppercase tracking-[0.08em] font-bold mb-[0.3rem]">Storage</div>
+                    <div className="font-mono text-[var(--text-muted)] text-[0.7rem] uppercase tracking-[0.1em] font-bold mb-[0.3rem]">Storage</div>
                     <div className="text-[var(--text-primary)] font-extrabold">{stats?.sizeLabel || '0 B'}</div>
                 </div>
             </div>
@@ -146,7 +146,7 @@ export default function OfflineLibrary() {
                                 <HardDrive size={14} aria-hidden="true" />
                                 Offline Library
                             </div>
-                            <h1 className="leading-[1.1] text-[var(--text-primary)] mb-[0.6rem]" style={{ fontSize: 'clamp(1.7rem, 4vw, 2.5rem)' }}>
+                            <h1 className="font-ui font-extrabold leading-[1.1] text-[var(--text-primary)] mb-[0.6rem]" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)' }}>
                                 Download Quran packs for reliable offline reading.
                             </h1>
                             <p className="max-w-[620px] text-[var(--text-secondary)] leading-[1.7]">
@@ -155,11 +155,11 @@ export default function OfflineLibrary() {
                         </div>
                         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(2, minmax(120px, 1fr))' }}>
                             <div className="p-4 rounded-[18px] bg-[var(--bg-primary)] border border-[rgba(0,0,0,0.06)]">
-                                <div className="text-[var(--text-muted)] text-[0.76rem] uppercase tracking-[0.08em] font-bold mb-[0.3rem]">Mushaf</div>
+                                <div className="font-mono text-[var(--text-muted)] text-[0.7rem] uppercase tracking-[0.1em] font-bold mb-[0.3rem]">Mushaf</div>
                                 <div className="text-[var(--text-primary)] font-bold">{mushafId}</div>
                             </div>
                             <div className="p-4 rounded-[18px] bg-[var(--bg-primary)] border border-[rgba(0,0,0,0.06)]">
-                                <div className="text-[var(--text-muted)] text-[0.76rem] uppercase tracking-[0.08em] font-bold mb-[0.3rem]">Status</div>
+                                <div className="font-mono text-[var(--text-muted)] text-[0.7rem] uppercase tracking-[0.1em] font-bold mb-[0.3rem]">Status</div>
                                 <div className="text-[var(--text-primary)] font-bold">{navigator.onLine ? 'Online' : 'Offline'}</div>
                             </div>
                         </div>

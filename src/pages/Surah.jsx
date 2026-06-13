@@ -473,12 +473,12 @@ export default function Surah() {
                         </div>
 
                         <div className="relative z-[1]">
-                            <div className="inline-block px-4 py-[0.4rem] rounded-full bg-[var(--accent-light)] text-accent text-[0.85rem] font-bold tracking-[1px] uppercase mb-6">
+                            <div className="inline-block px-4 py-[0.4rem] rounded-full bg-[var(--accent-light)] text-accent font-mono text-[0.7rem] font-bold tracking-[0.1em] uppercase mb-6">
                                 Surah {chapter?.id}
                             </div>
 
                             <h1
-                                className="surah-title font-extrabold mb-2 text-[var(--text-primary)] tracking-[-1px]"
+                                className="surah-title font-ui font-extrabold mb-2 text-[var(--text-primary)] tracking-[-1px]"
                                 style={{
                                     fontSize: 'clamp(2.5rem, 8vw, 4rem)',
                                 }}
@@ -499,7 +499,7 @@ export default function Surah() {
                                     className="btn-primary flex items-center gap-2"
                                     onClick={handlePlayClick}
                                 >
-                                    {isCurrentAudio && isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                                    {isCurrentAudio && isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
                                     {isCurrentAudio && isPlaying ? 'Pause Audio' : 'Play Audio'}
                                 </button>
                                 <button
@@ -652,7 +652,7 @@ export default function Surah() {
                             >
                                 <Minus size={14} />
                             </button>
-                            <span className="font-semibold text-[0.9rem] text-[var(--text-primary)] min-w-[40px] text-center">
+                            <span className="font-mono text-[0.8rem] font-bold text-[var(--text-primary)] min-w-[40px] text-center">
                                 {autoScrollSpeed}x
                             </span>
                             <button
@@ -708,7 +708,7 @@ export default function Surah() {
                             <div className="w-10 h-[5px] bg-[var(--border-color)] rounded-[3px] mx-auto mb-6" />
 
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-bold text-[var(--text-primary)] m-0">
+                                <h3 className="font-ui text-2xl font-bold text-[var(--text-primary)] m-0">
                                     Tafsir (Ayah {activeTafsir.verse_key.split(':')[1]})
                                 </h3>
                                 <button

@@ -21,7 +21,7 @@ export default function Library() {
                 <section className="mb-16">
                     <div className="flex items-center gap-3 mb-6">
                         <Bookmark size={24} className="text-accent" />
-                        <h2 className="text-2xl font-bold text-[var(--text-primary)]">Bookmarks</h2>
+                        <h2 className="font-ui text-3xl font-bold text-[var(--text-primary)]">Bookmarks</h2>
                     </div>
 
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
@@ -38,8 +38,8 @@ export default function Library() {
                                     className="bg-[var(--bg-surface)] p-6 rounded-2xl border border-[var(--border-color)] shadow-[var(--shadow-sm)] flex justify-between items-center"
                                 >
                                     <div>
-                                        <h4 className="font-semibold text-[var(--text-primary)]">{b.surahName}</h4>
-                                        <p className="text-[var(--text-muted)] text-sm">Ayah {b.verseKey.split(':')[1]}</p>
+                                        <h4 className="font-ui text-xl font-semibold text-[var(--text-primary)]">{b.surahName}</h4>
+                                        <p className="font-mono text-[var(--text-muted)] text-[0.75rem] uppercase tracking-wider mt-1">Ayah {b.verseKey.split(':')[1]}</p>
                                     </div>
                                     <div className="flex gap-2">
                                         <Link to={`/surah/${b.chapterId}?verse=${b.verseKey}`} className="btn-icon text-[var(--accent-primary)] bg-[var(--accent-light)]">
@@ -60,7 +60,7 @@ export default function Library() {
                     <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                         <div className="flex items-center gap-3">
                             <Folder size={24} className="text-accent" />
-                            <h2 className="text-2xl font-bold text-[var(--text-primary)]">Collections</h2>
+                            <h2 className="font-ui text-3xl font-bold text-[var(--text-primary)] mt-10">Collections</h2>
                         </div>
 
                         <div className="flex gap-2 bg-[var(--bg-surface)] p-2 rounded-xl border border-[var(--border-color)] min-w-[280px]">
@@ -100,7 +100,7 @@ export default function Library() {
                                 >
                                     <div className="flex justify-between items-start mb-6">
                                         <div>
-                                            <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-1">{c.name}</h3>
+                                            <h3 className="font-ui text-2xl font-semibold text-[var(--text-primary)] mb-1">{c.name}</h3>
                                             <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm">
                                                 <LibraryIcon size={14} /> {c.items.length} verses
                                             </div>

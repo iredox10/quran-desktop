@@ -339,10 +339,10 @@ export default function Page() {
                     <div className="surah-hero-card mb-8" style={{ padding: 'clamp(1rem, 3vw, 2rem) 1.5rem' }}>
                         <div className="surah-bg-glow" />
                         <div className="relative z-[1] text-center">
-                            <div className="inline-block px-4 py-[0.4rem] rounded-full bg-[var(--accent-light)] text-[var(--accent-primary)] text-[0.85rem] font-bold tracking-[1px] uppercase mb-2">
+                            <div className="inline-block px-4 py-[0.4rem] rounded-full bg-[var(--accent-light)] text-[var(--accent-primary)] font-mono text-[0.7rem] font-bold tracking-[0.1em] uppercase mb-2">
                                 {mushaf.name} Mushaf
                             </div>
-                            <h1 className="font-extrabold m-0 leading-[1.2] text-[var(--text-primary)] tracking-[-1px]" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)' }}>
+                            <h1 className="font-ui font-extrabold m-0 leading-[1.2] text-[var(--text-primary)] tracking-[-1px]" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)' }}>
                                 Page {pageNumber}
                             </h1>
                             <p className="text-[var(--text-muted)] mt-[0.8rem] text-[1.1rem] font-medium">
@@ -464,12 +464,12 @@ export default function Page() {
                 >
                     <ChevronLeft size={20} />
                     <div className="flex flex-col items-start text-left">
-                        <span className="text-xs text-[var(--text-muted)] uppercase tracking-[0.5px]">Next</span>
+                        <span className="font-mono text-[0.65rem] font-semibold text-[var(--text-muted)] uppercase tracking-[0.1em]">Next</span>
                         <span>Page {pageNumber + 1 > maxPageNumber ? maxPageNumber : pageNumber + 1}</span>
                     </div>
                 </button>
 
-                <div className="text-center text-[var(--text-muted)] text-[0.85rem] font-medium">
+                <div className="text-center font-mono text-[0.75rem] font-semibold text-[var(--text-muted)]">
                     {pageNumber} / {maxPageNumber}
                 </div>
 
@@ -483,7 +483,7 @@ export default function Page() {
                     }}
                 >
                     <div className="flex flex-col items-end text-right">
-                        <span className="text-xs text-[var(--text-muted)] uppercase tracking-[0.5px]">Previous</span>
+                        <span className="font-mono text-[0.65rem] font-semibold text-[var(--text-muted)] uppercase tracking-[0.1em]">Previous</span>
                         <span>Page {pageNumber - 1 < 1 ? 1 : pageNumber - 1}</span>
                     </div>
                     <ChevronRight size={20} />
@@ -538,7 +538,7 @@ export default function Page() {
                             >
                                 <Minus size={14} />
                             </button>
-                            <span className="font-semibold text-[0.9rem] text-[var(--text-primary)] min-w-[40px] text-center">
+                            <span className="font-mono text-[0.8rem] font-bold text-[var(--text-primary)] min-w-[40px] text-center">
                                 {autoScrollSpeed}x
                             </span>
                             <button
