@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { useQuery } from '@tanstack/react-query';
-import { getChapters } from '../services/api/quranApi';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Activity, CalendarDays, BookMarked, BookOpen, Layers, Clock, TrendingUp, Flame, ChevronRight, Award, History, Sparkles, Target, Lightbulb } from 'lucide-react';
+import { Activity, CalendarDays, BookMarked, BookOpen, Layers, Clock, TrendingUp, Flame, ChevronRight, Award, History, Sparkles, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const TOTAL_SURAHS = 114;
@@ -55,6 +53,7 @@ const CustomTooltip = ({ active, payload, label, unit = "min", labelFormatter })
     return null;
 };
 
+// SVG Circular Progress
 const CircularProgress = ({ percent, color, size = 64, strokeWidth = 6 }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
@@ -82,9 +81,7 @@ const CircularProgress = ({ percent, color, size = 64, strokeWidth = 6 }) => {
 
 export default function Progress() {
     const { setNavHeaderTitle, readingSessions, recentlyRead, bookmarks, collections, pomodoroHistory } = useAppStore();
-    const [chartMode, setChartMode] = useState('flow');
-
-    const { data: chapters = [] } = useQuery({ queryKey: ['chapters'], queryFn: getChapters, staleTime: Infinity });
+    const [chartMode, setChartMode] = useState('flow'); // 'flow' or 'heatmap'
 
     useEffect(() => {
         setNavHeaderTitle('Analytics');
@@ -94,6 +91,9 @@ export default function Progress() {
     const sessions = readingSessions || [];
     const today = new Date().toISOString().split('T')[0];
 
+    // ---------------------------------------------------------
+    // Calculated Stats
+    // ---------------------------------------------------------
     const last7Days = useMemo(() => getLastNDays(7), []);
     const dailyActivity = useMemo(() => {
         return last7Days.map(date => {
@@ -159,6 +159,11 @@ export default function Progress() {
         });
     }, [sessions, last35Days]);
 
+    // ---------------------------------------------------------
+    // Phase 2 Features
+    // ---------------------------------------------------------
+    
+    // 1. Weekly Goal Ring (Goal: 180 mins = 3 hours)
     const weeklyGoalMins = 180;
     const weeklyTotalMins = useMemo(() => {
         return last7Days.reduce((total, date) => {
@@ -168,6 +173,7 @@ export default function Progress() {
     }, [sessions, last7Days]);
     const weeklyGoalPercent = Math.min(100, Math.round((weeklyTotalMins / weeklyGoalMins) * 100));
 
+    // 2. Smart Insights
     const smartInsight = useMemo(() => {
         if (sessions.length === 0) return "Start reading to unlock insights!";
         const dayCounts = { 'Sun': 0, 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0 };
@@ -182,6 +188,7 @@ export default function Progress() {
         return `You usually read best on ${fullDays[bestDay]}. Keep up the great momentum!`;
     }, [sessions]);
 
+    // 3. Achievements & Badges
     const achievements = useMemo(() => {
         const badges = [];
         if (streak >= 3) badges.push({ icon: '🔥', title: '3-Day Streak', desc: 'Consistency is key.' });
@@ -196,9 +203,10 @@ export default function Progress() {
         if (uniqueSurahsRead >= 30) badges.push({ icon: '🗺️', title: 'Traveler', desc: 'Read 30 Surahs.' });
         if (uniqueSurahsRead === TOTAL_SURAHS) badges.push({ icon: '👑', title: 'Khatm', desc: 'Read all 114 Surahs!' });
         
-        return badges.reverse().slice(0, 3);
+        return badges.reverse().slice(0, 3); // Show top 3 highest achievements
     }, [streak, allTimeTotal, uniqueSurahsRead]);
 
+    // 4. Recent Activity Feed
     const recentActivity = useMemo(() => {
         return [...sessions].sort((a, b) => {
             const timeA = a.timestamp || new Date(a.date).getTime();
@@ -233,14 +241,17 @@ export default function Progress() {
                     <p className="text-[0.85rem] text-[var(--text-secondary)] mt-1">{greeting}. Here's the story of your consistency.</p>
                 </div>
 
+                {/* Smart Insights Banner */}
                 {hasData && (
                     <div className="mb-6 rounded-[16px] bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 px-5 py-3 flex items-center gap-3">
-                        <Lightbulb size={18} className="text-[var(--accent-primary)] shrink-0" />
+                        <Sparkles size={18} className="text-[var(--accent-primary)]" />
                         <span className="text-[0.85rem] text-[var(--text-primary)] font-medium">{smartInsight}</span>
                     </div>
                 )}
 
+                {/* TIER 1: The Hero Motivators */}
                 <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Streak Hero Card */}
                     <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-secondary)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] p-6 flex flex-col justify-between group">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent-primary)]/10 blur-[40px] rounded-full pointer-events-none transition-transform duration-700 group-hover:scale-150" />
                         <div className="flex items-center justify-between mb-8">
@@ -258,6 +269,7 @@ export default function Progress() {
                         </div>
                     </div>
 
+                    {/* Today's Reading Hero */}
                     <div className="relative overflow-hidden rounded-[24px] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6 flex flex-col justify-between group">
                         <div className="flex items-center justify-between mb-8">
                             <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Today's Focus</div>
@@ -279,6 +291,7 @@ export default function Progress() {
                         </div>
                     </div>
 
+                    {/* Weekly Goal Ring */}
                     <div className="relative overflow-hidden rounded-[24px] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6 flex flex-col justify-between group">
                         <div className="flex items-center justify-between mb-4">
                             <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Weekly Goal</div>
@@ -313,7 +326,9 @@ export default function Progress() {
                     </div>
                 )}
 
+                {/* TIER 2: Charts and Breakdown */}
                 <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Activity Flow / Heatmap Toggle */}
                     <div className="rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6 flex flex-col">
                         <div className="mb-6 flex items-center justify-between">
                             <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
@@ -359,6 +374,7 @@ export default function Progress() {
                                     <motion.div key="heatmap" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }} className="w-full flex flex-col justify-center">
                                         <div className="flex items-end justify-center py-4 overflow-x-auto no-scrollbar">
                                             <div className="flex gap-2">
+                                                {/* Slice into columns of 7 days */}
                                                 {Array.from({ length: 5 }).map((_, colIndex) => (
                                                     <div key={colIndex} className="flex flex-col gap-2">
                                                         {heatmapData.slice(colIndex * 7, (colIndex + 1) * 7).map((day, i) => {
@@ -395,6 +411,7 @@ export default function Progress() {
                         </div>
                     </div>
 
+                    {/* Breakdown Donut Chart */}
                     <div className="rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6 flex flex-col">
                         <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
@@ -446,7 +463,9 @@ export default function Progress() {
                     </div>
                 </div>
 
+                {/* TIER 3: Achievements & Recent Activity */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+                    {/* Achievements */}
                     <div className="rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6">
                         <div className="mb-5 flex items-center justify-between">
                             <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
@@ -472,6 +491,7 @@ export default function Progress() {
                         )}
                     </div>
 
+                    {/* Recent Activity */}
                     <div className="rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6">
                         <div className="mb-5 flex items-center justify-between">
                             <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
@@ -502,14 +522,7 @@ export default function Progress() {
                                         title = "Memorization";
                                     }
 
-                                    if (session.chapterId) {
-                                        const chapter = chapters.find(c => c.id === parseInt(session.chapterId));
-                                        if (chapter) {
-                                            title += ` - ${chapter.name_simple}`;
-                                        } else {
-                                            title += ` - Surah ${session.chapterId}`;
-                                        }
-                                    }
+                                    if (session.chapterId) title += ` - Surah ${session.chapterId}`;
 
                                     return (
                                         <div key={i} className="flex gap-4 relative py-3 group">
@@ -535,6 +548,7 @@ export default function Progress() {
                     </div>
                 </div>
 
+                {/* TIER 4: Quick Links */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     {[
                         { icon: BookMarked, label: 'Bookmarks', value: (bookmarks || []).length, route: '/bookmarks' },
