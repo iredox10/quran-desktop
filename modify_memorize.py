@@ -1,161 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { getChapters, getJuzs, getChapterAudio } from '../services/api/quranApi';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAppStore } from '../store/useAppStore';
-import { Search, Award, X, ArrowRight, CheckCircle, Folder, BookOpen, Play, Target, AlertCircle, Calendar, RefreshCw } from 'lucide-react';
-import { Helmet } from 'react-helmet-async';
-import HifdhTestModal from '../components/HifdhTestModal';
+import re
 
-export default function MemorizeIndex() {
-    const { 
-        setNavHeaderTitle, bookmarks, collections, memorizedSurahs, memorizedAyahs, 
-        readingSessions, hifdhHistory, hifdhGoals, addHifdhGoal, setAudio, setIsPlaying 
-    } = useAppStore();
-    
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showOnlyMemorized, setShowOnlyMemorized] = useState(false);
-    const [showSurahsModal, setShowSurahsModal] = useState(false);
-    const [showAyahsModal, setShowAyahsModal] = useState(false);
-    const [showTestModal, setShowTestModal] = useState(false);
-    const [showGoalModal, setShowGoalModal] = useState(false);
-    const [viewMode, setViewMode] = useState('surah'); // 'surah' | 'juz'
+with open("src/pages/MemorizeIndex.jsx", "r") as f:
+    content = f.read()
 
-    const [goalTarget, setGoalTarget] = useState('');
-    const [goalDate, setGoalDate] = useState('');
-
-    useEffect(() => {
-        setNavHeaderTitle('Hifdh');
-        return () => setNavHeaderTitle(null);
-    }, [setNavHeaderTitle]);
-
-    const { data: chapters, isLoading: isLoadingChapters, error } = useQuery({
-        queryKey: ['chapters'],
-        queryFn: getChapters,
-    });
-
-    const { data: juzs, isLoading: isLoadingJuzs } = useQuery({
-        queryKey: ['juzs'],
-        queryFn: getJuzs,
-        enabled: viewMode === 'juz'
-    });
-
-    const isLoading = isLoadingChapters || (viewMode === 'juz' && isLoadingJuzs);
-
-    const lastSession = useMemo(() => {
-        if (!readingSessions?.length) return null;
-        const memSessions = readingSessions.filter(s => s.type === 'memorizing' && s.chapterId);
-        if (!memSessions.length) return null;
-        return memSessions[memSessions.length - 1];
-    }, [readingSessions]);
-
-    const lastSessionChapter = useMemo(() => {
-        if (!lastSession || !chapters) return null;
-        return chapters.find(c => c.id === lastSession.chapterId);
-    }, [lastSession, chapters]);
-
-    const surahMemCounts = useMemo(() => {
-        const counts = {};
-        (memorizedAyahs || []).forEach(key => {
-            const surahId = key.split(':')[0];
-            counts[surahId] = (counts[surahId] || 0) + 1;
-        });
-        return counts;
-    }, [memorizedAyahs]);
-
-    const needsRevision = useMemo(() => {
-        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-        const now = Date.now();
-        const items = [];
-        
-        (memorizedAyahs || []).forEach(ayah => {
-            const history = hifdhHistory?.[ayah];
-            if (!history || (now - history.lastReviewed > SEVEN_DAYS) || history.strength === 'weak') {
-                items.push(ayah);
-            }
-        });
-        return items.slice(0, 10); // top 10 to review
-    }, [memorizedAyahs, hifdhHistory]);
-
-    const memorizedAyahsGrouped = useMemo(() => {
-        const acc = {};
-        (memorizedAyahs || []).forEach(key => {
-            const [surahId, ayahNum] = key.split(':');
-            if (!acc[surahId]) acc[surahId] = [];
-            acc[surahId].push(Number(ayahNum));
-        });
-        Object.keys(acc).forEach(id => acc[id].sort((a, b) => a - b));
-        return acc;
-    }, [memorizedAyahs]);
-
-    const timeSince = useMemo(() => {
-        if (!lastSession) return '';
-        const diff = Date.now() - lastSession.timestamp;
-        const mins = Math.floor(diff / 60000);
-        if (mins < 60) return `${mins}m ago`;
-        const hrs = Math.floor(mins / 60);
-        if (hrs < 24) return `${hrs}h ago`;
-        const days = Math.floor(hrs / 24);
-        return `${days}d ago`;
-    }, [lastSession]);
-
-    const handlePlayAudio = async (e, chapterId) => {
-        e.preventDefault();
-        e.stopPropagation();
-        try {
-            const audioData = await getChapterAudio(chapterId);
-            setAudio(audioData.audio_url);
-            setIsPlaying(true);
-        } catch (err) {
-            console.error("Failed to play audio", err);
-        }
-    };
-
-    const handleCreateGoal = () => {
-        if (!goalTarget || !goalDate) return;
-        addHifdhGoal({
-            targetType: 'surah',
-            targetId: goalTarget,
-            targetDate: goalDate,
-        });
-        setShowGoalModal(false);
-    };
-
-    const totalSurahs = (memorizedSurahs || []).length;
-    const totalAyahs = (memorizedAyahs || []).length;
-
-    const filteredChapters = useMemo(() => {
-        if (!chapters) return [];
-        let result = chapters;
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            result = result.filter(c => 
-                c.name_simple.toLowerCase().includes(q) || 
-                (c.translated_name?.name || '').toLowerCase().includes(q)
-            );
-        }
-        if (showOnlyMemorized) {
-            result = result.filter(c => 
-                (memorizedSurahs || []).includes(c.id) || 
-                surahMemCounts[c.id] === c.verses_count
-            );
-        }
-        return result;
-    }, [chapters, searchQuery, showOnlyMemorized, memorizedSurahs, surahMemCounts]);
-
-    if (isLoading && !chapters) return (
-        <div className="mx-auto max-w-[1200px] px-4 pb-20">
-            <div className="pt-[10vh] text-center text-[var(--h-ink-muted)]">
-                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                    className="mb-4 inline-block h-9 w-9 rounded-full"
-                    style={{ border: '3px solid var(--h-bone-dark)', borderTopColor: 'var(--h-teal)' }} />
-                <p>Loading...</p>
-            </div>
-        </div>
-    );
-
-    return (
+new_ui = """
         <div className="mx-auto max-w-[1200px] px-4 pb-20">
             <Helmet>
                 <title>Hifdh — Memorization Tracker</title>
@@ -453,5 +301,20 @@ export default function MemorizeIndex() {
                 )}
             </AnimatePresence>
         </div>
-    );
-}
+"""
+
+# Find where the return statement starts
+match = re.search(r'return\s*\(\s*<div className="mx-auto max-w-\[1200px\]', content)
+if not match:
+    print("Could not find return statement")
+    exit(1)
+
+start_idx = match.start()
+end_idx = content.rfind(');')
+
+new_content = content[:start_idx] + "return (\n" + new_ui + "    );" + content[end_idx+2:]
+
+with open("src/pages/MemorizeIndex.jsx", "w") as f:
+    f.write(new_content)
+
+print("Successfully updated MemorizeIndex.jsx")
