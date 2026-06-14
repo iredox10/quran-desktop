@@ -809,7 +809,7 @@ export default function PlannerReader() {
                         }}
                     >
                         {/* Controls Panel */}
-                        <div className="flex items-center gap-3 px-4 py-[0.6rem] rounded-full bg-[var(--glass-bg)] backdrop-blur-[16px] border-[var(--glass-border)] shadow-[var(--shadow-xl)]">
+                        <div className="flex items-center gap-3 px-4 py-[0.6rem] rounded-full bg-[var(--h-cream)] border-[1.5px] border-[var(--h-bone-dark)] shadow-sm">
                             {/* Manual scroll buttons */}
                             <div className="flex gap-1">
                                 <button

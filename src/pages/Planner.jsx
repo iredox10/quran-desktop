@@ -787,7 +787,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                 </div>
 
                 {/* --- TAB NAVIGATION --- */}
-                <div className="relative flex w-full max-w-[480px] md:max-w-[800px] mb-10 p-[6px] bg-[rgba(0,0,0,0.05)] dark:bg-[rgba(255,255,255,0.03)] rounded-[20px] shadow-inner backdrop-blur-md border border-[var(--glass-border)]">
+                <div className="relative flex w-full max-w-[480px] md:max-w-[800px] mb-10 p-[6px] bg-[var(--h-cream)] rounded-[20px] shadow-sm border-[1.5px] border-[var(--h-bone-dark)]">
                     {[ {id: 'today', label: 'Today'}, {id: 'progress', label: 'Progress'}, {id: 'journal', label: 'Journal'} ].map(tab => {
                         const isActive = activeTab === tab.id;
                         return (
@@ -829,13 +829,13 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         </h2>
                                         <div className="flex gap-2">
                                             {navigator.share && (
-                                                <button onClick={handleShareProgress} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] transition-colors" title="Share Progress">
+                                                <button onClick={handleShareProgress} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] text-[var(--text-secondary)] hover:bg-[var(--h-bone)] hover:text-[var(--text-primary)] transition-colors" title="Share Progress">
                                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                         <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                                                     </svg>
                                                 </button>
                                             )}
-                                            <button onClick={() => setShowSettings(true)} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-[var(--glass-border)] bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] transition-colors" title="Settings">
+                                            <button onClick={() => setShowSettings(true)} className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] text-[var(--text-secondary)] hover:bg-[var(--h-bone)] hover:text-[var(--text-primary)] transition-colors" title="Settings">
                                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                                             </button>
                                         </div>
@@ -852,7 +852,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                         ? 'bg-[var(--bg-surface)] border border-[var(--accent-primary)] shadow-[0_8px_30px_rgba(198,168,124,0.25)] scale-[1.02]'
                                                         : isCompleted
                                                             ? 'bg-[rgba(16,185,129,0.03)] border border-[#10b981]/20 opacity-80 scale-95 py-2.5'
-                                                            : 'bg-[var(--glass-bg)] border border-[var(--glass-border)]'
+                                                            : 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)]'
                                                 }`}
                                                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: 0.05 * i, duration: 0.4, type: 'spring', bounce: 0.3 }}
@@ -870,7 +870,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                 <div className="flex min-w-0 flex-1 flex-col gap-[0.25rem]">
                                                     <span className={`font-ui text-[1.1rem] font-bold tracking-tight text-[var(--text-primary)] flex items-center gap-2 ${isCompleted ? 'line-through opacity-50' : ''}`}>
                                                         {slot.name}
-                                                        {slot.time && <span className="text-[0.7rem] font-mono text-[var(--text-secondary)] bg-[var(--bg-secondary)] border border-[var(--glass-border)] px-1.5 py-0.5 rounded-[6px] no-underline opacity-90 inline-block">{slot.time}</span>}
+                                                        {slot.time && <span className="text-[0.7rem] font-mono text-[var(--text-secondary)] bg-[var(--h-bone)] border-[1.5px] border-[var(--h-bone-dark)] px-1.5 py-0.5 rounded-[6px] no-underline opacity-90 inline-block">{slot.time}</span>}
                                                     </span>
                                                     <span className={`font-mono text-[0.75rem] uppercase tracking-[0.05em] font-medium leading-[1.3] ${isCurrent ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`}>
                                                         {isCompleted && `${slot.doneInSlot}/${slot.count} ${PLANNER_UNITS[planner.unitType]?.plural} ✓`}
@@ -892,7 +892,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                         </Link>
                                                     )}
                                                     {isUpcoming && (
-                                                        <button className="flex h-[32px] w-[32px] items-center justify-center cursor-pointer border border-[var(--glass-border)] bg-[var(--bg-surface)] hover:bg-[var(--bg-secondary)] transition-colors rounded-full" onClick={() => handleMarkPrayer(slot)} title="Mark done">
+                                                        <button className="flex h-[32px] w-[32px] items-center justify-center cursor-pointer border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] hover:bg-[var(--h-bone)] transition-colors rounded-full" onClick={() => handleMarkPrayer(slot)} title="Mark done">
                                                             <div className="h-3 w-3 rounded-full border-[1.5px] border-[var(--text-muted)]" />
                                                         </button>
                                                     )}
@@ -918,7 +918,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         </h2>
                                         <div className="flex items-center gap-3">
                                             <span className="font-mono text-[0.7rem] uppercase tracking-[0.05em] text-[var(--text-muted)] hidden md:inline-block">({completedDays}/{planner.durationDays} done)</span>
-                                            <button onClick={() => setShowAdjustPace(true)} className="cursor-pointer border border-[var(--glass-border)] bg-[var(--glass-bg)] px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] shadow-sm transition-all duration-200 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg> Adjust</button>
+                                            <button onClick={() => setShowAdjustPace(true)} className="cursor-pointer border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-3 py-1.5 rounded-full text-[0.75rem] font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--h-bone)] shadow-sm transition-all duration-200 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg> Adjust</button>
                                         </div>
                                     </div>
                                     <div className="flex flex-wrap gap-[8px] rounded-[24px] border border-white/5 bg-[rgba(255,255,255,0.02)] p-6 shadow-inner backdrop-blur-xl md:gap-[10px]">
@@ -931,7 +931,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                 completed: 'bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-hover)] text-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.2),_0_2px_8px_rgba(198,168,124,0.4)] border-none',
                                                 today: 'bg-[var(--bg-primary)] text-[var(--accent-primary)] border-[2px] border-[var(--accent-primary)] shadow-[0_0_15px_rgba(198,168,124,0.25)]',
                                                 overdue: 'bg-gradient-to-br from-red-500/10 to-red-600/5 text-[#dc2626] border border-red-500/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]',
-                                                upcoming: 'bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-muted)] shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]',
+                                                upcoming: 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] text-[var(--text-muted)]',
                                             };
                                             return (
                                                 <motion.div key={a.dayNumber}
@@ -976,15 +976,15 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         Performance Insights
                                     </h3>
                                     <div className="grid gap-4 md:grid-cols-3 mb-2">
-                                        <div className="group flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[#10b981]/30">
+                                        <div className="group flex flex-col gap-1 bg-[var(--h-cream)] border-[1.5px] border-[var(--h-bone-dark)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[#10b981]/30">
                                             <span className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">On-Time Completion</span>
                                             <span className="font-ui text-[1.8rem] font-bold text-[#10b981] tracking-tight">{analytics.onTimeRate}%</span>
                                         </div>
-                                        <div className="group flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[var(--accent-primary)]/50">
+                                        <div className="group flex flex-col gap-1 bg-[var(--h-cream)] border-[1.5px] border-[var(--h-bone-dark)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[var(--h-teal)]">
                                             <span className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">Catch-ups Used</span>
                                             <span className="font-ui text-[1.8rem] font-bold text-[var(--accent-primary)] tracking-tight">{analytics.catchUpDaysCount}</span>
                                         </div>
-                                        <div className="group flex flex-col gap-1 bg-[var(--bg-surface)] border border-[var(--glass-border)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[var(--text-primary)]/20">
+                                        <div className="group flex flex-col gap-1 bg-[var(--h-cream)] border-[1.5px] border-[var(--h-bone-dark)] p-4 rounded-[18px] shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 hover:border-[var(--h-teal)]">
                                             <span className="font-mono text-[0.65rem] uppercase tracking-[0.08em] text-[var(--text-muted)]">Current Pace</span>
                                             <span className="font-ui text-[1.8rem] font-bold text-[var(--text-primary)] tracking-tight">{Math.round(analytics.avgUnitsPerDay)} <span className="text-[1rem] text-[var(--text-muted)] font-medium">u/day</span></span>
                                         </div>
@@ -1003,7 +1003,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                 const pct = Math.min(100, Math.round((week.completedUnits / week.totalUnits) * 100));
                                                 const isComplete = pct === 100;
                                                 return (
-                                                <div key={i} className="group flex items-center justify-between bg-[var(--bg-surface)] border border-[var(--glass-border)] px-5 py-4 rounded-[16px] shadow-sm transition-colors hover:border-[var(--glass-border-hover)]">
+                                                <div key={i} className="group flex items-center justify-between bg-[var(--h-cream)] border-[1.5px] border-[var(--h-bone-dark)] px-5 py-4 rounded-[16px] shadow-sm transition-colors hover:border-[var(--h-teal)]">
                                                     <span className="font-ui text-[0.95rem] font-bold text-[var(--text-primary)]">{week.label}</span>
                                                     <div className="flex items-center gap-4">
                                                         <span className={`font-mono text-[0.75rem] font-medium ${isComplete ? 'text-[#10b981]' : 'text-[var(--text-secondary)]'}`}>{week.completedUnits} / {week.totalUnits}</span>
@@ -1067,7 +1067,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         Object.entries(plannerReflections[planner.id])
                                             .sort((a, b) => Number(b[0]) - Number(a[0]))
                                             .map(([dayId, ref]) => (
-                                                <div key={dayId} className="group relative rounded-[20px] bg-[var(--bg-surface)] p-5 shadow-sm border border-[var(--glass-border)] transition-all hover:shadow-md hover:-translate-y-0.5 overflow-hidden">
+                                                <div key={dayId} className="group relative rounded-[20px] bg-[var(--h-cream)] p-5 shadow-sm border-[1.5px] border-[var(--h-bone-dark)] transition-all hover:shadow-md hover:-translate-y-0.5 overflow-hidden">
                                                     <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">
                                                         <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" /></svg>
                                                     </div>
@@ -1079,7 +1079,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                 </div>
                                             ))
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[20px]">
+                                        <div className="flex flex-col items-center justify-center py-12 text-center border-[2px] border-dashed border-[var(--h-bone-dark)] rounded-[20px]">
                                             <BookIcon />
                                             <p className="mt-3 text-[var(--text-muted)] font-body text-[0.9rem] max-w-[200px]">No reflections yet. Complete a day to write one!</p>
                                         </div>
@@ -1100,7 +1100,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         plannerBookmarks[planner.id]
                                             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                                             .map(b => (
-                                                <Link key={b.verseKey} to={`/surah/${b.verseKey.split(':')[0]}?ayah=${b.verseKey.split(':')[1]}`} className="group flex flex-col justify-between rounded-[16px] bg-[var(--bg-surface)] p-4 shadow-sm border border-[var(--glass-border)] no-underline transition-all duration-300 hover:border-[var(--accent-hover)] hover:shadow-md hover:-translate-y-0.5">
+                                                <Link key={b.verseKey} to={`/surah/${b.verseKey.split(':')[0]}?ayah=${b.verseKey.split(':')[1]}`} className="group flex flex-col justify-between rounded-[16px] bg-[var(--h-cream)] p-4 shadow-sm border-[1.5px] border-[var(--h-bone-dark)] no-underline transition-all duration-300 hover:border-[var(--h-teal)] hover:shadow-md hover:-translate-y-0.5">
                                                     <div className="flex justify-between items-start mb-2">
                                                         <span className="font-ui text-[1.05rem] font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-hover)] transition-colors">{b.surahName}</span>
                                                         <GemIcon className="text-[var(--accent-hover)] opacity-50 group-hover:opacity-100 transition-opacity w-4 h-4" />
@@ -1112,7 +1112,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                 </Link>
                                             ))
                                     ) : (
-                                        <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-[var(--glass-border)] rounded-[20px]">
+                                        <div className="col-span-1 md:col-span-2 flex flex-col items-center justify-center py-12 text-center border-[2px] border-dashed border-[var(--h-bone-dark)] rounded-[20px]">
                                             <GemIcon className="text-[var(--text-muted)] opacity-50 w-6 h-6" />
                                             <p className="mt-3 text-[var(--text-muted)] font-body text-[0.9rem] max-w-[200px]">No highlighted verses. Use the bookmark icon while reading!</p>
                                         </div>
@@ -1125,7 +1125,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
 
                 {/* Footer Controls */}
                 <div className="mt-12 mb-4 w-full flex justify-center">
-                    <button className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] px-5 py-2.5 font-body text-[0.85rem] text-[var(--text-muted)] shadow-sm backdrop-blur-md transition-all duration-300 hover:border-red-500/30 hover:bg-[rgba(220,38,38,0.05)] hover:text-[#dc2626] hover:-translate-y-0.5" onClick={onDelete} title="Delete plan">
+                    <button className="group inline-flex cursor-pointer items-center gap-2 rounded-full border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-5 py-2.5 font-body text-[0.85rem] text-[var(--text-muted)] shadow-sm transition-all duration-300 hover:border-red-500/30 hover:bg-[rgba(220,38,38,0.05)] hover:text-[#dc2626] hover:-translate-y-0.5" onClick={onDelete} title="Delete plan">
                         <svg className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
                             <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
@@ -1148,7 +1148,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
                             
                             <div className="flex items-center justify-center w-full mb-6 sm:hidden">
-                                <div className="w-12 h-1.5 bg-[var(--glass-border)] rounded-full" />
+                                <div className="w-12 h-1.5 bg-[var(--h-bone-dark)] rounded-full" />
                             </div>
 
                             <div className="relative z-10">
@@ -1159,13 +1159,13 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                 <div className="mb-8 flex flex-col gap-3">
                                     <label className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">New Total Days</label>
                                     <div className="relative group">
-                                        <input type="number" min="1" max="1000" className="w-full rounded-[16px] border-[2px] border-[var(--glass-border)] bg-[var(--bg-surface)] px-5 py-4 font-ui text-[1.5rem] font-bold text-[var(--text-primary)] outline-none transition-all duration-300 focus:border-[var(--accent-primary)] focus:shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.1)]"
+                                        <input type="number" min="1" max="1000" className="w-full rounded-[16px] border-[2px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-5 py-4 font-ui text-[1.5rem] font-bold text-[var(--text-primary)] outline-none transition-all duration-300 focus:border-[var(--h-teal)] focus:shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.1)]"
                                             value={newDuration} onChange={e => setNewDuration(parseInt(e.target.value) || 1)} />
                                         <div className="absolute right-5 top-1/2 -translate-y-1/2 font-mono text-[0.8rem] text-[var(--text-muted)] pointer-events-none">DAYS</div>
                                     </div>
                                 </div>
                                 <div className="flex gap-4">
-                                    <button className="flex-1 cursor-pointer rounded-[16px] border border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] p-4 font-ui text-[1rem] font-bold text-[var(--text-secondary)] transition-all hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)]" onClick={() => setShowAdjustPace(false)}>Cancel</button>
+                                    <button className="flex-1 cursor-pointer rounded-[16px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] p-4 font-ui text-[1rem] font-bold text-[var(--text-secondary)] transition-all hover:bg-[var(--h-bone)] hover:text-[var(--text-primary)]" onClick={() => setShowAdjustPace(false)}>Cancel</button>
                                     <button className="flex-1 cursor-pointer rounded-[16px] border-none bg-gradient-to-r from-[var(--accent-light)] to-[var(--accent-primary)] p-4 font-ui text-[1rem] font-bold text-white shadow-lg transition-all hover:opacity-90 hover:shadow-[0_5px_20px_rgba(198,168,124,0.3)] hover:-translate-y-0.5" onClick={() => {
                                         const updated = adjustPlannerPace(planner, newDuration);
                                         setPlanner(updated);
@@ -1189,7 +1189,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
                             
                             <div className="flex items-center justify-center w-full mb-6 sm:hidden">
-                                <div className="w-12 h-1.5 bg-[var(--glass-border)] rounded-full" />
+                                <div className="w-12 h-1.5 bg-[var(--h-bone-dark)] rounded-full" />
                             </div>
 
                             <div className="relative z-10">
@@ -1204,7 +1204,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                 const isActive = useAppStore.getState().prayerSettings?.activePrayers?.includes(p) ?? true;
                                                 return (
                                                     <button key={p} className={`cursor-pointer rounded-[12px] border-[1.5px] px-4 py-2 font-ui text-[0.9rem] font-bold transition-all duration-200 hover:-translate-y-0.5 ${
-                                                        isActive ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white shadow-md' : 'border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] text-[var(--text-muted)] hover:border-[var(--accent-hover)] hover:text-[var(--text-primary)]'
+                                                        isActive ? 'border-[var(--h-teal)] bg-[var(--h-teal)] text-white shadow-md' : 'border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] text-[var(--text-muted)] hover:border-[var(--h-teal)] hover:text-[var(--text-primary)]'
                                                     }`} onClick={() => {
                                                         const s = useAppStore.getState();
                                                         const PRAYER_ORDER = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
@@ -1223,7 +1223,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                     <div className="flex flex-col gap-3">
                                         <h3 className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">Reading Preference</h3>
                                         <div className="relative">
-                                            <select className="w-full appearance-none rounded-[16px] border-[2px] border-[var(--glass-border)] bg-[var(--bg-surface)] px-4 py-3.5 font-ui text-[1rem] font-medium text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--accent-primary)] cursor-pointer"
+                                            <select className="w-full appearance-none rounded-[16px] border-[2px] border-[var(--h-bone-dark)] bg-[var(--h-white)] px-4 py-3.5 font-ui text-[1rem] font-medium text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--h-teal)] cursor-pointer"
                                                 value={useAppStore.getState().prayerSettings?.readPreference || 'after'}
                                                 onChange={e => useAppStore.getState().updatePrayerSettings({ readPreference: e.target.value })}>
                                                 <option value="after">Read After Prayer</option>
@@ -1235,13 +1235,13 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between border-t border-[var(--glass-border)] pt-5 mt-2">
+                                    <div className="flex items-center justify-between border-t-[1.5px] border-[var(--h-bone-dark)] pt-5 mt-2">
                                         <div className="flex flex-col gap-1">
                                             <h3 className="font-mono text-[0.75rem] font-bold uppercase tracking-[0.15em] text-[var(--accent-primary)]">Intention Prompts</h3>
                                             <p className="font-body text-[0.85rem] text-[var(--text-secondary)]">Show a mindfulness prompt before reading.</p>
                                         </div>
                                         <button className={`relative h-7 w-12 cursor-pointer rounded-full border-none transition-colors duration-300 ${
-                                            useAppStore.getState().intentionPromptEnabled ? 'bg-[#10b981]' : 'bg-[var(--bg-surface)] border-[2px] border-[var(--glass-border)]'
+                                            useAppStore.getState().intentionPromptEnabled ? 'bg-[#10b981]' : 'bg-[var(--h-white)] border-[2px] border-[var(--h-bone-dark)]'
                                         }`} onClick={() => useAppStore.getState().toggleIntentionPrompt()}>
                                             <div className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
                                                 useAppStore.getState().intentionPromptEnabled ? 'translate-x-5' : 'translate-x-0'
@@ -1250,7 +1250,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                     </div>
                                 </div>
 
-                                <button className="w-full cursor-pointer rounded-[16px] border border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] p-4 font-ui text-[1rem] font-bold text-[var(--text-primary)] transition-all hover:bg-[var(--bg-surface)] hover:border-[var(--accent-primary)] hover:-translate-y-0.5" onClick={() => setShowSettings(false)}>Done</button>
+                                <button className="w-full cursor-pointer rounded-[16px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-white)] p-4 font-ui text-[1rem] font-bold text-[var(--text-primary)] transition-all hover:bg-[var(--h-bone)] hover:border-[var(--h-teal)] hover:-translate-y-0.5" onClick={() => setShowSettings(false)}>Done</button>
                             </div>
                         </motion.div>
                     </motion.div>

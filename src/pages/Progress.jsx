@@ -38,7 +38,7 @@ function getHeatmapLevel(active, duration) {
 const CustomTooltip = ({ active, payload, label, unit = "min", labelFormatter }) => {
     if (active && payload && payload.length) {
         return (
-            <div className="rounded-[12px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl px-3 py-2 z-50">
+            <div className="rounded-[12px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-3 py-2 z-50">
                 <p className="font-mono text-[0.65rem] uppercase tracking-wider text-[var(--text-secondary)] mb-1">
                     {labelFormatter ? labelFormatter(label) : label}
                 </p>
@@ -241,7 +241,7 @@ export default function Progress() {
                 )}
 
                 <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-[var(--bg-surface)] to-[var(--bg-secondary)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] p-6 flex flex-col justify-between group">
+                    <div className="relative overflow-hidden rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 flex flex-col justify-between group">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent-primary)]/10 blur-[40px] rounded-full pointer-events-none transition-transform duration-700 group-hover:scale-150" />
                         <div className="flex items-center justify-between mb-8">
                             <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Consistency</div>
@@ -258,7 +258,7 @@ export default function Progress() {
                         </div>
                     </div>
 
-                    <div className="relative overflow-hidden rounded-[24px] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6 flex flex-col justify-between group">
+                    <div className="relative overflow-hidden rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 flex flex-col justify-between group">
                         <div className="flex items-center justify-between mb-8">
                             <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Today's Focus</div>
                             <div className="w-10 h-10 rounded-full bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-primary)]">
@@ -279,7 +279,7 @@ export default function Progress() {
                         </div>
                     </div>
 
-                    <div className="relative overflow-hidden rounded-[24px] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6 flex flex-col justify-between group">
+                    <div className="relative overflow-hidden rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 flex flex-col justify-between group">
                         <div className="flex items-center justify-between mb-4">
                             <div className="font-mono text-[0.65rem] uppercase tracking-[0.15em] text-[var(--text-secondary)]">Weekly Goal</div>
                             <div className="w-10 h-10 rounded-full bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-primary)]">
@@ -302,7 +302,7 @@ export default function Progress() {
                 </div>
 
                 {!hasData && (
-                    <div className="mb-8 rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl px-6 py-16 text-center relative overflow-hidden">
+                    <div className="mb-8 rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-6 py-16 text-center relative overflow-hidden">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[var(--accent-primary)]/5 rounded-full blur-[50px] pointer-events-none" />
                         <BookOpen size={48} className="mx-auto mb-5 text-[var(--accent-primary)]/60" />
                         <h3 className="mb-3 font-ui text-[1.4rem] font-bold text-[var(--text-primary)]">Start Your Journey</h3>
@@ -314,20 +314,20 @@ export default function Progress() {
                 )}
 
                 <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6 flex flex-col">
+                    <div className="rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 flex flex-col">
                         <div className="mb-6 flex items-center justify-between">
                             <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                                 <Activity size={18} className="text-[var(--accent-primary)]" /> Activity Flow
                             </div>
                             <div className="flex bg-[var(--bg-surface)] rounded-full p-1">
                                 <button 
-                                    className={`px-3 py-1 rounded-full font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${chartMode === 'flow' ? 'bg-[var(--glass-bg)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                                    className={`px-3 py-1 rounded-full font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${chartMode === 'flow' ? 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                                     onClick={() => setChartMode('flow')}
                                 >
                                     7 Days
                                 </button>
                                 <button 
-                                    className={`px-3 py-1 rounded-full font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${chartMode === 'heatmap' ? 'bg-[var(--glass-bg)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                                    className={`px-3 py-1 rounded-full font-mono text-[0.6rem] uppercase tracking-widest transition-colors ${chartMode === 'heatmap' ? 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
                                     onClick={() => setChartMode('heatmap')}
                                 >
                                     Heatmap
@@ -349,8 +349,8 @@ export default function Progress() {
                                                     dataKey="minutes" 
                                                     stroke="url(#colorBar)" 
                                                     strokeWidth={3} 
-                                                    dot={{ fill: 'var(--glass-bg)', stroke: 'var(--accent-primary)', strokeWidth: 2, r: 4 }} 
-                                                    activeDot={{ r: 6, fill: 'var(--accent-primary)', stroke: 'var(--glass-bg)', strokeWidth: 3 }} 
+                                                    dot={{ fill: 'var(--h-cream)', stroke: 'var(--accent-primary)', strokeWidth: 2, r: 4 }} 
+                                                    activeDot={{ r: 6, fill: 'var(--accent-primary)', stroke: 'var(--h-cream)', strokeWidth: 3 }} 
                                                 />
                                             </LineChart>
                                         </ResponsiveContainer>
@@ -395,7 +395,7 @@ export default function Progress() {
                         </div>
                     </div>
 
-                    <div className="rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6 flex flex-col">
+                    <div className="rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6 flex flex-col">
                         <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                                 <Layers size={18} className="text-[var(--accent-primary)]" /> Activity Mix
@@ -447,7 +447,7 @@ export default function Progress() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-                    <div className="rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6">
+                    <div className="rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6">
                         <div className="mb-5 flex items-center justify-between">
                             <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                                 <Award size={18} className="text-[var(--accent-primary)]" /> Achievements
@@ -456,8 +456,8 @@ export default function Progress() {
                         {achievements.length > 0 ? (
                             <div className="grid gap-3">
                                 {achievements.map((badge, i) => (
-                                    <div key={i} className="flex items-center gap-4 p-3 rounded-[16px] bg-[var(--bg-surface)] border border-[var(--glass-border)] transition-all hover:bg-[var(--glass-bg)] hover:border-[var(--accent-hover)]">
-                                        <div className="w-12 h-12 flex items-center justify-center bg-[var(--glass-bg)] rounded-xl text-[1.5rem] shadow-sm">
+                                    <div key={i} className="flex items-center gap-4 p-3 rounded-[16px] bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] transition-all hover:bg-[var(--h-bone)] hover:border-[var(--accent-hover)]">
+                                        <div className="w-12 h-12 flex items-center justify-center bg-[var(--h-white)] rounded-xl text-[1.5rem] shadow-sm">
                                             {badge.icon}
                                         </div>
                                         <div>
@@ -472,14 +472,14 @@ export default function Progress() {
                         )}
                     </div>
 
-                    <div className="rounded-[24px] border border-[var(--glass-border)] bg-[var(--glass-bg)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-6">
+                    <div className="rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6">
                         <div className="mb-5 flex items-center justify-between">
                             <div className="flex items-center gap-2 font-ui text-[1.15rem] font-bold text-[var(--text-primary)]">
                                 <History size={18} className="text-[var(--accent-primary)]" /> Recent Activity
                             </div>
                         </div>
                         {recentActivity.length > 0 ? (
-                            <div className="flex flex-col relative before:absolute before:inset-y-2 before:left-[19px] before:w-0.5 before:bg-[var(--glass-border)]">
+                            <div className="flex flex-col relative before:absolute before:inset-y-2 before:left-[19px] before:w-0.5 before:bg-[var(--h-bone-dark)]">
                                 {recentActivity.map((session, i) => {
                                     const dateObj = new Date(session.timestamp || session.date + 'T00:00:00');
                                     const timeLabel = session.timestamp ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Logged';
@@ -513,10 +513,10 @@ export default function Progress() {
 
                                     return (
                                         <div key={i} className="flex gap-4 relative py-3 group">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border border-[var(--glass-bg)] shadow-sm z-10 ${bg} ${color}`}>
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-[1.5px] border-[var(--h-cream)] shadow-sm z-10 ${bg} ${color}`}>
                                                 {icon}
                                             </div>
-                                            <div className="flex-1 flex justify-between items-center bg-[var(--bg-surface)] px-4 py-2 rounded-[16px] group-hover:bg-[var(--glass-bg)] transition-colors border border-transparent group-hover:border-[var(--glass-border)]">
+                                            <div className="flex-1 flex justify-between items-center bg-[var(--h-white)] px-4 py-2 rounded-[16px] group-hover:bg-[var(--h-bone)] transition-colors border-[1.5px] border-transparent group-hover:border-[var(--h-bone-dark)]">
                                                 <div>
                                                     <div className="font-ui text-[0.95rem] font-bold text-[var(--text-primary)]">{title}</div>
                                                     <div className="font-mono text-[0.65rem] text-[var(--text-secondary)] mt-0.5">{dateLabel} • {timeLabel}</div>
@@ -541,7 +541,7 @@ export default function Progress() {
                         { icon: Layers, label: 'Collections', value: (collections || []).length, route: '/collections' },
                         { icon: Activity, label: 'Recent Surahs', value: (recentlyRead || []).length, route: '/' },
                     ].map((item, i) => (
-                        <Link to={item.route} key={i} className="group rounded-[24px] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] backdrop-blur-xl p-5 md:p-6 flex items-center justify-between transition-all hover:border-[var(--accent-hover)] hover:-translate-y-1 hover:shadow-[0_4px_20px_rgba(198,168,124,0.15)]">
+                        <Link to={item.route} key={i} className="group rounded-[24px] border-[1.5px] border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-5 md:p-6 flex items-center justify-between transition-all hover:border-[var(--accent-hover)] hover:-translate-y-1 hover:shadow-[0_4px_20px_rgba(198,168,124,0.15)]">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-primary)] group-hover:bg-[var(--accent-primary)] group-hover:text-[var(--bg-main)] transition-colors">
                                     <item.icon size={20} />
