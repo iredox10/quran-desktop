@@ -195,26 +195,7 @@ export default function PlannerReader() {
     }, [setAutoScroll]);
     // --- END AUTO-SCROLL LOGIC ---
 
-    // Auto-mark current page/item as read when user navigates away
-    const prevPageRef = useRef(pageNumber);
-    useEffect(() => {
-        const leavingPage = prevPageRef.current;
-        prevPageRef.current = pageNumber;
-        if (leavingPage === pageNumber || leavingPage === null || !assignment) return;
-        
-        // Find which item the leavingPage belonged to
-        const leftItem = assignment.items.find(item => 
-            leavingPage >= (item.pageStart || 1) && leavingPage <= (item.pageEnd || 604)
-        );
-        if (leftItem && progress) {
-            if (!progress.completedRangeValues.includes(leftItem.rangeValue)) {
-                // If it's a page unit or if they reached the end of the item's page bounds
-                if (planner.unitType === 'page' || leavingPage >= leftItem.pageEnd) {
-                    markPlannerItemComplete(assignment.dayNumber, leftItem.rangeValue);
-                }
-            }
-        }
-    }, [pageNumber, assignment, progress, planner, markPlannerItemComplete]);
+
 
     // Timer logic
     const [timerSeconds, setTimerSeconds] = useState(0);
@@ -454,6 +435,18 @@ export default function PlannerReader() {
 
     const handleNextPage = () => {
         if (pageNumber !== null && pageNumber < maxPageNumber) {
+            // Mark current page/item as done before moving to the next
+            if (assignment && progress) {
+                const currentItem = assignment.items.find(item => 
+                    pageNumber >= (item.pageStart || 1) && pageNumber <= (item.pageEnd || 604)
+                );
+                if (currentItem && !progress.completedRangeValues.includes(currentItem.rangeValue)) {
+                    if (planner.unitType === 'page' || pageNumber >= currentItem.pageEnd) {
+                        markPlannerItemComplete(assignment.dayNumber, currentItem.rangeValue);
+                    }
+                }
+            }
+
             scrollToTop();
             swipeDirectionRef.current = 1;
             setPageNumber(pageNumber + 1);
