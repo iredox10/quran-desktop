@@ -542,7 +542,11 @@ export default function PlannerReader() {
                                         <div className="flex-1 min-w-0">
                                             <h2 className="m-0 font-ui text-[1.2rem] font-bold text-[var(--text-primary)] truncate">{assignment.title}</h2>
                                             <div className="flex items-center gap-2 m-0 mt-1 text-[0.8rem] text-[var(--text-muted)] opacity-80">
-                                                <span className="truncate">{assignment.subtitle}</span>
+                                                <span className="truncate">
+                                                    {assignment.subtitle?.includes(' · ') && assignment.subtitle.split(' · ')[0] === assignment.subtitle.split(' · ')[1] 
+                                                        ? assignment.subtitle.split(' · ')[0] 
+                                                        : assignment.subtitle}
+                                                </span>
                                                 <span>•</span>
                                                 <span className="whitespace-nowrap">⏱️ ~{estimatedTimeMins} mins</span>
                                             </div>
