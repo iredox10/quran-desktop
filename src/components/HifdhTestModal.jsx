@@ -5,11 +5,12 @@ import { useAppStore } from '../store/useAppStore';
 import { getVerses, getChapters } from '../services/api/quranApi';
 import { Rating } from 'ts-fsrs';
 
-export default function HifdhTestModal({ onClose }) {
+export default function HifdhTestModal({ onClose, testQueue, queueType }) {
     const { memorizedAyahs, memorizedSurahs, logHifdhReview, transitionLinks } = useAppStore();
     const [testAyah, setTestAyah] = useState(null);
     const [verseData, setVerseData] = useState(null);
     const [previousAyahData, setPreviousAyahData] = useState(null);
+    const [testChapterData, setTestChapterData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRevealed, setIsRevealed] = useState(false);
     const [result, setResult] = useState(null);
@@ -22,41 +23,59 @@ export default function HifdhTestModal({ onClose }) {
         setPreviousAyahData(null);
         
         try {
+            let targetAyahKey = null;
             const chapters = await getChapters();
-            let allMemorized = [...(memorizedAyahs || [])];
 
-            if (memorizedSurahs && memorizedSurahs.length > 0) {
-                memorizedSurahs.forEach(surahId => {
-                    const chapter = chapters.find(c => String(c.id) === String(surahId));
-                    if (chapter) {
-                        for (let i = 1; i <= chapter.verses_count; i++) {
-                            const key = `${surahId}:${i}`;
-                            if (!allMemorized.includes(key)) {
-                                allMemorized.push(key);
+            if (testQueue && testQueue.length > 0) {
+                const randomIndex = Math.floor(Math.random() * testQueue.length);
+                targetAyahKey = testQueue[randomIndex];
+            } else if (testQueue && testQueue.length === 0) {
+                setIsLoading(false);
+                return;
+            } else {
+                let allMemorized = [...(memorizedAyahs || [])];
+
+                if (memorizedSurahs && memorizedSurahs.length > 0) {
+                    memorizedSurahs.forEach(surahId => {
+                        const chapter = chapters.find(c => String(c.id) === String(surahId));
+                        if (chapter) {
+                            for (let i = 1; i <= chapter.verses_count; i++) {
+                                const key = `${surahId}:${i}`;
+                                if (!allMemorized.includes(key)) {
+                                    allMemorized.push(key);
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }
+
+                if (allMemorized.length === 0) {
+                    setIsLoading(false);
+                    return;
+                }
+
+                const randomIndex = Math.floor(Math.random() * allMemorized.length);
+                targetAyahKey = allMemorized[randomIndex];
             }
 
-            if (allMemorized.length === 0) {
+            if (!targetAyahKey) {
                 setIsLoading(false);
                 return;
             }
 
-            const randomIndex = Math.floor(Math.random() * allMemorized.length);
-            const randomKey = allMemorized[randomIndex];
-            setTestAyah(randomKey);
+            setTestAyah(targetAyahKey);
 
-            const [chapterId, ayahNum] = randomKey.split(':');
+            const [chapterId, ayahNum] = targetAyahKey.split(':');
+            const chapter = chapters.find(c => String(c.id) === String(chapterId));
+            setTestChapterData(chapter || null);
             
             // Fetch verses for this chapter to find the specific ayah
             const data = await getVerses(chapterId, 85, 7, 1, 'madani-standard', 286); // get all ayahs
-            const verse = data.verses.find(v => v.verse_key === randomKey);
+            const verse = data.verses.find(v => v.verse_key === targetAyahKey);
             setVerseData(verse);
             
             // Check for weak transitions
-            if (transitionLinks && transitionLinks[randomKey] && Number(ayahNum) > 1) {
+            if (transitionLinks && transitionLinks[targetAyahKey] && Number(ayahNum) > 1) {
                 const prevKey = `${chapterId}:${Number(ayahNum) - 1}`;
                 const prevVerse = data.verses.find(v => v.verse_key === prevKey);
                 setPreviousAyahData(prevVerse || null);
@@ -99,7 +118,13 @@ export default function HifdhTestModal({ onClose }) {
                 </div>
                 
                 <div className="flex-1 p-6 text-center">
-                    {(!memorizedAyahs?.length && !memorizedSurahs?.length) ? (
+                    {testQueue && testQueue.length === 0 ? (
+                        <div className="py-8 text-[var(--text-secondary)]">
+                            <CheckCircle size={48} className="mx-auto mb-4 text-green-500 opacity-80" />
+                            <h3 className="font-ui text-xl font-bold text-[var(--text-primary)] mb-2">Queue Completed!</h3>
+                            <p>You have no more ayahs to review in this queue right now.</p>
+                        </div>
+                    ) : (!memorizedAyahs?.length && !memorizedSurahs?.length && !testQueue) ? (
                         <div className="py-8 italic text-[var(--text-secondary)]">You haven't memorized any ayahs yet!</div>
                     ) : isLoading ? (
                         <div className="py-12">
@@ -109,7 +134,7 @@ export default function HifdhTestModal({ onClose }) {
                     ) : verseData ? (
                         <>
                             <div className="mb-4 inline-block rounded-full bg-[var(--bg-secondary)] px-4 py-1.5 font-mono text-sm font-semibold text-[var(--accent-primary)]">
-                                Surah {testAyah.split(':')[0]}, Ayah {testAyah.split(':')[1]}
+                                {testChapterData ? testChapterData.name_simple : `Surah ${testAyah.split(':')[0]}`}, Ayah {testAyah.split(':')[1]}
                             </div>
                             
                             {previousAyahData && !isRevealed && (

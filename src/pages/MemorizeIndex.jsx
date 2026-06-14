@@ -20,6 +20,7 @@ export default function MemorizeIndex() {
     const [showSurahsModal, setShowSurahsModal] = useState(false);
     const [showAyahsModal, setShowAyahsModal] = useState(false);
     const [showTestModal, setShowTestModal] = useState(false);
+    const [testQueueType, setTestQueueType] = useState(null);
     const [showGoalModal, setShowGoalModal] = useState(false);
     const [viewMode, setViewMode] = useState('surah'); // 'surah' | 'juz'
 
@@ -221,7 +222,7 @@ export default function MemorizeIndex() {
                 </div>
 
                 <div className="mb-10 grid gap-4 grid-cols-2">
-                    <button onClick={() => setShowTestModal(true)} className="group relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-[24px] bg-[var(--h-teal)] p-6 text-white shadow-[0_8px_24px_rgba(46,79,74,0.15)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(46,79,74,0.3)]">
+                    <button onClick={() => { setTestQueueType(null); setShowTestModal(true); }} className="group relative flex flex-col items-center justify-center gap-3 overflow-hidden rounded-[24px] bg-[var(--h-teal)] p-6 text-white shadow-[0_8px_24px_rgba(46,79,74,0.15)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(46,79,74,0.3)]">
                         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/15 backdrop-blur-md transition-transform duration-500 ease-out group-hover:scale-110 group-hover:rotate-12">
                             <RefreshCw size={26} />
@@ -250,7 +251,7 @@ export default function MemorizeIndex() {
                             <span className="text-[1.2rem]">{dueSabaq.length}</span>
                         </div>
                         <p className="mb-4 text-xs font-mono text-[#15803d] dark:text-[#22c55e] opacity-80 uppercase tracking-widest">{sabaqCount} total</p>
-                        <button onClick={() => { /* Review Sabaq logic */ setShowTestModal(true) }} className="w-full rounded-xl bg-white/60 px-4 py-2 text-sm font-semibold text-[#166534] hover:bg-white/90 dark:bg-black/20 dark:text-[#4ade80] dark:hover:bg-black/40 transition-colors">
+                        <button onClick={() => { setTestQueueType('sabaq'); setShowTestModal(true); }} className="w-full rounded-xl bg-white/60 px-4 py-2 text-sm font-semibold text-[#166534] hover:bg-white/90 dark:bg-black/20 dark:text-[#4ade80] dark:hover:bg-black/40 transition-colors">
                             Review Due
                         </button>
                     </div>
@@ -261,7 +262,7 @@ export default function MemorizeIndex() {
                             <span className="text-[1.2rem]">{dueSabqi.length}</span>
                         </div>
                         <p className="mb-4 text-xs font-mono text-[#a16207] dark:text-[#eab308] opacity-80 uppercase tracking-widest">{sabqiCount} total</p>
-                        <button onClick={() => { /* Review Sabqi logic */ setShowTestModal(true) }} className="w-full rounded-xl bg-white/60 px-4 py-2 text-sm font-semibold text-[#854d0e] hover:bg-white/90 dark:bg-black/20 dark:text-[#facc15] dark:hover:bg-black/40 transition-colors">
+                        <button onClick={() => { setTestQueueType('sabqi'); setShowTestModal(true); }} className="w-full rounded-xl bg-white/60 px-4 py-2 text-sm font-semibold text-[#854d0e] hover:bg-white/90 dark:bg-black/20 dark:text-[#facc15] dark:hover:bg-black/40 transition-colors">
                             Review Due
                         </button>
                     </div>
@@ -272,7 +273,7 @@ export default function MemorizeIndex() {
                             <span className="text-[1.2rem]">{dueManzil.length}</span>
                         </div>
                         <p className="mb-4 text-xs font-mono text-[#0369a1] dark:text-[#0ea5e9] opacity-80 uppercase tracking-widest">{manzilCount} total</p>
-                        <button onClick={() => { /* Review Manzil logic */ setShowTestModal(true) }} className="w-full rounded-xl bg-white/60 px-4 py-2 text-sm font-semibold text-[#075985] hover:bg-white/90 dark:bg-black/20 dark:text-[#38bdf8] dark:hover:bg-black/40 transition-colors">
+                        <button onClick={() => { setTestQueueType('manzil'); setShowTestModal(true); }} className="w-full rounded-xl bg-white/60 px-4 py-2 text-sm font-semibold text-[#075985] hover:bg-white/90 dark:bg-black/20 dark:text-[#38bdf8] dark:hover:bg-black/40 transition-colors">
                             Review Due
                         </button>
                     </div>
@@ -458,7 +459,17 @@ export default function MemorizeIndex() {
             </motion.div>
 
             <AnimatePresence>
-                {showTestModal && <HifdhTestModal onClose={() => setShowTestModal(false)} />}
+                {showTestModal && (
+                    <HifdhTestModal 
+                        onClose={() => { setShowTestModal(false); setTestQueueType(null); }} 
+                        testQueue={
+                            testQueueType === 'sabaq' ? dueSabaq :
+                            testQueueType === 'sabqi' ? dueSabqi :
+                            testQueueType === 'manzil' ? dueManzil : null
+                        }
+                        queueType={testQueueType}
+                    />
+                )}
                 
                 {showGoalModal && (
                     <motion.div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[var(--h-ink)]/40 p-4 backdrop-blur-sm"
