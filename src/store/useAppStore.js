@@ -566,7 +566,20 @@ export const useAppStore = create(
                     assignmentCompletedItems,
                     assignmentCompletedAt,
                     completedDays,
-                };
+            })),
+            markPlannerPageRead: (dayNumber, pageNumber) => set((state) => replaceActivePlanner(state, (activePlanner) => {
+                const assignment = activePlanner.assignments.find((item) => item.dayNumber === dayNumber);
+                if (!assignment) return activePlanner;
+
+                const assignmentReadPages = { ...(activePlanner.assignmentReadPages || {}) };
+                const existing = Array.isArray(assignmentReadPages[dayNumber]) ? assignmentReadPages[dayNumber] : [];
+                if (!existing.includes(pageNumber)) {
+                    assignmentReadPages[dayNumber] = [...existing, pageNumber];
+                } else {
+                    return activePlanner;
+                }
+                
+                return { ...activePlanner, assignmentReadPages };
             })),
             markPlannerItemComplete: (dayNumber, rangeValue) => set((state) => replaceActivePlanner(state, (activePlanner) => {
                 const assignment = activePlanner.assignments.find((item) => item.dayNumber === dayNumber);

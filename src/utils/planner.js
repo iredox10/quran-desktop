@@ -462,13 +462,21 @@ export function getPlannerOverview(plan, today = formatPlannerDate(new Date())) 
   const remainingCount = Math.max(plan.durationDays - completedCount, 0);
   const firstIncomplete = plan.assignments.find((assignment) => !getAssignmentProgress(plan, assignment).isComplete);
 
+  let totalPages = 0;
+  let readPages = 0;
+  plan.assignments.forEach(a => {
+      const prog = getAssignmentProgress(plan, a);
+      totalPages += (prog?.totalPagesCount || 1);
+      readPages += (prog?.readPagesCount || 0);
+  });
+
   return {
     completedCount,
     remainingCount,
     currentDayNumber,
     isUpcoming: elapsedDays < 0,
     isFinishedWindow: elapsedDays >= plan.durationDays,
-    completionRatio: plan.durationDays ? completedCount / plan.durationDays : 0,
+    completionRatio: totalPages ? readPages / totalPages : 0,
     firstIncomplete: firstIncomplete || plan.assignments[plan.assignments.length - 1],
   };
 }
@@ -480,7 +488,7 @@ export function getAssignmentStatus(plan, assignment, today = formatPlannerDate(
   }
 
   if (assignment.date < today) {
-    if (progress.completedCount > 0) {
+    if (progress.readPagesCount > 0) {
       return 'partial';
     }
     return 'overdue';
@@ -511,9 +519,30 @@ export function getAssignmentProgress(plan, assignment) {
   const completedCount = completedRangeValues.length;
   const nextItem = assignment.items.find((item) => !completedRangeValues.includes(item.rangeValue)) || assignment.items[assignment.items.length - 1] || null;
 
+  const explicitReadPages = Array.isArray(plan?.assignmentReadPages?.[assignment.dayNumber])
+    ? plan.assignmentReadPages[assignment.dayNumber]
+    : [];
+
+  let totalPagesCount = 0;
+  let allReadPages = new Set(explicitReadPages);
+
+  assignment.items.forEach(item => {
+    const pStart = item.pageStart || 1;
+    const pEnd = item.pageEnd || pStart;
+    totalPagesCount += (pEnd - pStart + 1);
+
+    if (completedRangeValues.includes(item.rangeValue)) {
+      for (let p = pStart; p <= pEnd; p++) {
+        allReadPages.add(p);
+      }
+    }
+  });
+
   return {
     completedCount,
     totalCount,
+    readPagesCount: allReadPages.size,
+    totalPagesCount,
     remainingCount: Math.max(totalCount - completedCount, 0),
     completionRatio: totalCount ? completedCount / totalCount : 0,
     isComplete: totalCount > 0 && completedCount >= totalCount,
@@ -627,17 +656,9 @@ export function getWeeklySummary(planner) {
     let completedUnits = 0;
     
     weekAssignments.forEach(a => {
-      // rough estimation of units (pages)
-      let pages = 0;
-      a.items.forEach(item => {
-        if (item.pageStart && item.pageEnd) {
-           pages += (item.pageEnd - item.pageStart + 1);
-        }
-      });
-      totalUnits += pages;
-      if (planner.completedDays?.includes(a.dayNumber)) {
-        completedUnits += pages;
-      }
+      const prog = getAssignmentProgress(planner, a);
+      totalUnits += (prog?.totalPagesCount || 1);
+      completedUnits += (prog?.readPagesCount || 0);
     });
     
     const weekNum = Math.floor(i / 7) + 1;

@@ -44,7 +44,7 @@ export default function PlannerReader() {
     const dayNumber = parseInt(dayNumberParam) || 1;
 
     const {
-        planner, setNavHeaderTitle, markPlannerItemComplete,
+        planner, setNavHeaderTitle, markPlannerItemComplete, markPlannerPageRead,
         translationId, reciterId, fontSize, readingMode,
         mushafId, arabicFont, tajweedEnabled, tafsirId,
         setPlannerLastPage,
@@ -109,7 +109,10 @@ export default function PlannerReader() {
         if (pageNumber !== null && setPlannerLastPage) {
             setPlannerLastPage(pageNumber);
         }
-    }, [pageNumber, setPlannerLastPage]);
+        if (pageNumber !== null && assignment && planner && markPlannerPageRead) {
+            markPlannerPageRead(assignment.dayNumber, pageNumber);
+        }
+    }, [pageNumber, setPlannerLastPage, assignment, planner, markPlannerPageRead]);
 
     // Data fetching
     const { data: pageData, isLoading: isPageLoading } = useQuery({

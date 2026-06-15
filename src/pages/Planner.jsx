@@ -653,8 +653,8 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
         ? (nextAssignment ? `/planner/read/${nextAssignment.dayNumber}` : null)
         : (todayAssignment ? `/planner/read/${todayAssignment.dayNumber}` : null);
 
-    const todayDone = todayProgress?.completedCount ?? 0;
-    const todayTotal = todayProgress?.totalCount ?? 1;
+    const todayDone = todayProgress?.readPagesCount ?? 0;
+    const todayTotal = todayProgress?.totalPagesCount ?? 1;
     const todayPct = Math.round((todayDone / todayTotal) * 100);
 
     const resumeRoute = nextReadRoute;
@@ -927,7 +927,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                             const status = getAssignmentStatus(planner, a, today);
                                             const progress = getAssignmentProgress(planner, a);
                                             const isToday = a.date === today;
-                                            const pct = progress.totalCount ? Math.round((progress.completedCount / progress.totalCount) * 100) : 0;
+                                            const pct = progress.totalPagesCount ? Math.round((progress.readPagesCount / progress.totalPagesCount) * 100) : 0;
                                             const statusStyles = {
                                                 completed: 'bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-hover)] text-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.2),_0_2px_8px_rgba(198,168,124,0.4)] border-none',
                                                 today: 'bg-[var(--bg-primary)] text-[var(--accent-primary)] border-[2px] border-[var(--accent-primary)] shadow-[0_0_15px_rgba(198,168,124,0.25)]',
@@ -979,7 +979,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         {selectedDay && (() => {
                                             const sStatus = getAssignmentStatus(planner, selectedDay, today);
                                             const sProg = getAssignmentProgress(planner, selectedDay);
-                                            const sPct = sProg.totalCount ? Math.round((sProg.completedCount / sProg.totalCount) * 100) : 0;
+                                            const sPct = sProg.totalPagesCount ? Math.round((sProg.readPagesCount / sProg.totalPagesCount) * 100) : 0;
                                             return (
                                                 <motion.div
                                                     initial={{ opacity: 0, height: 0 }}
