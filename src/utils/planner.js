@@ -474,12 +474,15 @@ export function getPlannerOverview(plan, today = formatPlannerDate(new Date())) 
 }
 
 export function getAssignmentStatus(plan, assignment, today = formatPlannerDate(new Date())) {
-  const completed = getAssignmentProgress(plan, assignment).isComplete;
-  if (completed) {
+  const progress = getAssignmentProgress(plan, assignment);
+  if (progress.isComplete) {
     return 'completed';
   }
 
   if (assignment.date < today) {
+    if (progress.completedCount > 0) {
+      return 'partial';
+    }
     return 'overdue';
   }
 

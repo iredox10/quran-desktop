@@ -584,6 +584,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
     const [newDuration, setNewDuration] = useState(planner.durationDays);
     const [showSettings, setShowSettings] = useState(false);
     const [activeTab, setActiveTab] = useState('today');
+    const [selectedDay, setSelectedDay] = useState(null);
 
     useEffect(() => {
         if (location && (!prayerTimes || prayerTimes.date !== today)) {
@@ -930,13 +931,17 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                             const statusStyles = {
                                                 completed: 'bg-gradient-to-br from-[var(--accent-primary)] to-[var(--accent-hover)] text-white shadow-[inset_0_-2px_4px_rgba(0,0,0,0.2),_0_2px_8px_rgba(198,168,124,0.4)] border-none',
                                                 today: 'bg-[var(--bg-primary)] text-[var(--accent-primary)] border-[2px] border-[var(--accent-primary)] shadow-[0_0_15px_rgba(198,168,124,0.25)]',
+                                                partial: 'bg-[var(--bg-primary)] text-[var(--text-primary)] border-[1.5px] border-dashed border-[var(--accent-primary)]',
                                                 overdue: 'bg-gradient-to-br from-red-500/10 to-red-600/5 text-[#dc2626] border border-red-500/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]',
                                                 upcoming: 'bg-[var(--h-white)] border-[1.5px] border-[var(--h-bone-dark)] text-[var(--text-muted)]',
                                             };
                                             return (
                                                 <motion.div key={a.dayNumber}
-                                                    className={`relative flex h-[36px] w-[36px] cursor-default flex-col items-center justify-center rounded-full transition-all duration-200 md:h-[42px] md:w-[42px] ${statusStyles[status] || statusStyles.upcoming}`}
-                                                    title={`Day ${a.dayNumber}: ${a.title} — ${status === 'completed' ? '✓ Done' : status === 'today' ? `${pct}%` : status}`}
+                                                    onClick={() => setSelectedDay(selectedDay?.dayNumber === a.dayNumber ? null : a)}
+                                                    className={`relative flex h-[36px] w-[36px] cursor-pointer flex-col items-center justify-center rounded-full transition-all duration-200 md:h-[42px] md:w-[42px] overflow-hidden ${
+                                                        selectedDay?.dayNumber === a.dayNumber ? 'ring-[2.5px] ring-[var(--text-primary)] ring-offset-2 ring-offset-[#fdfbf6] ' : ''
+                                                    }${statusStyles[status] || statusStyles.upcoming}`}
+                                                    title={`Day ${a.dayNumber}: ${a.title} — ${status === 'completed' ? '✓ Done' : status === 'today' || status === 'partial' ? `${pct}%` : status}`}
                                                     whileHover={{ scale: 1.15, y: -2 }} whileTap={{ scale: 0.9 }}>
                                                     <span className={`relative z-10 font-mono text-[0.6rem] font-bold ${status === 'completed' ? 'text-white/90' : ''}`}>{a.dayNumber}</span>
                                                     {difficulty[a.dayNumber] && difficulty[a.dayNumber].level !== 'moderate' && (
@@ -949,7 +954,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                                             <polyline points="20 6 9 17 4 12"/>
                                                         </svg>
                                                     )}
-                                                    {isToday && status !== 'completed' && pct > 0 && (
+                                                    {status !== 'completed' && pct > 0 && (
                                                         <div className="pointer-events-none absolute inset-0 rounded-full opacity-20" style={{ background: `conic-gradient(var(--accent-primary) ${pct}%, transparent ${pct}%)` }} />
                                                     )}
                                                 </motion.div>
@@ -960,6 +965,7 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                         {[
                                             { label: 'Done', color: 'var(--accent-primary)' },
                                             { label: 'Today', color: 'var(--accent-hover)' },
+                                            { label: 'Partial', color: 'var(--text-primary)' },
                                             { label: 'Missed', color: '#dc2626' },
                                             { label: 'Upcoming', color: 'var(--text-muted)' },
                                         ].map(item => (
@@ -969,6 +975,28 @@ function ActiveView({ planner, planners, activePlannerId, onSwitchPlan, onDelete
                                             </span>
                                         ))}
                                     </div>
+                                    <AnimatePresence>
+                                        {selectedDay && (() => {
+                                            const sStatus = getAssignmentStatus(planner, selectedDay, today);
+                                            const sProg = getAssignmentProgress(planner, selectedDay);
+                                            const sPct = sProg.totalCount ? Math.round((sProg.completedCount / sProg.totalCount) * 100) : 0;
+                                            return (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="mt-4 flex flex-col items-center overflow-hidden"
+                                                >
+                                                    <div className="rounded-2xl bg-[var(--h-cream)] border-[1.5px] border-[var(--h-bone-dark)] px-5 py-3 shadow-sm w-full max-w-sm text-center">
+                                                        <h4 className="font-ui text-[1rem] font-bold text-[var(--text-primary)] mb-1">Day {selectedDay.dayNumber}: {selectedDay.title}</h4>
+                                                        <p className="font-mono text-[0.75rem] text-[var(--text-muted)] tracking-wide">
+                                                            {sStatus === 'completed' ? '✓ Completed' : sStatus === 'today' ? `Today's plan (${sPct}%)` : sStatus === 'partial' ? `Partially finished (${sPct}%)` : sStatus === 'overdue' ? 'Missed completely' : 'Upcoming'}
+                                                        </p>
+                                                    </div>
+                                                </motion.div>
+                                            );
+                                        })()}
+                                    </AnimatePresence>
                                 </div>
                                 <div className="flex flex-col rounded-[24px] bg-[rgba(255,255,255,0.02)] border border-white/5 p-6 shadow-inner backdrop-blur-xl">
                                     <h3 className="mb-5 font-ui text-[1.25rem] font-bold text-[var(--text-primary)] flex items-center gap-2">
