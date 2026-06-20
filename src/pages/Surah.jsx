@@ -49,7 +49,6 @@ export default function Surah() {
 
     const [showAudioSetup, setShowAudioSetup] = useState(false);
     const [pendingPlaylist, setPendingPlaylist] = useState([]);
-    const [isHeatmapMode, setIsHeatmapMode] = useState(false);
 
     const { data: chapter, isLoading: isChapterLoading } = useQuery({
         queryKey: ['chapter', id],
@@ -461,18 +460,6 @@ export default function Surah() {
                                 >
                                     {isDownloading ? 'Downloading...' : isDownloaded ? 'Offline Ready' : 'Download for Offline'}
                                 </button>
-                                <button
-                                    className={`btn-primary flex items-center gap-2 border border-[var(--border-color)] transition-colors`}
-                                    style={{
-                                        backgroundColor: isHeatmapMode ? 'var(--accent-primary)' : 'var(--bg-primary)',
-                                        color: isHeatmapMode ? 'white' : 'var(--text-primary)',
-                                    }}
-                                    onClick={() => setIsHeatmapMode(!isHeatmapMode)}
-                                    title="Toggle Hifdh Heatmap"
-                                >
-                                    <Target size={18} />
-                                    {isHeatmapMode ? 'Heatmap: ON' : 'Heatmap: OFF'}
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -524,7 +511,6 @@ export default function Surah() {
                                         mushaf={mushaf}
                                         isAudioPlaying={activeAudioVerseKey === verse.verse_key}
                                         onPlayVerse={handlePlayVerse}
-                                        isHeatmapMode={isHeatmapMode}
                                         hifdhHistory={hifdhHistory}
                                     />
                                 );
