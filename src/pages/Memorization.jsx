@@ -536,7 +536,7 @@ export default function Memorization() {
                                             className="mt-6 overflow-hidden rounded-[14px] border border-[var(--mem-bone-dark)] bg-[var(--mem-cream)] px-6 py-5 leading-[1.6] text-[var(--mem-ink-mid)] font-body"
                                             style={{ fontSize: `${(translationFontSize || 2) * 0.15 + 0.75}rem` }}
                                         >
-                                            {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')}
+                                            {verse.translations?.[0]?.text?.replace(/<sup[^>]*>.*?<\/sup>/g, '')?.replace(/<[^>]*>?/gm, '')}
                                         </motion.div>
                                     )}
                                 </AnimatePresence>

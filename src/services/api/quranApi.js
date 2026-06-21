@@ -165,3 +165,8 @@ export const getJuzs = async () => {
   const data = await fetchWithOfflineCache('/juzs');
   return data.juzs;
 };
+
+export const getFootnote = async (footnoteId) => {
+  const data = await fetchWithOfflineCache(`/foot_notes/${footnoteId}`);
+  return data.foot_note;
+};

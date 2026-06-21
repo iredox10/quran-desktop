@@ -430,3 +430,16 @@ html[data-theme='dark'] tajweed:hover {
   50% { transform: scale(1.05); }
   100% { transform: scale(1); opacity: 1; }
 }
+
+.quran-translation sup {
+  cursor: pointer;
+  color: var(--accent-primary);
+  font-weight: 700;
+  padding: 0 0.15rem;
+  transition: all 0.2s ease;
+}
+
+.quran-translation sup:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

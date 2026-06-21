@@ -4,6 +4,8 @@ import { Bookmark, Info, X, Plus, Play, Pause, Folder, CheckCircle2, Check } fro
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
 import { getVerseArabicText } from '../utils/quranText';
+import { useQuery } from '@tanstack/react-query';
+import { getFootnote } from '../services/api/quranApi';
 
 
 const TAFSIR_NAMES = {
@@ -35,6 +37,13 @@ const VerseRow = ({
     const { collections, addCollection, addToCollection, isPlaying } = useAppStore();
     const [showCollectionModal, setShowCollectionModal] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
+    const [activeFootnoteId, setActiveFootnoteId] = useState(null);
+
+    const { data: footnoteData, isFetching: isFootnoteFetching } = useQuery({
+        queryKey: ['footnote', activeFootnoteId],
+        queryFn: () => getFootnote(activeFootnoteId),
+        enabled: !!activeFootnoteId,
+    });
 
     useEffect(() => {
         if (inView && chapter) {
@@ -214,15 +223,51 @@ const VerseRow = ({
 
                 </div>
 
-                <div className="text-english font-body" style={{
-                    fontSize: `${(translationFontSize || 2) * 0.15 + 0.75}rem`,
+                <div dir="ltr" className="quran-translation text-left" style={{
+                    fontSize: `${translationFontSize * 0.15 + 0.8}rem`,
                     color: 'var(--text-secondary)',
                     lineHeight: 1.6
-                }}>
-                    {verse.translations?.[0]?.text?.replace(/<[^>]*>?/gm, '')}
-                </div>
+                }}
+                onClick={(e) => {
+                    const target = e.target;
+                    const sup = target.closest('sup');
+                    if (sup) {
+                        const fnId = sup.getAttribute('foot_note');
+                        if (fnId) setActiveFootnoteId(fnId === activeFootnoteId ? null : fnId);
+                    }
+                }}
+                dangerouslySetInnerHTML={{ __html: verse.translations?.[0]?.text || '' }}
+                />
 
-
+                <AnimatePresence>
+                    {activeFootnoteId && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            style={{ overflow: 'hidden' }}
+                        >
+                            <div className="relative mt-4 rounded-xl bg-[var(--bg-secondary)] p-5 text-[0.9rem] text-[var(--text-primary)]"
+                                style={{ borderLeft: '3px solid var(--accent-primary)' }}
+                            >
+                                <button
+                                    onClick={() => setActiveFootnoteId(null)}
+                                    className="absolute right-3 top-3 cursor-pointer border-none bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                                >
+                                    <X size={16} />
+                                </button>
+                                <h4 className="mb-2 font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                                    <Info size={16} className="text-accent" /> Footnote
+                                </h4>
+                                {isFootnoteFetching ? (
+                                    <p className="text-[var(--text-muted)] animate-pulse m-0">Loading...</p>
+                                ) : (
+                                    <div className="leading-[1.6]" dangerouslySetInnerHTML={{ __html: footnoteData?.text || 'Footnote not available.' }} />
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 <AnimatePresence>
                     {showCollectionModal && (

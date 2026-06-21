@@ -649,7 +649,7 @@ export default function PlannerReader() {
                                 <div className="bg-black/10 rounded-xl p-4 mb-5 text-left backdrop-blur-sm border border-white/10 shadow-inner">
                                     <p className="m-0 font-ui text-[0.7rem] uppercase tracking-wider text-white/80 mb-2 font-semibold">Takeaway of the Day</p>
                                     <p className="m-0 font-quran text-[1.3rem] text-white text-right leading-loose mb-3" dir="rtl">{insightVerse.text_uthmani}</p>
-                                    <p className="m-0 font-body text-[0.85rem] text-white/90 leading-relaxed italic">"{insightVerse.translations?.[0]?.text?.replace(/<[^>]+>/g, '')}"</p>
+                                    <p className="m-0 font-body text-[0.85rem] text-white/90 leading-relaxed italic">"{insightVerse.translations?.[0]?.text?.replace(/<sup[^>]*>.*?<\/sup>/g, '')?.replace(/<[^>]+>/g, '')}"</p>
                                     <p className="m-0 text-[0.75rem] text-white/60 mt-2 font-medium">— Surah {insightVerse.verse_key.replace(':', ', Ayah ')}</p>
                                 </div>
                             )}
