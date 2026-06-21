@@ -3,6 +3,7 @@ import { Query, ID } from 'appwrite';
 
 const GROUPS_COLLECTION = 'sauka_groups';
 const ASSIGNMENTS_COLLECTION = 'sauka_assignments';
+const COMMENTS_COLLECTION = 'sauka_comments';
 
 function generateJoinCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -47,7 +48,7 @@ export const JUZ_MAP = [
 
 export const saukaService = {
     // ─── Create Group ───
-    async createGroup(title, divisionType = 'juz', deadline = null) {
+    async createGroup(title, divisionType = 'juz', deadline = null, intention = '') {
         const user = await account.get();
         const joinCode = generateJoinCode();
 
@@ -58,15 +59,16 @@ export const saukaService = {
             joinCode,
             divisionType,
             deadline: deadline || '',
+            intention: intention || '',
             status: 'active',
             completedAt: '',
         });
 
         // Create assignment docs
-        const totalParts = divisionType === 'surah' ? 114 : 30;
+        const totalParts = divisionType === 'surah' ? 114 : divisionType === 'hizb' ? 60 : 30;
         const promises = [];
         for (let part = 1; part <= totalParts; part++) {
-            promises.push(
+            promises.push(() =>
                 databases.createDocument(databaseId, ASSIGNMENTS_COLLECTION, ID.unique(), {
                     groupId: group.$id,
                     partNumber: part,
@@ -78,7 +80,12 @@ export const saukaService = {
                 })
             );
         }
-        await Promise.all(promises);
+        // Execute in chunks to prevent rate limits
+        const chunkSize = 15;
+        for (let i = 0; i < promises.length; i += chunkSize) {
+            const chunk = promises.slice(i, i + chunkSize);
+            await Promise.all(chunk.map(p => p()));
+        }
 
         return group;
     },
@@ -192,11 +199,44 @@ export const saukaService = {
     async deleteGroup(groupId) {
         const assignments = await databases.listDocuments(databaseId, ASSIGNMENTS_COLLECTION, [
             Query.equal('groupId', groupId),
-            Query.limit(30),
+            Query.limit(120),
         ]);
         await Promise.all(assignments.documents.map(a =>
             databases.deleteDocument(databaseId, ASSIGNMENTS_COLLECTION, a.$id)
         ));
+        
+        const comments = await databases.listDocuments(databaseId, COMMENTS_COLLECTION, [
+            Query.equal('groupId', groupId),
+            Query.limit(100),
+        ]);
+        await Promise.all(comments.documents.map(c =>
+            databases.deleteDocument(databaseId, COMMENTS_COLLECTION, c.$id)
+        ));
+
         await databases.deleteDocument(databaseId, GROUPS_COLLECTION, groupId);
     },
+
+    // ─── Comments & Nudges ───
+    async getComments(groupId) {
+        const result = await databases.listDocuments(databaseId, COMMENTS_COLLECTION, [
+            Query.equal('groupId', groupId),
+            Query.orderAsc('$createdAt'),
+            Query.limit(100),
+        ]);
+        return result.documents;
+    },
+
+    async addComment(groupId, text) {
+        const user = await account.get();
+        return await databases.createDocument(databaseId, COMMENTS_COLLECTION, ID.unique(), {
+            groupId,
+            userId: user.$id,
+            userName: user.name || 'Unknown',
+            text
+        });
+    },
+
+    async deleteComment(commentId) {
+        return await databases.deleteDocument(databaseId, COMMENTS_COLLECTION, commentId);
+    }
 };

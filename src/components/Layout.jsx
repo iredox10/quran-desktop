@@ -33,7 +33,8 @@ export default function Layout() {
     const isImmersivePage = isSurahPage || isMemorizePage || isPagePage || isPlannerReader;
     const hasAudio = audioPlaylist.length > 0 || !!currentAudioUrl;
     const shouldReturnToPlanner = Boolean(location.state?.backToPlanner) || isPlannerReader;
-    const shouldForceHomeBack = isSurahPage || isMemorizePage || isPagePage;
+    const shouldReturnToSauka = Boolean(location.state?.backToSauka);
+    const shouldForceHomeBack = (isSurahPage || isMemorizePage || isPagePage) && !shouldReturnToSauka;
 
     const navigateHomeAtTop = useCallback((replace = false) => {
         navigate('/', {
@@ -45,6 +46,11 @@ export default function Layout() {
     }, [navigate]);
 
     const handleImmersiveBack = () => {
+        if (shouldReturnToSauka) {
+            navigate(`/sauka/${location.state.backToSauka}`);
+            return;
+        }
+
         if (shouldForceHomeBack) {
             navigateHomeAtTop(true);
             return;

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { saukaService } from '../services/saukaService';
 import { useAppStore } from '../store/useAppStore';
-import { Users, Plus, Hash, ArrowRight, Loader2, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Users, Plus, Hash, ArrowRight, Loader2, Calendar, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 
 export default function SaukaIndex() {
     const { setNavHeaderTitle } = useAppStore();
@@ -16,6 +16,7 @@ export default function SaukaIndex() {
     // Create Modal
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [createTitle, setCreateTitle] = useState('');
+    const [createIntention, setCreateIntention] = useState('');
     const [createDivisionType, setCreateDivisionType] = useState('juz');
     const [createDeadline, setCreateDeadline] = useState('');
     const [isCreating, setIsCreating] = useState(false);
@@ -50,9 +51,10 @@ export default function SaukaIndex() {
         if (!createTitle.trim()) return;
         setIsCreating(true);
         try {
-            const group = await saukaService.createGroup(createTitle.trim(), createDivisionType, createDeadline);
+            const group = await saukaService.createGroup(createTitle.trim(), createDivisionType, createDeadline, createIntention.trim());
             setIsCreateOpen(false);
             setCreateTitle('');
+            setCreateIntention('');
             setCreateDeadline('');
             navigate(`/sauka/${group.$id}`);
         } catch (e) {
@@ -89,6 +91,12 @@ export default function SaukaIndex() {
         <div className="mx-auto max-w-[800px] pb-24 pt-4">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 {/* ── Header ── */}
+                <button 
+                    onClick={() => navigate('/profile')} 
+                    className="mb-6 flex w-fit items-center gap-2 rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-2 text-sm font-semibold text-[var(--h-ink-mid)] transition-colors hover:bg-white hover:text-[var(--h-ink)]"
+                >
+                    <ArrowLeft size={16} /> Back to Profile
+                </button>
                 <div className="mb-8 text-center">
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--h-teal-soft)] text-[var(--h-teal)]">
                         <Users size={32} />
@@ -171,9 +179,14 @@ export default function SaukaIndex() {
                                         <input type="text" value={createTitle} onChange={e => setCreateTitle(e.target.value)} required placeholder="e.g. Ramadan Family Khatmah" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
                                     </div>
                                     <div>
+                                        <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Dedication / Intention (Optional)</label>
+                                        <input type="text" value={createIntention} onChange={e => setCreateIntention(e.target.value)} placeholder="e.g. For the healing of our grandfather" className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                                    </div>
+                                    <div>
                                         <label className="mb-1.5 block text-xs font-semibold text-[var(--h-ink-mid)]">Divide Quran By</label>
                                         <select value={createDivisionType} onChange={e => setCreateDivisionType(e.target.value)} className="w-full rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-3 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)] appearance-none cursor-pointer">
                                             <option value="juz">30 Parts (Juz / Para)</option>
+                                            <option value="hizb">60 Parts (Hizb)</option>
                                             <option value="surah">114 Parts (Surahs / Chapters)</option>
                                         </select>
                                     </div>

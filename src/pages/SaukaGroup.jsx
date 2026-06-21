@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { saukaService, JUZ_MAP } from '../services/saukaService';
 import { useAppStore } from '../store/useAppStore';
-import { Loader2, ArrowLeft, CheckCircle2, Clock, Share2, Copy, BookOpen, Trash2 } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle2, Clock, Share2, Copy, BookOpen, Trash2, MessageSquare } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function SaukaGroup() {
@@ -16,6 +16,11 @@ export default function SaukaGroup() {
     const [error, setError] = useState('');
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [copied, setCopied] = useState(false);
+    
+    // Comments
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [isDuaOpen, setIsDuaOpen] = useState(false);
 
     // Modal
     const [selectedJuz, setSelectedJuz] = useState(null);
@@ -30,6 +35,9 @@ export default function SaukaGroup() {
             const result = await saukaService.getGroup(groupId);
             setData(result);
             setNavHeaderTitle(result.group.title);
+            
+            const commentsData = await saukaService.getComments(groupId);
+            setComments(commentsData);
         } catch (e) {
             console.error(e);
             setError('Group not found or you are offline.');
@@ -92,6 +100,32 @@ export default function SaukaGroup() {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const handleAddComment = async (e) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+        setIsActionLoading(true);
+        try {
+            await saukaService.addComment(groupId, newComment.trim());
+            setNewComment('');
+            const commentsData = await saukaService.getComments(groupId);
+            setComments(commentsData);
+        } catch (e) {
+            alert('Failed to post comment.');
+        } finally {
+            setIsActionLoading(false);
+        }
+    };
+    
+    const handleDeleteComment = async (commentId) => {
+        if (!confirm('Delete comment?')) return;
+        try {
+            await saukaService.deleteComment(commentId);
+            setComments(comments.filter(c => c.$id !== commentId));
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     if (isLoading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="animate-spin text-[var(--h-gold)]" size={32} /></div>;
     if (error || !data) return <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center"><p className="text-[var(--h-ink-muted)]">{error}</p><button onClick={() => navigate('/sauka')} className="mt-4 rounded-xl bg-[var(--h-bone)] px-4 py-2 text-sm font-semibold text-[var(--h-ink)]">Go Back</button></div>;
 
@@ -100,13 +134,20 @@ export default function SaukaGroup() {
     const isAdmin = group.createdBy === userId;
 
     const isSurah = group.divisionType === 'surah';
-    const unitName = isSurah ? 'Surah' : 'Juz';
-    const totalParts = isSurah ? 114 : 30;
+    const isHizb = group.divisionType === 'hizb';
+    const unitName = isSurah ? 'Surah' : isHizb ? 'Hizb' : 'Juz';
+    const totalParts = isSurah ? 114 : isHizb ? 60 : 30;
 
     return (
         <div className="mx-auto max-w-[900px] pb-24 pt-4">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 {/* ── Top Info Card ── */}
+                <button 
+                    onClick={() => navigate('/sauka')} 
+                    className="mb-6 flex w-fit items-center gap-2 rounded-xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] px-4 py-2 text-sm font-semibold text-[var(--h-ink-mid)] transition-colors hover:bg-white hover:text-[var(--h-ink)]"
+                >
+                    <ArrowLeft size={16} /> Back to Sauka
+                </button>
                 <div className="mb-8 overflow-hidden rounded-2xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)]">
                     <div className="p-6">
                         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
@@ -127,17 +168,26 @@ export default function SaukaGroup() {
                         <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--h-bone-dark)]">
                             <div className="h-full rounded-full bg-[var(--h-teal)] transition-all duration-500" style={{ width: `${(completedCount / totalParts) * 100}%` }} />
                         </div>
+                        {group.intention && (
+                            <div className="mt-4 rounded-xl bg-white/50 p-4 border border-[var(--h-bone)]">
+                                <p className="text-xs uppercase tracking-wider text-[var(--h-ink-muted)] mb-1 font-[var(--font-mono)]">Dedication / Intention</p>
+                                <p className="text-sm italic text-[var(--h-ink)]">"{group.intention}"</p>
+                            </div>
+                        )}
                     </div>
                     {group.status === 'completed' && (
-                        <div className="bg-[var(--h-green)]/10 px-6 py-3 text-center text-sm font-bold text-[var(--h-green)]">
-                            Alhamdulillah! This Khatmah is complete.
+                        <div className="bg-[var(--h-green)]/10 px-6 py-4 text-center">
+                            <p className="text-sm font-bold text-[var(--h-green)] mb-3">Alhamdulillah! This Khatmah is complete.</p>
+                            <button onClick={() => setIsDuaOpen(true)} className="rounded-xl bg-[var(--h-green)] px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[var(--h-green)]/90">
+                                Read Completion Dua
+                            </button>
                         </div>
                     )}
                 </div>
 
                 {/* ── Grid ── */}
-                <h2 className="mb-4 px-2 font-[var(--font-mono)] text-xs uppercase tracking-widest text-[var(--h-ink-muted)]">The {totalParts} {isSurah ? 'Surahs' : 'Juz'}</h2>
-                <div className={`grid gap-2 ${isSurah ? 'grid-cols-6 sm:grid-cols-8 md:grid-cols-12' : 'grid-cols-5 sm:grid-cols-6 md:grid-cols-10'}`}>
+                <h2 className="mb-4 px-2 font-[var(--font-mono)] text-xs uppercase tracking-widest text-[var(--h-ink-muted)]">The {totalParts} {isSurah ? 'Surahs' : isHizb ? 'Hizbs' : 'Juz'}</h2>
+                <div className={`grid gap-2 ${isSurah ? 'grid-cols-6 sm:grid-cols-8 md:grid-cols-12' : isHizb ? 'grid-cols-6 sm:grid-cols-8 md:grid-cols-10' : 'grid-cols-5 sm:grid-cols-6 md:grid-cols-10'}`}>
                     {assignments.map(a => {
                         const isMine = a.claimedBy === userId;
                         let bg = 'bg-[var(--h-cream)] hover:bg-white';
@@ -171,6 +221,39 @@ export default function SaukaGroup() {
                         );
                     })}
                 </div>
+
+                {/* ── Comments / Nudges ── */}
+                <div className="mt-8 mb-6 rounded-2xl border border-[var(--h-bone-dark)] bg-[var(--h-cream)] p-6">
+                    <h2 className="mb-4 font-[var(--font-ui)] text-lg font-bold text-[var(--h-ink)]">Group Activity & Nudges</h2>
+                    
+                    <div className="mb-6 space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                        {comments.length === 0 ? (
+                            <p className="text-sm text-[var(--h-ink-muted)] text-center py-4">No comments yet. Start the conversation!</p>
+                        ) : (
+                            comments.map(c => (
+                                <div key={c.$id} className="rounded-xl bg-white p-3 shadow-sm border border-[var(--h-bone)] relative group/comment">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="font-semibold text-sm text-[var(--h-ink)]">{c.userName}</span>
+                                        <span className="text-[10px] text-[var(--h-ink-muted)]">{new Date(c.$createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-sm text-[var(--h-ink-mid)]">{c.text}</p>
+                                    {(c.userId === userId || isAdmin) && (
+                                        <button onClick={() => handleDeleteComment(c.$id)} className="absolute top-3 right-3 text-red-500 opacity-0 transition-opacity group-hover/comment:opacity-100">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <form onSubmit={handleAddComment} className="flex gap-2">
+                        <input type="text" value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Type a message or nudge..." className="flex-1 rounded-xl border border-[var(--h-bone-dark)] bg-white px-4 py-2.5 text-sm text-[var(--h-ink)] outline-none focus:border-[var(--h-teal)]" />
+                        <button type="submit" disabled={isActionLoading || !newComment.trim()} className="rounded-xl bg-[var(--h-teal)] px-4 py-2.5 font-bold text-white transition-colors hover:bg-[var(--h-teal-mid)] disabled:opacity-50">
+                            Post
+                        </button>
+                    </form>
+                </div>
             </motion.div>
 
             {/* ── Action Modal ── */}
@@ -185,7 +268,7 @@ export default function SaukaGroup() {
                                     <span className="font-[var(--font-ui)] text-3xl font-bold text-[var(--h-ink)]">{selectedJuz.partNumber}</span>
                                 </div>
                                 <h3 className="font-[var(--font-ui)] text-xl font-bold text-[var(--h-ink)]">{unitName} {selectedJuz.partNumber}</h3>
-                                {!isSurah && JUZ_MAP[selectedJuz.partNumber - 1] && (
+                                {(!isSurah && !isHizb) && JUZ_MAP[selectedJuz.partNumber - 1] && (
                                     <p className="mt-1 text-xs text-[var(--h-ink-muted)]">{JUZ_MAP[selectedJuz.partNumber - 1].label}</p>
                                 )}
                             </div>
@@ -208,7 +291,7 @@ export default function SaukaGroup() {
 
                                         {selectedJuz.claimedBy === userId && selectedJuz.status === 'in_progress' && (
                                             <div className="space-y-3">
-                                                <button onClick={() => navigate(isSurah ? `/surah/${selectedJuz.partNumber}` : `/page/${JUZ_MAP[selectedJuz.partNumber - 1].startPage}`)} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--h-gold)] py-3.5 text-sm font-bold text-white hover:bg-[var(--h-gold)]/90">
+                                                <button onClick={() => navigate(isSurah ? `/surah/${selectedJuz.partNumber}` : `/page/${JUZ_MAP[(isHizb ? Math.ceil(selectedJuz.partNumber / 2) : selectedJuz.partNumber) - 1]?.startPage || 1}`, { state: { backToSauka: groupId } })} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--h-gold)] py-3.5 text-sm font-bold text-white hover:bg-[var(--h-gold)]/90">
                                                     <BookOpen size={16} /> Start Reading
                                                 </button>
                                                 <button onClick={() => handleComplete(selectedJuz.$id)} disabled={isActionLoading} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[var(--h-teal)] py-3.5 text-sm font-bold text-white hover:bg-[var(--h-teal-mid)] disabled:opacity-50">
@@ -229,6 +312,40 @@ export default function SaukaGroup() {
                                     </div>
                                 )}
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+                
+                {/* ── Dua Modal ── */}
+                {isDuaOpen && (
+                    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsDuaOpen(false)} />
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-md max-h-[80vh] overflow-y-auto rounded-3xl bg-[var(--color-paper)] p-6 shadow-xl">
+                            <h2 className="mb-4 text-center font-[var(--font-ui)] text-2xl font-bold text-[var(--h-ink)]">Dua Khatm al-Quran</h2>
+                            <div className="space-y-4 text-center">
+                                <p className="text-2xl font-[var(--font-quran)] leading-loose text-[var(--h-ink)]" dir="rtl">
+                                    اللَّهُمَّ ارْحَمْنِي بالقُرْآنِ وَاجْعَلهُ لِي إِمَاماً وَنُوراً وَهُدًى وَرَحْمَةً
+                                </p>
+                                <p className="text-sm italic text-[var(--h-ink-mid)]">
+                                    Allahummarhamni bil-qur'an, waj'alhu li imaman wa nuran wa hudan wa rahmah.
+                                </p>
+                                <p className="text-sm text-[var(--h-ink)]">
+                                    "O Allah, have mercy on me through the Quran, and make it a leader, a light, guidance, and mercy for me."
+                                </p>
+                                
+                                <p className="text-2xl font-[var(--font-quran)] leading-loose text-[var(--h-ink)] pt-4 border-t border-[var(--h-bone-dark)]" dir="rtl">
+                                    اللَّهُمَّ ذَكِّرْنِي مِنْهُ مَا نَسِيتُ وَعَلِّمْنِي مِنْهُ مَا جَهِلْتُ وَارْزُقْنِي تِلاَوَتَهُ آنَاءَ اللَّيْلِ وَأَطْرَافَ النَّهَارِ وَاجْعَلهُ لِي حُجَّةً يَا رَبَّ العَالَمِينَ
+                                </p>
+                                <p className="text-sm italic text-[var(--h-ink-mid)]">
+                                    Allahumma dhakkirni minhu ma nasitu wa 'allimni minhu ma jahiltu warzuqni tilawatahu aana'al-laili wa atrafan-nahari waj'alhu li hujjatan ya rabbal-'alamin.
+                                </p>
+                                <p className="text-sm text-[var(--h-ink)]">
+                                    "O Allah, remind me of what I have forgotten of it, teach me what I am ignorant of it, and bless me with its recitation during the hours of the night and the edges of the day, and make it a proof for me, O Lord of the worlds."
+                                </p>
+                            </div>
+                            <button onClick={() => setIsDuaOpen(false)} className="mt-8 w-full rounded-xl bg-[var(--h-teal)] py-3 text-sm font-bold text-white hover:bg-[var(--h-teal-mid)]">
+                                Ameen / Close
+                            </button>
                         </motion.div>
                     </div>
                 )}
