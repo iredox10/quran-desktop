@@ -77,6 +77,7 @@ export const useAppStore = create(
             arabicFontId: DEFAULT_ARABIC_FONT_ID,
             arabicFont: DEFAULT_ARABIC_FONT_FAMILY,
             tajweedEnabled: false, // Show tajweed color rules
+            wordTooltipBehavior: 'tajweed', // 'tajweed', 'translation', or 'none'
             tafsirId: 169, // Default: Ibn Kathir (Abridged) English
             offlineDataStatus: 'idle', // 'idle', 'syncing', 'completed', 'error'
             downloadedSurahs: [], // Array of chapter IDs with offline audio
@@ -160,6 +161,7 @@ export const useAppStore = create(
                 const mushaf = getMushafById(state.mushafId);
                 return { tajweedEnabled: mushaf.supportsTajweedToggle ? enabled : false };
             }),
+            setWordTooltipBehavior: (behavior) => set({ wordTooltipBehavior: behavior }),
             setTafsirId: (id) => set({ tafsirId: id }),
             setOfflineStatus: (status) => set({ offlineDataStatus: status }),
             setOfflinePackStatus: (packId, updates) => set((state) => ({
@@ -802,6 +804,7 @@ export function getSyncableState(state) {
         arabicFontId: state.arabicFontId || DEFAULT_ARABIC_FONT_ID,
         arabicFont: state.arabicFont,
         tajweedEnabled: state.tajweedEnabled,
+        wordTooltipBehavior: state.wordTooltipBehavior || 'tajweed',
         tafsirId: state.tafsirId,
         bookmark: state.bookmark,
         bookmarks: state.bookmarks || [],

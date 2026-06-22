@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useAppStore } from '../store/useAppStore';
 
 const TAJWEED_RULES = {
     ham_wasl: {
@@ -117,11 +118,17 @@ TAJWEED_RULES.idgham_mutaqaribayn = TAJWEED_RULES.idghaam_mutaqaribayn;
 TAJWEED_RULES.slnt = TAJWEED_RULES.silent;
 
 export default function TajweedTooltip() {
+    const { wordTooltipBehavior } = useAppStore();
     const [tooltip, setTooltip] = useState(null); // { x, y, rule }
     const tooltipRef = useRef(null);
 
     const handleTajweedInteraction = useCallback((e) => {
-        const tajweedEl = e.target.closest('tajweed');
+        if (wordTooltipBehavior !== 'tajweed') {
+            if (tooltip) setTooltip(null);
+            return;
+        }
+
+        const tajweedEl = e.target.closest('tajweed, rule');
         if (!tajweedEl) {
             setTooltip(null);
             return;
@@ -142,10 +149,10 @@ export default function TajweedTooltip() {
             y: rect.top,
             rule
         });
-    }, []);
+    }, [wordTooltipBehavior, tooltip]);
 
     const handleDismiss = useCallback((e) => {
-        if (tooltipRef.current && !tooltipRef.current.contains(e.target) && !e.target.closest('tajweed')) {
+        if (tooltipRef.current && !tooltipRef.current.contains(e.target) && !e.target.closest('tajweed, rule')) {
             setTooltip(null);
         }
     }, []);

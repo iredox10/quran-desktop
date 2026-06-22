@@ -306,7 +306,8 @@ export default function SettingsDrawer({ isOpen, onClose }) {
         mushafId, setSelectedMushaf, arabicFontId, setArabicFont,
         tajweedEnabled, setTajweed, tafsirId, setTafsirId,
         localAudioDirHandle, setLocalAudioDirHandle,
-        currentUser, setCurrentUser
+        currentUser, setCurrentUser,
+        wordTooltipBehavior, setWordTooltipBehavior
     } = useAppStore();
 
     const mushaf = getMushafById(mushafId);
@@ -475,6 +476,14 @@ export default function SettingsDrawer({ isOpen, onClose }) {
                                                 checked={isTajweedActive}
                                                 disabled={!mushaf.supportsTajweedToggle}
                                                 onToggle={() => setTajweed(!tajweedEnabled)}
+                                            />
+                                            <SelectionRow 
+                                                label="Hover Action" 
+                                                value={wordTooltipBehavior === 'tajweed' ? 'Tajweed Rules' : wordTooltipBehavior === 'translation' ? 'Word Translation' : 'None'} 
+                                                onClick={() => {
+                                                    const next = wordTooltipBehavior === 'tajweed' ? 'translation' : wordTooltipBehavior === 'translation' ? 'none' : 'tajweed';
+                                                    setWordTooltipBehavior(next);
+                                                }} 
                                             />
                                         </div>
                                     </div>

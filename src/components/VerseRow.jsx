@@ -3,7 +3,7 @@ import { useInView } from 'react-intersection-observer';
 import { Bookmark, Info, X, Plus, Play, Pause, Folder, CheckCircle2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/useAppStore';
-import { getVerseArabicText } from '../utils/quranText';
+import { getVerseArabicText, getWordArabicText, sanitizeTajweedHtml } from '../utils/quranText';
 import { useQuery } from '@tanstack/react-query';
 import { getFootnote } from '../services/api/quranApi';
 
@@ -34,7 +34,7 @@ const VerseRow = ({
         triggerOnce: false,
     });
 
-    const { collections, addCollection, addToCollection, isPlaying } = useAppStore();
+    const { collections, addCollection, addToCollection, isPlaying, wordTooltipBehavior } = useAppStore();
     const [showCollectionModal, setShowCollectionModal] = useState(false);
     const [newCollectionName, setNewCollectionName] = useState('');
     const [activeFootnoteId, setActiveFootnoteId] = useState(null);
@@ -76,6 +76,34 @@ const VerseRow = ({
 
     const verseArabicText = getVerseArabicText(verse, mushaf);
 
+    const renderWords = () => {
+        if (!Array.isArray(verse.words) || verse.words.length === 0) {
+            return tajweedEnabled && tajweedMap?.[verse.verse_key]
+                ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
+                : <>{verseArabicText}</>;
+        }
+
+        return verse.words.map((word, index) => {
+            const translationText = word.translation?.text || '';
+            const isEndMark = word.char_type_name === 'end';
+            
+            return (
+                <span 
+                    key={word.id || index} 
+                    className="word inline-block" 
+                    data-word-translation={translationText}
+                    style={{ cursor: wordTooltipBehavior !== 'none' && !isEndMark && translationText ? 'pointer' : 'auto', marginLeft: index < verse.words.length - 1 ? '0.3em' : '0' }}
+                >
+                    {tajweedEnabled && word.text_uthmani_tajweed ? (
+                        <span dangerouslySetInnerHTML={{ __html: sanitizeTajweedHtml(word.text_uthmani_tajweed) }} />
+                    ) : (
+                        <>{getWordArabicText(word, mushaf)}</>
+                    )}
+                </span>
+            );
+        });
+    };
+
     if (readingMode) {
         return (
             <React.Fragment key={`reading-${verse.verse_key}`}>
@@ -96,10 +124,7 @@ const VerseRow = ({
                         wordBreak: 'break-word'
                     }}
                 >
-                    {tajweedEnabled && tajweedMap?.[verse.verse_key]
-                        ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                        : <>{verseArabicText}</>
-                    }
+                    {renderWords()}
                 </span>
             </React.Fragment>
         );
@@ -216,11 +241,7 @@ const VerseRow = ({
                         overflowWrap: 'anywhere'
                     }}
                 >
-                    {tajweedEnabled && tajweedMap?.[verse.verse_key]
-                        ? <span dangerouslySetInnerHTML={{ __html: tajweedMap[verse.verse_key] }} />
-                        : <>{verseArabicText}</>
-                    }
-
+                    {renderWords()}
                 </div>
 
                 <div dir="ltr" className="quran-translation text-left" style={{

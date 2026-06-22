@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
 import NavigationModal from './NavigationModal';
+import WordTranslationTooltip from './WordTranslationTooltip';
 
 export default function Layout() {
     const {
@@ -296,6 +297,7 @@ export default function Layout() {
             <GlobalAudioPlayer />
             <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
             <NavigationModal isOpen={isNavModalOpen} onClose={() => setIsNavModalOpen(false)} />
+            <WordTranslationTooltip />
         </div>
     );
 }

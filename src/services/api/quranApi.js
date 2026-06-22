@@ -36,9 +36,9 @@ const fetchWithOfflineCache = async (path, params = {}) => {
 };
 
 const WORD_FIELD_BY_MUSHAF = {
-  text_uthmani: ['text_uthmani', 'page_number', 'line_number'],
-  text_indopak: ['text_indopak', 'text_uthmani', 'page_number', 'line_number'],
-  text_qpc_hafs: ['text_qpc_hafs', 'text_uthmani', 'page_number', 'line_number'],
+  text_uthmani: ['text_uthmani', 'page_number', 'line_number', 'translation', 'text_uthmani_tajweed'],
+  text_indopak: ['text_indopak', 'text_uthmani', 'page_number', 'line_number', 'translation', 'text_uthmani_tajweed'],
+  text_qpc_hafs: ['text_qpc_hafs', 'text_uthmani', 'page_number', 'line_number', 'translation', 'text_uthmani_tajweed'],
 };
 
 const VERSE_FIELD_BY_MUSHAF = {

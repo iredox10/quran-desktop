@@ -17,9 +17,14 @@ export function sanitizeTajweedHtml(html) {
     return '';
   }
 
-  return TAJWEED_HTML_REPLACEMENTS.reduce((output, [pattern, replacement]) => {
+  let cleaned = TAJWEED_HTML_REPLACEMENTS.reduce((output, [pattern, replacement]) => {
     return output.replace(pattern, replacement);
   }, html);
+
+  cleaned = cleaned.replace(/<rule /g, '<tajweed ');
+  cleaned = cleaned.replace(/<\/rule>/g, '</tajweed>');
+
+  return cleaned;
 }
 
 export function getVerseArabicText(verse, mushaf) {
