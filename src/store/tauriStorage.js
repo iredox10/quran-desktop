@@ -1,12 +1,11 @@
-import { Store } from '@tauri-apps/plugin-store';
+import { load } from '@tauri-apps/plugin-store';
 
 // We lazy initialize the store so it doesn't break SSR or non-Tauri environments
 let nativeStore = null;
 
 async function getNativeStore() {
     if (!nativeStore) {
-        // Automatically save on every set in the background
-        nativeStore = new Store('app_state.bin');
+        nativeStore = await load('app_state.json', { autoSave: false });
     }
     return nativeStore;
 }

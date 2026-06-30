@@ -1,10 +1,5 @@
 export const ARABIC_FONT_OPTIONS = [
-  {
-    id: 'kfgqpc-hafs',
-    name: 'KFGQPC Hafs',
-    family: "'KFGQPC Hafs Uthmanic Script', 'Amiri Quran', serif",
-    mushafIds: ['madani-standard', 'madani-tajweed'],
-  },
+
   {
     id: 'uthman-taha-naskh',
     name: 'Uthman Taha Naskh',
@@ -43,7 +38,7 @@ export const MUSHAFS = [
     pageLayout: 'continuous',
     pageCount: 604,
     defaultFontId: 'amiri-quran',
-    supportedFontIds: ['amiri-quran', 'kfgqpc-hafs', 'uthman-taha-naskh', 'noto-naskh-arabic', 'scheherazade-new'],
+    supportedFontIds: ['amiri-quran', 'uthman-taha-naskh', 'noto-naskh-arabic', 'scheherazade-new'],
     supportsTajweedToggle: true,
     forcesTajweed: false,
     tajweedSource: 'uthmani_html',
@@ -58,8 +53,8 @@ export const MUSHAFS = [
     renderMode: 'qcf-page',
     pageLayout: 'page-accurate',
     pageCount: 604,
-    defaultFontId: 'kfgqpc-hafs',
-    supportedFontIds: ['kfgqpc-hafs', 'uthman-taha-naskh', 'amiri-quran'],
+    defaultFontId: 'amiri-quran',
+    supportedFontIds: ['amiri-quran', 'uthman-taha-naskh'],
     supportsTajweedToggle: true,
     forcesTajweed: true,
     tajweedSource: 'uthmani_html',
