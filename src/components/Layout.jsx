@@ -8,6 +8,7 @@ import GlobalAudioPlayer from './GlobalAudioPlayer';
 import SettingsDrawer from './SettingsDrawer';
 import NavigationModal from './NavigationModal';
 import WordTranslationTooltip from './WordTranslationTooltip';
+import DesktopTitlebar from './DesktopTitlebar';
 
 export default function Layout() {
     const {
@@ -23,6 +24,13 @@ export default function Layout() {
     const [showHeader, setShowHeader] = useState(true);
     const [lastScrollY, setLastScrollY] = useState(0);
     const [isNavModalOpen, setIsNavModalOpen] = useState(false);
+    const [isTauri, setIsTauri] = useState(false);
+
+    useEffect(() => {
+        if (window.__TAURI_INTERNALS__) {
+            setIsTauri(true);
+        }
+    }, []);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -194,8 +202,9 @@ export default function Layout() {
 
     return (
         <div className="flex min-h-screen flex-col">
+            <DesktopTitlebar />
             <header
-                className={`fixed inset-x-0 top-0 z-[1000] transition-all duration-[400ms] ${
+                className={`fixed inset-x-0 z-[1000] transition-all duration-[400ms] ${isTauri ? 'top-[38px]' : 'top-0'} ${
                     showHeader
                         ? 'translate-y-0 pointer-events-auto'
                         : '-translate-y-full pointer-events-none'
@@ -299,7 +308,7 @@ export default function Layout() {
                 </div>
             </header>
 
-            <main className={`flex-1 pb-[90px] ${isPlannerReader ? 'pt-[52px]' : 'pt-[calc(52px+2.5rem)]'}`}>
+            <main className={`flex-1 pb-[90px] ${!isImmersivePage ? 'md:pl-[240px]' : ''} ${isPlannerReader ? (isTauri ? 'pt-[90px]' : 'pt-[52px]') : (isTauri ? 'pt-[calc(90px+2.5rem)]' : 'pt-[calc(52px+2.5rem)]')}`}>
                 <Outlet />
             </main>
 

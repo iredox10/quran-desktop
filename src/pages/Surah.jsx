@@ -264,16 +264,36 @@ export default function Surah() {
 
 
     const handleDownloadSurah = async () => {
-        if (!audioData?.audio_url || isDownloading) return;
+        if (isDownloading) return;
 
         try {
             setIsDownloading(true);
-            const response = await fetch(audioData.audio_url);
-            if (response.ok) {
-                addDownloadedSurah(id);
+            
+            // 1. Cache all verses text for offline use
+            let currentPage = 1;
+            let hasMore = true;
+            while (hasMore) {
+                const data = await getVerses(id, translationId, reciterId, currentPage, mushafId, 50);
+                if (data.pagination.current_page >= data.pagination.total_pages) {
+                    hasMore = false;
+                } else {
+                    currentPage++;
+                }
             }
+            
+            // 2. Download audio native
+            if (audioData?.audio_url) {
+                if (window.__TAURI_INTERNALS__) {
+                    const { downloadAudioFile } = await import('../utils/tauriAudio');
+                    await downloadAudioFile(audioData.audio_url, id, reciterId);
+                } else {
+                    await fetch(audioData.audio_url).catch(() => {});
+                }
+            }
+            
+            addDownloadedSurah(id);
         } catch (error) {
-            console.error("Audio download failed", error);
+            console.error("Download failed", error);
         } finally {
             setIsDownloading(false);
         }

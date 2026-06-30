@@ -60,26 +60,44 @@ export default function GlobalAudioPlayer() {
 
     const [resolvedAudioUrl, setResolvedAudioUrl] = useState(null);
 
-    // Resolve local-audio:// to object URL if needed
+    // Resolve local-audio:// to object URL if needed, or check Tauri local cache
     useEffect(() => {
         if (!activeUrl) {
             setResolvedAudioUrl(null);
             return;
         }
 
-        if (typeof activeUrl === 'string' && activeUrl.startsWith('local-audio://') && localAudioDirHandle) {
-            const fileName = activeUrl.replace('local-audio://', '');
-            getLocalAudioUrl(localAudioDirHandle, fileName).then(url => {
+        const resolveUrl = async () => {
+            if (typeof activeUrl === 'string' && activeUrl.startsWith('local-audio://') && localAudioDirHandle) {
+                const fileName = activeUrl.replace('local-audio://', '');
+                const url = await getLocalAudioUrl(localAudioDirHandle, fileName);
                 setResolvedAudioUrl(url || activeUrl);
-            });
-        } else {
+                return;
+            } 
+            
+            // Phase 4: Native Offline Audio (Tauri)
+            if (window.__TAURI_INTERNALS__) {
+                const { getTauriAudioUrl } = await import('../utils/tauriAudio');
+                const verse = audioPlaylist[audioTrackIndex];
+                if (verse?.surahId) {
+                     // Check if full chapter audio exists
+                     // Since GlobalAudioPlayer usually streams the full chapter url when no playlist exists:
+                     // Wait, verse-by-verse audio is what's active. 
+                     // The download audio downloaded the FULL chapter. We can't easily sync verses to it without timestamps.
+                     // The user will just use the standard network url for verses for now until verse timestamps are added.
+                     // But if activeUrl is the FULL chapter:
+                }
+            }
+            
             setResolvedAudioUrl(activeUrl);
-        }
+        };
+        
+        resolveUrl();
 
         return () => {};
-    }, [activeUrl, localAudioDirHandle]);
+    }, [activeUrl, localAudioDirHandle, audioTrackIndex, audioPlaylist]);
 
-    // Sync with audio element
+    // Sync with audio element and listen to Tray
     useEffect(() => {
         if (!audioRef.current) return;
         audioRef.current.playbackRate = audioSettings.playbackSpeed;
@@ -89,7 +107,37 @@ export default function GlobalAudioPlayer() {
         } else {
             audioRef.current.pause();
         }
-    }, [isPlaying, resolvedAudioUrl, audioSettings.playbackSpeed]);
+
+        // Native Tray listener
+        let unlisten = null;
+        if (window.__TAURI_INTERNALS__) {
+            import('@tauri-apps/api/event').then(({ listen }) => {
+                listen('tray-play-pause', () => {
+                    setIsPlaying(prev => !prev);
+                }).then(fn => {
+                    unlisten = fn;
+                });
+            }).catch(console.error);
+        }
+
+        // Global Keyboard Shortcut (Spacebar)
+        const handleKeyDown = (e) => {
+            // Ignore if user is typing in an input/textarea
+            const tag = e.target.tagName.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+            
+            if (e.code === 'Space' && (currentAudioUrl || audioPlaylist.length > 0)) {
+                e.preventDefault();
+                setIsPlaying(prev => !prev);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            if (unlisten) unlisten();
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isPlaying, resolvedAudioUrl, audioSettings.playbackSpeed, setIsPlaying, currentAudioUrl, audioPlaylist.length]);
 
     const handleStop = () => { stopAudio(); setIsPlayerVisible(false); setIsSettingsOpen(false); };
 

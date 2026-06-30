@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import BottomNav from './components/BottomNav';
+import SidebarNav from './components/SidebarNav';
 import Home from './pages/Home';
 import Surah from './pages/Surah';
 import Page from './pages/Page';
@@ -74,6 +75,7 @@ function App() {
         </Route>
       </Routes>
       <BottomNav />
+      <SidebarNav />
       <FloatingPomodoro />
       <TajweedTooltip />
     </BrowserRouter>

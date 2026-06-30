@@ -26,7 +26,7 @@ export default function BottomNav() {
     ];
 
     return (
-        <div className="fixed bottom-3 left-1/2 z-[1000] flex h-16 w-[calc(100%-32px)] max-w-[500px] -translate-x-1/2 items-center justify-between gap-1 rounded-[100px] border-[var(--glass-border)] bg-[var(--glass-bg)] px-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
+        <div className="md:hidden fixed bottom-3 left-1/2 z-[1000] flex h-16 w-[calc(100%-32px)] max-w-[500px] -translate-x-1/2 items-center justify-between gap-1 rounded-[100px] border-[var(--glass-border)] bg-[var(--glass-bg)] px-2 shadow-[var(--glass-shadow)] backdrop-blur-xl">
             {tabs.map((tab) => {
                 const active = isActive(tab.path);
                 const Icon = tab.icon;

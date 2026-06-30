@@ -65,13 +65,14 @@ const decorateVerses = (verses = [], mushaf) => verses.map((verse) => ({
 }));
 
 export const getChapters = async () => {
-  const data = await fetchWithOfflineCache('/chapters', { language: 'en' });
-  return data.chapters;
+  // Use fully offline bundled data
+  const response = await axios.get('/data/chapters.json');
+  return response.data.chapters;
 };
 
 export const getChapter = async (id) => {
-  const data = await fetchWithOfflineCache(`/chapters/${id}`, { language: 'en' });
-  return data.chapter;
+  const chapters = await getChapters();
+  return chapters.find(c => c.id === Number(id));
 };
 
 export const getVerses = async (chapterId, translationId = 85, reciterId = 7, page = 1, mushafId = 'madani-standard', perPage = 50) => {

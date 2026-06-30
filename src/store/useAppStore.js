@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { tauriStorage } from './tauriStorage';
 import { fsrs, createEmptyCard, Rating } from 'ts-fsrs';
 
 const f = fsrs({});
@@ -438,6 +439,23 @@ export const useAppStore = create(
                         navigator.vibrate([200, 120, 200]);
                     }
 
+                    // Native Notification
+                    if (window.__TAURI_INTERNALS__) {
+                        import('@tauri-apps/plugin-notification').then(async ({ isPermissionGranted, requestPermission, sendNotification }) => {
+                            let permissionGranted = await isPermissionGranted();
+                            if (!permissionGranted) {
+                                const permission = await requestPermission();
+                                permissionGranted = permission === 'granted';
+                            }
+                            if (permissionGranted) {
+                                sendNotification({ 
+                                    title: 'Quran Desktop', 
+                                    body: `Your ${state.pomodoroMode} session is complete!` 
+                                });
+                            }
+                        }).catch(console.error);
+                    }
+
                     set({
                         pomodoroHistory: history,
                         readingSessions,
@@ -849,6 +867,7 @@ export const useAppStore = create(
                 };
             },
             partialize: (state) => getSyncableState(state), // Persist settings and user data
+            storage: createJSONStorage(() => tauriStorage),
         }
     )
 );

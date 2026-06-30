@@ -103,31 +103,6 @@ export default function Home() {
         return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
     }, []);
 
-    // PWA install
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [isInstallable, setIsInstallable] = useState(false);
-
-    useEffect(() => {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-        const dismissed = localStorage.getItem('hideInstallCard');
-        if (!isStandalone && !dismissed) setIsInstallable(true);
-        const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); setIsInstallable(true); };
-        window.addEventListener('beforeinstallprompt', handler);
-        return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, []);
-
-    const dismissInstall = (e) => { e.stopPropagation(); localStorage.setItem('hideInstallCard', 'true'); setIsInstallable(false); };
-    const handleInstallClick = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') { setDeferredPrompt(null); setIsInstallable(false); }
-        } else {
-            const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            alert(isIos ? "Tap Share → 'Add to Home Screen'." : "Look for 'Install App' in your browser menu.");
-        }
-    };
-
     const { data: chapters, isLoading, error } = useQuery({ queryKey: ['chapters'], queryFn: getChapters });
     const browseItems = useMemo(() => getBrowseItems(browseMode, chapters), [browseMode, chapters]);
     const filteredItems = useMemo(() => {
@@ -246,23 +221,6 @@ export default function Home() {
                     )}
                 </AnimatePresence>
 
-                {/* Install Banner */}
-                <AnimatePresence>
-                    {isInstallable && (
-                        <motion.div className="relative mb-6 cursor-pointer rounded-2xl bg-gradient-to-br from-[var(--h-teal)] to-[#3d8b6e] px-5 py-4 text-white transition-shadow duration-150 hover:shadow-[0_8px_24px_rgba(46,79,74,0.25)] md:px-6 md:py-5" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }} onClick={handleInstallClick}>
-                            <button className="absolute right-1.5 top-1.5 cursor-pointer border-none bg-transparent p-1 text-white/50" onClick={dismissInstall}><X size={14} /></button>
-                            <div className="flex flex-1 items-center gap-4">
-                                <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-white/15"><DownloadCloud size={22} /></div>
-                                <div>
-                                    <div className="text-base font-bold">Install App</div>
-                                    <div className="mt-0.5 text-xs opacity-85">Read offline with a native feel</div>
-                                </div>
-                            </div>
-                            <span className="shrink-0 whitespace-nowrap rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-[var(--h-teal)]">Install</span>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
 
                 {/* ─── Greeting Hero ─── */}
                 <div className="mb-6 text-center pt-6">
