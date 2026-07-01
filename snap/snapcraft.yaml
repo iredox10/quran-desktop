@@ -1,0 +1,40 @@
+name: quran-nur-desktop
+base: core22
+version: '0.1.2'
+summary: A beautiful, modern, and highly interactive Quran application for your desktop.
+description: |
+  Quran Desktop is built for focus, memorization, and continuous learning, available completely offline for Windows, macOS, and Linux.
+  Features include offline support, multiple Mushafs (Madani Standard and Tajweed), Tajweed support, memorization planner, Group Khatm, and cloud sync via Appwrite.
+grade: stable
+confinement: strict
+
+layout:
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1
+
+apps:
+  quran-nur-desktop:
+    command: usr/bin/quran-desktop
+    desktop: usr/share/applications/quran-desktop.desktop
+    extensions: [gnome]
+    plugs:
+      - network
+      - network-bind
+      - audio-playback
+
+parts:
+  quran-nur-desktop:
+    plugin: rust
+    source: .
+    build-packages:
+      - libwebkit2gtk-4.1-dev
+      - build-essential
+      - curl
+      - wget
+      - file
+      - libssl-dev
+      - libgtk-3-dev
+      - libayatana-appindicator3-dev
+      - librsvg2-dev
+    stage-packages:
+      - libwebkit2gtk-4.1-0

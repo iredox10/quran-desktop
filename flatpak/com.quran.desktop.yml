@@ -1,0 +1,35 @@
+app-id: com.quran.desktop
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+command: quran-desktop
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --device=dri
+  - --socket=pulseaudio
+modules:
+  - name: quran-desktop
+    buildsystem: simple
+    build-options:
+      env:
+        CARGO_HOME: /run/build/quran-desktop/cargo
+        npm_config_cache: /run/build/quran-desktop/npm
+    build-commands:
+      # We assume offline dependencies have been downloaded by flatpak-node-generator and flatpak-cargo-generator
+      - npm ci
+      - npm run tauri build -- --no-bundle
+      - install -Dm755 src-tauri/target/release/quran-desktop /app/bin/quran-desktop
+      - install -Dm644 src-tauri/icons/128x128.png /app/share/icons/hicolor/128x128/apps/com.quran.desktop.png
+      - install -Dm644 com.quran.desktop.desktop /app/share/applications/com.quran.desktop.desktop
+    sources:
+      - type: dir
+        path: ..
+      # Note: Before submitting to Flathub, you must generate cargo-sources.json and node-sources.json
+      # using flatpak-node-generator and flatpak-cargo-generator tools
+      # - type: file
+      #   path: cargo-sources.json
+      # - type: file
+      #   path: node-sources.json
