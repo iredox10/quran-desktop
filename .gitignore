@@ -2,6 +2,7 @@
 build/
 */build/
 *.log
+*.AppImage
 .DS_Store
 .idea/
 *.iml

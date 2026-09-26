@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
 kotlin {
     jvm()
 
@@ -37,5 +39,17 @@ kotlin {
 compose.desktop {
     application {
         mainClass = "com.nur.quran.desktop.MainKt"
+        nativeDistributions {
+            targetFormats(TargetFormat.AppImage)
+            packageName = "quran-nur"
+            packageVersion = "1.0.0"
+            vendor = "Quran Nur"
+            description = "Quran Nur — offline-first Quran reader, memorization and reading planner for desktop."
+            copyright = "Copyright © 2026 Quran Nur"
+            linux {
+                iconFile.set(project.file("src/main/resources/drawable/ic_logo.png"))
+                menuGroup = "Education"
+            }
+        }
     }
 }
