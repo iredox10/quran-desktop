@@ -40,6 +40,18 @@ gradle :desktop:createDistributable
   mode (continuous justified pages), and prev/next surah buttons.
   Settings add Arabic/translation size, line spacing, translation toggle
 - Page reader: mushaf pages 1–604 with previous/next navigation
+- Memorize: goal card, memorized/due/strong breakdown, per-surah
+  progress, FSRS-powered hifdh reader (blur + reveal + Again/Hard/Good/Easy)
+- Planner: Today/Progress/Journal tabs, plan templates + custom plans,
+  pace ring, journal, day reader with timer and completion tracking
+- Analytics: streak, today/total cards, weekly goal ring, 7-day heatmap,
+  activity mix, achievements
+- Profile: reading totals, weekly goal stepper, quick links, preferences,
+  local backup export/import, danger zone
+- Library: persisted bookmarks + named verse collections (CRUD)
+- Downloads: honest offline-pack inventory (text, metadata, tafsir,
+  fonts) + reciter list (audio streaming: future update)
+- Welcome first-run page, light/dark themes, left sidebar navigation
 - Rendering is shape-safe: Arabic uses a single text style per verse
   (the desktop equivalent of Android's `TextView + ForegroundColorSpan`
   guarantee — no span-split join breakage)
