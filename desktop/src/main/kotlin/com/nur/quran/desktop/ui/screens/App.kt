@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -69,11 +70,14 @@ import androidx.compose.ui.window.Dialog
 import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.components.DesktopFonts
+import com.nur.quran.desktop.ui.components.SettingsDrawerDesktop
 import com.nur.quran.desktop.ui.components.TranslationTextDesktop
 import com.nur.quran.desktop.ui.components.copyToClipboard
 import com.nur.quran.desktop.ui.home.BrowseItem
 import com.nur.quran.desktop.ui.home.buildBrowseItems
 import com.nur.quran.desktop.ui.home.filterBrowseItems
+import com.nur.quran.desktop.ui.nav.AppSidebar
+import com.nur.quran.desktop.ui.nav.DesktopRoutes
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.NurTheme
 import com.nur.quran.desktop.ui.theme.getGreeting
@@ -89,16 +93,25 @@ import java.util.Locale
  * App root with simple state-based navigation (no navigation library).
  *
  * Routes (plain strings):
- * - "home"          : homepage (greeting, continue, verse of the day, browse)
- * - "surah/{id}"    : [SurahScreenDesktop] for the given chapter id
- * - "page/{number}" : [PageScreenDesktop] for the given mushaf page (1..604)
+ * - "home"                 : homepage
+ * - "memorize" / "memorize/{id}" : memorization index + hifdh reader
+ * - "planner" / "planner_reader/{yyyy-MM-dd}" : reading plans
+ * - "analytics", "library", "downloads", "profile"
+ * - "surah/{id}" / "surah/{id}/{verseKey}" : surah reader
+ * - "page/{number}"        : mushaf page reader
  */
 @Composable
 fun App() {
     var dark by remember { mutableStateOf(PrefsCache.getDarkTheme()) }
-    var route by remember { mutableStateOf("home") }
+    var route by remember { mutableStateOf(DesktopRoutes.HOME) }
     var showSettings by remember { mutableStateOf(false) }
     var settingsTick by remember { mutableStateOf(0) }
+    var welcomed by remember { mutableStateOf(isWelcomed()) }
+
+    fun toggleTheme() {
+        dark = !dark
+        PrefsCache.putDarkTheme(dark)
+    }
 
     fun openSurah(chapterId: Int, verseKey: String? = null) {
         val chapter = QuranStore.chapter(chapterId)
@@ -122,69 +135,139 @@ fun App() {
     NurTheme(dark = dark) {
         val pal = remember(dark) { NurPalette(dark) }
         if (showSettings) {
-            FontSettingsDialog(
+            SettingsDrawerDesktop(
                 pal = pal,
-                settingsTick = settingsTick,
+                dark = dark,
+                onToggleTheme = ::toggleTheme,
                 onDismiss = {
                     showSettings = false
                     settingsTick++
                 }
             )
         }
-        when {
-            route == "home" -> HomeScreen(
-                pal = pal,
-                dark = dark,
-                onToggleTheme = {
-                    dark = !dark
-                    PrefsCache.putDarkTheme(dark)
-                },
-                onSettingsClick = { showSettings = true },
-                onOpenSurah = ::openSurah,
-                onOpenPage = ::openPage
-            )
-            route.startsWith("surah/") -> {
-                val rest = route.removePrefix("surah/").split("/")
-                val chapterId = rest.getOrNull(0)?.toIntOrNull() ?: 1
-                val verseKey = rest.getOrNull(1)
-                SurahScreenDesktop(
-                    chapterId = chapterId,
-                    targetVerseKey = verseKey,
+        if (!welcomed) {
+            WelcomeScreenDesktop(pal = pal) { welcomed = true }
+        } else {
+            Row(modifier = Modifier.fillMaxSize().background(pal.white)) {
+                AppSidebar(
                     pal = pal,
-                    dark = dark,
-                    onToggleTheme = {
-                        dark = !dark
-                        PrefsCache.putDarkTheme(dark)
-                    },
-                    onSettingsClick = { showSettings = true },
-                    settingsTick = settingsTick,
-                    onBack = { route = "home" },
-                    onOpenSurah = ::openSurah,
-                    onOpenPage = ::openPage
+                    current = route,
+                    onNavigate = { route = it },
+                    modifier = Modifier.fillMaxHeight()
                 )
-            }
-            route.startsWith("page/") -> {
-                val page = route.removePrefix("page/").toIntOrNull() ?: 1
-                Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
-                    Button(
-                        onClick = { route = "home" },
-                        modifier = Modifier.padding(start = 16.dp, top = 16.dp)
-                    ) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("Back")
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    when {
+                        route == DesktopRoutes.HOME -> HomeScreen(
+                            pal = pal,
+                            dark = dark,
+                            onToggleTheme = ::toggleTheme,
+                            onSettingsClick = { showSettings = true },
+                            onOpenSurah = ::openSurah,
+                            onOpenPage = ::openPage
+                        )
+                        route == DesktopRoutes.MEMORIZE -> MemorizeScreenDesktop(
+                            pal = pal,
+                            onBack = { route = DesktopRoutes.HOME },
+                            onOpenSurah = ::openSurah,
+                            onOpenHifdhReader = { id -> route = "memorize/$id" }
+                        )
+                        route.startsWith("memorize/") -> {
+                            val id = route.removePrefix("memorize/").toIntOrNull() ?: 114
+                            HifdhReaderScreenDesktop(
+                                chapterId = id,
+                                pal = pal,
+                                onBack = { route = DesktopRoutes.MEMORIZE },
+                                onOpenSurah = ::openSurah
+                            )
+                        }
+                        route == DesktopRoutes.PLANNER -> PlannerScreenDesktop(
+                            pal = pal,
+                            onBack = { route = DesktopRoutes.HOME },
+                            onOpenSurah = ::openSurah,
+                            onOpenPage = ::openPage,
+                            onOpenDay = { date -> route = "planner_reader/$date" }
+                        )
+                        route.startsWith("planner_reader/") -> {
+                            val date = route.removePrefix("planner_reader/")
+                            PlannerReaderScreenDesktop(
+                                dayDate = date,
+                                pal = pal,
+                                onBack = { route = DesktopRoutes.PLANNER },
+                                onBackToPlanner = { route = DesktopRoutes.PLANNER },
+                                onOpenSurah = ::openSurah,
+                                onOpenDay = { d -> route = "planner_reader/$d" }
+                            )
+                        }
+                        route == DesktopRoutes.ANALYTICS -> AnalyticsScreenDesktop(
+                            pal = pal,
+                            onBack = { route = DesktopRoutes.HOME }
+                        )
+                        route == DesktopRoutes.LIBRARY -> LibraryScreenDesktop(
+                            pal = pal,
+                            onBack = { route = DesktopRoutes.HOME },
+                            onOpenSurah = ::openSurah
+                        )
+                        route == DesktopRoutes.DOWNLOADS -> DownloadsScreenDesktop(
+                            pal = pal,
+                            onBack = { route = DesktopRoutes.HOME }
+                        )
+                        route == DesktopRoutes.PROFILE -> ProfileScreenDesktop(
+                            pal = pal,
+                            dark = dark,
+                            onToggleTheme = ::toggleTheme,
+                            onBack = { route = DesktopRoutes.HOME },
+                            onOpenLibrary = { route = DesktopRoutes.LIBRARY },
+                            onOpenDownloads = { route = DesktopRoutes.DOWNLOADS },
+                            onOpenPlanner = { route = DesktopRoutes.PLANNER }
+                        )
+                        route.startsWith("surah/") -> {
+                            val rest = route.removePrefix("surah/").split("/")
+                            val chapterId = rest.getOrNull(0)?.toIntOrNull() ?: 1
+                            val verseKey = rest.getOrNull(1)
+                            SurahScreenDesktop(
+                                chapterId = chapterId,
+                                targetVerseKey = verseKey,
+                                pal = pal,
+                                dark = dark,
+                                onToggleTheme = ::toggleTheme,
+                                onSettingsClick = { showSettings = true },
+                                settingsTick = settingsTick,
+                                onBack = { route = DesktopRoutes.HOME },
+                                onOpenSurah = ::openSurah,
+                                onOpenPage = ::openPage
+                            )
+                        }
+                        route.startsWith("page/") -> {
+                            val page = route.removePrefix("page/").toIntOrNull() ?: 1
+                            Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
+                                Button(
+                                    onClick = { route = DesktopRoutes.HOME },
+                                    modifier = Modifier.padding(start = 16.dp, top = 16.dp)
+                                ) {
+                                    Icon(Icons.Filled.ArrowBack, contentDescription = null)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Back")
+                                }
+                                PageScreenDesktop(
+                                    pageNumber = page.coerceIn(1, 604),
+                                    pal = pal,
+                                    settingsTick = settingsTick,
+                                    onPageChange = { next -> openPage(next) },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
-                    PageScreenDesktop(
-                        pageNumber = page.coerceIn(1, 604),
-                        pal = pal,
-                        settingsTick = settingsTick,
-                        onPageChange = { next -> openPage(next) },
-                        modifier = Modifier.weight(1f)
-                    )
                 }
             }
         }
     }
+}
+
+private fun isWelcomed(): Boolean = try {
+    java.util.prefs.Preferences.userRoot().node("welcome_prefs").getBoolean("seen", false)
+} catch (_: Exception) {
+    true
 }
 
 // ── Top navbar (matches Android TopNavbar / web Layout header) ─────────────
@@ -953,192 +1036,3 @@ private fun BrowseItemCard(
     }
 }
 
-// ── Font settings dialog (gear in navbar) ──────────────────────────────────
-@Composable
-private fun FontSettingsDialog(pal: NurPalette, settingsTick: Int, onDismiss: () -> Unit) {
-    var selected by remember { mutableStateOf(PrefsCache.getFont()) }
-    var arabicScale by remember { mutableStateOf(PrefsCache.getArabicScale()) }
-    var translationScale by remember { mutableStateOf(PrefsCache.getTranslationScale()) }
-    var lineHeightMult by remember { mutableStateOf(PrefsCache.getLineHeightMult()) }
-    var translationOn by remember { mutableStateOf(PrefsCache.getReaderTranslationEnabled()) }
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = pal.cream,
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark)
-        ) {
-            Column(modifier = Modifier.padding(24.dp).widthIn(min = 320.dp, max = 420.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Reading Settings",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = pal.ink
-                    )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = pal.inkMuted)
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "ARABIC FONT",
-                    fontSize = 10.sp,
-                    letterSpacing = 1.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = pal.inkMuted,
-                    fontFamily = FontFamily.Monospace
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                DesktopFonts.names.forEach { name ->
-                    val isSelected = selected == name
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable {
-                                selected = name
-                                PrefsCache.putFont(name)
-                            }
-                            .background(if (isSelected) pal.tealSoft else Color.Transparent)
-                            .border(
-                                1.5.dp,
-                                if (isSelected) pal.teal else Color.Transparent,
-                                RoundedCornerShape(12.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = name,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isSelected) pal.teal else pal.ink,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (isSelected) {
-                            Icon(
-                                Icons.Filled.Check,
-                                contentDescription = null,
-                                tint = pal.teal,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                SettingsSlider(
-                    pal = pal,
-                    label = "Arabic size",
-                    valueLabel = "${(arabicScale * 100).toInt()}%",
-                    value = arabicScale,
-                    range = 0.5f..2.0f,
-                    onChange = {
-                        arabicScale = it
-                        PrefsCache.putArabicScale(it)
-                    }
-                )
-                SettingsSlider(
-                    pal = pal,
-                    label = "Translation size",
-                    valueLabel = "${(translationScale * 100).toInt()}%",
-                    value = translationScale,
-                    range = 0.5f..2.0f,
-                    onChange = {
-                        translationScale = it
-                        PrefsCache.putTranslationScale(it)
-                    }
-                )
-                SettingsSlider(
-                    pal = pal,
-                    label = "Line spacing",
-                    valueLabel = "${(lineHeightMult * 100).toInt()}%",
-                    value = lineHeightMult,
-                    range = 0.8f..2.0f,
-                    onChange = {
-                        lineHeightMult = it
-                        PrefsCache.putLineHeightMult(it)
-                    }
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable {
-                            translationOn = !translationOn
-                            PrefsCache.putReaderTranslationEnabled(translationOn)
-                        }
-                        .padding(horizontal = 4.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Show translation",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = pal.ink,
-                        modifier = Modifier.weight(1f)
-                    )
-                    androidx.compose.material3.Switch(
-                        checked = translationOn,
-                        onCheckedChange = {
-                            translationOn = it
-                            PrefsCache.putReaderTranslationEnabled(it)
-                        }
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Filled.Bookmark,
-                        contentDescription = null,
-                        tint = pal.inkMuted,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Applies to the Surah and Page readers.",
-                        fontSize = 11.sp,
-                        color = pal.inkMuted
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsSlider(
-    pal: NurPalette,
-    label: String,
-    valueLabel: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    onChange: (Float) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)
-            Text(
-                text = valueLabel,
-                fontSize = 12.sp,
-                color = pal.inkMuted,
-                fontFamily = FontFamily.Monospace
-            )
-        }
-        androidx.compose.material3.Slider(
-            value = value,
-            onValueChange = onChange,
-            valueRange = range
-        )
-    }
-}
