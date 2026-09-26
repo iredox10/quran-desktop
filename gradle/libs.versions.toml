@@ -1,0 +1,25 @@
+[versions]
+# Kotlin 2.0.x pairs with Compose Multiplatform 1.7.x
+kotlin = "2.0.21"
+compose-multiplatform = "1.7.3"
+coroutines = "1.9.0"
+serialization = "1.7.3"
+gson = "2.11.0"
+junit4 = "4.13.2"
+# KevinnZou multiplatform WebView (covers JVM/desktop via JCEF); verify latest release before use
+webview = "2.0.2"
+
+[libraries]
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "coroutines" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
+webview-multiplatform = { group = "com.github.KevinnZou", name = "compose-webview-multiplatform", version.ref = "webview" }
+
+[plugins]
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
