@@ -23,6 +23,7 @@ kotlin {
                 implementation(compose.materialIconsExtended)
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.gson)
+                implementation(libs.jlayer)
                 // WebView-based tajweed renderer; uncomment when needed:
                 // implementation(libs.webview.multiplatform)
             }
