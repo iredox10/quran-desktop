@@ -42,8 +42,11 @@ import com.nur.quran.desktop.data.BookmarkStore
 import com.nur.quran.desktop.data.DeskVerse
 import com.nur.quran.desktop.data.TafsirStore
 import com.nur.quran.shared.HtmlStripper
+import com.nur.quran.shared.Verse
 import com.nur.quran.shared.formatArabicDigits
+import com.nur.quran.shared.mushafPlainVerseText
 import com.nur.quran.shared.sajdahNumberFor
+import com.nur.quran.shared.usesEmbeddedEndMarker
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
@@ -68,8 +71,9 @@ fun VerseRow(
 ) {
     val fontArabic = rememberArabicFontFamily(fontName)
     val fontBody = rememberBodyFontFamily()
-    val arabic = remember(verse, fontName) {
-        arabicWithMarker(verse.arabic, verse.verseNumber, fontName)
+    val mushafId = remember { PrefsCache.getMushaf() }
+    val arabic = remember(verse, fontName, mushafId) {
+        verseDisplayArabic(verse, fontName, mushafId)
     }
     var bookmarked by remember(verse.verseKey) {
         mutableStateOf(BookmarkStore.isBookmarked(verse.verseKey))
@@ -291,11 +295,31 @@ private fun Modifier.drawGoldBar(pal: NurPalette): Modifier = this.drawBehind {
 }
 
 /**
- * Arabic text plus exactly one end-of-ayah marker. KFGQPC Hafs shapes bare
- * digits into a medallion via GSUB; every other font needs the U+06DD frame.
+ * Display-ready Arabic for one verse, mirroring the Android pipeline:
+ * mushaf script selection + per-font ornament canonicalization via the shared
+ * [mushafPlainVerseText] (this is what strips marks like U+06DF ۟ that have
+ * no business on screen), plus exactly one end-of-ayah marker. KFGQPC Hafs
+ * shapes bare digits into a medallion via GSUB; every other font needs the
+ * U+06DD frame.
  */
-internal fun arabicWithMarker(arabic: String, verseNumber: Int, fontName: String): String {
-    val digits = formatArabicDigits(verseNumber)
-    val marker = if (DesktopFonts.isEmbeddedEndMarker(fontName)) " $digits" else " \u06DD$digits"
-    return arabic.trimEnd() + marker
+internal fun verseDisplayArabic(
+    verse: DeskVerse,
+    fontName: String,
+    mushafId: String = PrefsCache.getMushaf()
+): String {
+    val v = Verse(
+        id = 0,
+        verseKey = verse.verseKey,
+        chapterId = verse.chapterId,
+        verseNumber = verse.verseNumber,
+        textUthmani = verse.arabic,
+        textIndopak = verse.textIndopak.ifBlank { null },
+        textQpcHafs = null,
+        pageNumber = verse.pageNumber,
+        juzNumber = 0
+    )
+    val clean = mushafPlainVerseText(v, mushafId, fontName).trimEnd()
+    val digits = formatArabicDigits(verse.verseNumber)
+    val marker = if (usesEmbeddedEndMarker(fontName)) " $digits" else " \u06DD$digits"
+    return "$clean$marker"
 }

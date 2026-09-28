@@ -22,7 +22,6 @@ import androidx.compose.ui.text.platform.Font
 object DesktopFonts {
 
     const val KFGQPC_HAFS = "KFGQPC Hafs"
-    const val UTHMAN_TAHA_NASKH = "Uthman Taha Naskh"
     const val AMIRI_QURAN = "Amiri Quran"
     const val NOTO_NASKH_ARABIC = "Noto Naskh Arabic"
     const val SCHEHERAZADE_NEW = "Scheherazade New"
@@ -31,7 +30,6 @@ object DesktopFonts {
     /** All selectable font display names, in settings order. */
     val names: List<String> = listOf(
         KFGQPC_HAFS,
-        UTHMAN_TAHA_NASKH,
         AMIRI_QURAN,
         NOTO_NASKH_ARABIC,
         SCHEHERAZADE_NEW,
@@ -43,11 +41,15 @@ object DesktopFonts {
      * Android's getArabicFontFamily) to its regular-weight resource path.
      * Returns null for [SYSTEM_DEFAULT] (no bundled file).
      * See `fonts/FONTS.md` for the bold-weight companions.
+     *
+     * NOTE: "Uthman Taha Naskh" was dropped — the only TTF sources at hand
+     * were corrupt 404 pages (same as the Android repo's copies) or an old
+     * Ver10 without Uthmani mark coverage. Saved "uthman…" prefs resolve to
+     * Scheherazade below.
      */
     fun fileFor(name: String): String? {
         return when (name.trim().lowercase()) {
             "kfgqpc-hafs", "kfgqpc hafs" -> "fonts/kfgqpc_hafs.ttf"
-            "uthman-taha-naskh", "uthman taha naskh" -> "fonts/uthman_taha_naskh.ttf"
             "amiri-quran", "amiri quran" -> "fonts/amiri_regular.ttf"
             "noto-naskh-arabic", "noto naskh arabic" -> "fonts/noto_regular.ttf"
             "scheherazade-new", "scheherazade new" -> "fonts/scheherazade_regular.ttf"
@@ -69,24 +71,53 @@ object DesktopFonts {
 
     /**
      * Loads the bundled TTF for [name] as a Compose [FontFamily] by reading the
-     * classpath bytes (desktop has no R.font ids). Falls back to
-     * [FontFamily.Default] for "System Default" or any load failure.
+     * classpath bytes (desktop has no R.font ids), followed by Amiri and
+     * Scheherazade fallbacks so a glyph missing from the primary font (or a
+     * corrupt/placeholder file, which this repo has shipped before) renders
+     * from a font that has it instead of showing tofu. Falls back to
+     * [FontFamily.Default] when nothing loads.
      */
     @Composable
     fun rememberFontFamily(name: String): FontFamily {
         val path = remember(name) { fileFor(name) }
         return remember(path) {
-            if (path == null) {
-                FontFamily.Default
-            } else {
-                try {
-                    val bytes = DesktopFonts::class.java.getResourceAsStream("/$path")?.readBytes()
-                    if (bytes == null) FontFamily.Default
-                    else FontFamily(Font(identity = path, data = bytes, weight = FontWeight.Normal))
-                } catch (_: Exception) {
-                    FontFamily.Default
-                }
+            val fonts = mutableListOf<androidx.compose.ui.text.font.Font>()
+            if (path != null) {
+                loadValidatedFont(path)?.let { fonts += it }
             }
+            if (path != "fonts/amiri_regular.ttf") {
+                loadValidatedFont("fonts/amiri_regular.ttf")?.let { fonts += it }
+            }
+            if (path != "fonts/scheherazade_regular.ttf") {
+                loadValidatedFont("fonts/scheherazade_regular.ttf")?.let { fonts += it }
+            }
+            if (fonts.isEmpty()) FontFamily.Default else FontFamily(fonts)
         }
+    }
+
+    /**
+     * Reads a bundled font and rejects non-font bytes (the repo previously
+     * shipped HTML 404 pages with .ttf names — magic bytes catch those).
+     */
+    fun loadValidatedFont(path: String): androidx.compose.ui.text.font.Font? {
+        return try {
+            val bytes = DesktopFonts::class.java.getResourceAsStream("/$path")?.readBytes()
+                ?: return null
+            if (!isSfnt(bytes)) return null
+            Font(identity = path, data = bytes, weight = FontWeight.Normal)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun isSfnt(b: ByteArray): Boolean {
+        if (b.size < 256) return false
+        val magic = ((b[0].toInt() and 0xFF) shl 24) or
+            ((b[1].toInt() and 0xFF) shl 16) or
+            ((b[2].toInt() and 0xFF) shl 8) or
+            (b[3].toInt() and 0xFF)
+        // 00010000 (TrueType), OTTO (CFF-OpenType), true/typ1 (legacy Mac).
+        return magic == 0x00010000 || magic == 0x4F54544F ||
+            magic == 0x74727565 || magic == 0x74797031
     }
 }

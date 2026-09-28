@@ -37,6 +37,7 @@ data class DeskVerse(
     val chapterId: Int,
     val verseNumber: Int,
     val arabic: String,
+    val textIndopak: String = "",
     val translation: String,
     val pageNumber: Int
 )
@@ -65,6 +66,7 @@ object QuranStore {
                     chapterId = chapterId,
                     verseNumber = verseNumber,
                     arabic = v.textUthmani,
+                    textIndopak = v.textIndopak,
                     translation = v.translation,
                     pageNumber = v.pageNumber
                 )

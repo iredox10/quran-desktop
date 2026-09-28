@@ -64,7 +64,7 @@ import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.components.PlainVerseText
 import com.nur.quran.desktop.ui.components.VerseRow
-import com.nur.quran.desktop.ui.components.arabicWithMarker
+import com.nur.quran.desktop.ui.components.verseDisplayArabic
 import com.nur.quran.shared.HIZB_STARTS
 import com.nur.quran.shared.JUZ_STARTS
 import com.nur.quran.shared.getHizbByPage
@@ -720,7 +720,7 @@ private fun ContinuousReadingList(
                     PageDivider(pal = pal, fontBody = fontBody, page = page)
                     val paragraph = remember(pageVerses, fontName) {
                         pageVerses.joinToString(" ") { v ->
-                            arabicWithMarker(v.arabic, v.verseNumber, fontName)
+                            verseDisplayArabic(v, fontName)
                         }
                     }
                     androidx.compose.runtime.CompositionLocalProvider(
