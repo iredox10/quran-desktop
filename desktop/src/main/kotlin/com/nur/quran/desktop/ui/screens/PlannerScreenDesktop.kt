@@ -28,11 +28,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +50,12 @@ import com.nur.quran.desktop.ui.planner.JournalEditor
 import com.nur.quran.desktop.ui.planner.PaceRing
 import com.nur.quran.desktop.ui.planner.PlanTodayCard
 import com.nur.quran.desktop.ui.planner.SectionTitle
+import com.nur.quran.desktop.data.PrayerStore
 import com.nur.quran.desktop.ui.planner.TemplatesGrid
+import com.nur.quran.shared.buildPrayerSlots
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
@@ -91,14 +99,48 @@ fun PlannerScreenDesktop(
     var journalDate by remember { mutableStateOf(PlannerEngine.formatPlannerDate()) }
     var customError by remember { mutableStateOf<String?>(null) }
 
+    // ── Prayer slots state (Aladhan, cache-first via PrayerStore) ──
+    var prayerCity by remember { mutableStateOf(PrayerStore.getCity()) }
+    var prayerCountry by remember { mutableStateOf(PrayerStore.getCountry()) }
+    var prayerTimings by remember { mutableStateOf<com.nur.quran.shared.PrayerTimings?>(null) }
+    var prayerLoading by remember { mutableStateOf(false) }
+    val prayerScope = rememberCoroutineScope()
+
+    fun fetchPrayerTimings(city: String = prayerCity, country: String = prayerCountry) {
+        prayerLoading = true
+        prayerScope.launch {
+            val timings = withContext(Dispatchers.IO) {
+                PrayerStore.putCity(city)
+                PrayerStore.putCountry(country)
+                PrayerStore.getToday()
+            }
+            prayerTimings = timings
+            prayerLoading = false
+        }
+    }
+
+    LaunchedEffect(Unit) { fetchPrayerTimings() }
+
     val todayStr = remember { PlannerEngine.formatPlannerDate() }
     val activePlan = remember(refresh) { PlannerStore.getActivePlan() }
+    val allPlans = remember(refresh) { PlannerStore.getAllPlans() }
 
     fun adoptPlan(plan: ReadingPlan) {
         val updated = PlannerStore.getAllPlans().filterNot { it.id == plan.id } + plan
         PlannerStore.saveAllPlans(updated)
         PlannerStore.saveActivePlan(plan)
         customError = null
+        refresh++
+    }
+
+    fun activatePlan(plan: ReadingPlan) {
+        PlannerStore.saveActivePlan(plan)
+        refresh++
+    }
+
+    fun deletePlan(plan: ReadingPlan) {
+        if (plan.id == activePlan?.id) return
+        PlannerStore.saveAllPlans(PlannerStore.getAllPlans().filterNot { it.id == plan.id })
         refresh++
     }
 
@@ -248,6 +290,84 @@ fun PlannerScreenDesktop(
                                     onOpenDay(todayAssignment?.date ?: plan.startDate)
                                 }
                             )
+
+                            // ── Prayer slots (shared buildPrayerSlots) ──
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SectionTitle(pal = pal, text = "Prayer slots")
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = prayerCity,
+                                        onValueChange = { prayerCity = it },
+                                        label = { Text("City") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    OutlinedTextField(
+                                        value = prayerCountry,
+                                        onValueChange = { prayerCountry = it },
+                                        label = { Text("Country") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(
+                                        onClick = { fetchPrayerTimings(prayerCity.trim(), prayerCountry.trim()) },
+                                        enabled = !prayerLoading
+                                    ) {
+                                        Text(if (prayerLoading) "…" else "Refresh")
+                                    }
+                                }
+                                val planNonNull = activePlan
+                                val timingsNonNull = prayerTimings
+                                val slots: List<com.nur.quran.shared.PrayerSlot> =
+                                    remember(planNonNull, todayAssignment, timingsNonNull) {
+                                        if (planNonNull == null || timingsNonNull == null) emptyList()
+                                        else buildPrayerSlots(
+                                            planNonNull,
+                                            todayAssignment,
+                                            timingsNonNull
+                                        )
+                                    }
+                                if (slots.isEmpty()) {
+                                    Text(
+                                        text = if (prayerLoading) "Loading prayer times…"
+                                        else "Prayer slots appear once prayer times load and a plan is active.",
+                                        fontSize = 12.sp,
+                                        color = pal.inkMuted,
+                                        fontFamily = fontBody
+                                    )
+                                } else {
+                                    slots.forEach { slot ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = slot.name + (slot.time?.let { " · $it" } ?: ""),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = pal.ink,
+                                                fontFamily = fontBody
+                                            )
+                                            Text(
+                                                text = when (slot.status) {
+                                                    "completed" -> "Done ✓"
+                                                    "current" -> "${slot.doneInSlot}/${slot.count} now"
+                                                    "empty" -> "No reading"
+                                                    else -> "${slot.count} items"
+                                                },
+                                                fontSize = 12.sp,
+                                                color = if (slot.status == "completed") pal.green else pal.inkMuted,
+                                                fontFamily = fontBody
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -265,6 +385,35 @@ fun PlannerScreenDesktop(
                 } else {
                     val plan = activePlan
                     if (plan != null) {
+                    item(key = "plan-analytics") {
+                        val analytics = remember(plan, refresh) {
+                            PlannerEngine.getPlannerAnalytics(plan)
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = pal.cream,
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                SectionTitle(pal = pal, text = "Plan analytics")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    AnalyticsStat(pal, "${analytics.onTimeRate}%", "On time")
+                                    AnalyticsStat(pal, "${analytics.catchUpDays}", "Catch-up days")
+                                    AnalyticsStat(
+                                        pal,
+                                        String.format(java.util.Locale.US, "%.1f", analytics.avgPagesPerDay),
+                                        "Pages/day"
+                                    )
+                                    AnalyticsStat(pal, "${analytics.totalReadPages}", "Pages read")
+                                }
+                            }
+                        }
+                    }
                         item(key = "weekly") {
                             val summaries = remember(plan, refresh) {
                                 PlannerEngine.getWeeklySummary(plan)
@@ -374,6 +523,66 @@ fun PlannerScreenDesktop(
             }
         }
 
+        // ── My plans (management) ──
+        if (allPlans.isNotEmpty()) {
+            item(key = "my-plans-title") {
+                SectionTitle(pal = pal, text = "My plans • ${allPlans.size}")
+            }
+            items(allPlans, key = { "plan-${it.id}" }) { plan ->
+                val isActive = plan.id == activePlan?.id
+                val planAnalytics = remember(plan.id) {
+                    runCatching { PlannerEngine.getPlannerAnalytics(plan) }.getOrNull()
+                }
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isActive) pal.tealSoft else pal.cream,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, if (isActive) pal.teal else pal.boneDark
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = plan.title + if (isActive) "  • active" else "",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isActive) pal.teal else pal.ink,
+                                    fontFamily = fontUi
+                                )
+                                Text(
+                                    text = "${plan.startDate} · ${plan.durationDays} days",
+                                    fontSize = 11.sp,
+                                    color = pal.inkMuted,
+                                    fontFamily = fontBody
+                                )
+                                planAnalytics?.let { a ->
+                                    Text(
+                                        text = "${a.onTimeRate}% on time · ${a.totalReadPages} pages read",
+                                        fontSize = 11.sp,
+                                        color = pal.inkMuted,
+                                        fontFamily = fontBody
+                                    )
+                                }
+                            }
+                            if (!isActive) {
+                                TextButton(onClick = { activatePlan(plan) }) {
+                                    Text("Activate", color = pal.teal, fontSize = 12.sp)
+                                }
+                                TextButton(onClick = { deletePlan(plan) }) {
+                                    Text("Delete", color = pal.gold, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // ── Templates section ──
         item(key = "templates-title") {
             SectionTitle(pal = pal, text = "Plan templates")
@@ -416,6 +625,31 @@ fun PlannerScreenDesktop(
         }
     }
 }
+
+@Composable
+private fun AnalyticsStat(pal: NurPalette, value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = pal.teal,
+            fontFamily = fontUiLabel()
+        )
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = pal.inkMuted,
+            fontFamily = fontBodyLabel()
+        )
+    }
+}
+
+@Composable
+private fun fontUiLabel(): androidx.compose.ui.text.font.FontFamily = rememberUiFontFamily()
+
+@Composable
+private fun fontBodyLabel(): androidx.compose.ui.text.font.FontFamily = rememberBodyFontFamily()
 
 @Composable
 private fun StatusPill(pal: NurPalette, status: String) {
