@@ -37,6 +37,17 @@ object AudioEngine {
 
     private const val PREFS_NODE = "audio_prefs"
     private const val KEY_RECITER_ID = "reciter_id"
+    private const val KEY_REPEAT_MODE = "repeat_mode"
+    private const val KEY_SLEEP_MINUTES = "sleep_minutes"
+
+    /** Repeat behavior at track/queue end: "off" / "ayah" / "chapter". */
+    val repeatMode: String get() = repeatModeState.value
+
+    /** Sleep-timer length in minutes; 0 disables. Stops playback at the deadline. */
+    val sleepMinutes: Int get() = sleepMinutesState.value
+
+    @Volatile
+    private var sleepDeadlineMs: Long = 0L
 
     var queue: List<Track> by mutableStateOf(emptyList())
         private set
@@ -48,6 +59,8 @@ object AudioEngine {
         private set
 
     private val reciterState = mutableStateOf(loadReciterId())
+    private val repeatModeState = mutableStateOf(loadPref(KEY_REPEAT_MODE, "off"))
+    private val sleepMinutesState = mutableStateOf(loadPref(KEY_SLEEP_MINUTES, 0))
 
     /** Currently selected reciter; setting persists to Preferences. */
     var reciterId: Int
@@ -59,6 +72,23 @@ object AudioEngine {
 
     val current: Track?
         get() = queue.getOrNull(index)
+
+    /** Repeat mode: "off" | "ayah" | "chapter"; setting persists. */
+    fun setRepeatMode(mode: String) {
+        repeatModeState.value = mode
+        persistPref(KEY_REPEAT_MODE, mode)
+    }
+
+    /** Sleep timer minutes (0 clears); restarts the deadline from now. */
+    fun setSleepMinutes(minutes: Int) {
+        sleepMinutesState.value = minutes
+        persistPref(KEY_SLEEP_MINUTES, minutes)
+        sleepDeadlineMs = if (minutes > 0) System.currentTimeMillis() + minutes * 60_000L else 0L
+    }
+
+    val sleepRemainingMs: Long
+        get() = if (sleepDeadlineMs <= 0L) 0L
+        else (sleepDeadlineMs - System.currentTimeMillis()).coerceAtLeast(0L)
 
     private val lock = Any()
 
@@ -135,6 +165,9 @@ object AudioEngine {
         synchronized(lock) { stopLocked() }
     }
 
+    private fun sleepExpired(): Boolean =
+        sleepDeadlineMs in 1..System.currentTimeMillis()
+
     // ── Internals (lock must be held for *Locked fns) ────────────────────────
 
     private fun stopLocked() {
@@ -142,6 +175,7 @@ object AudioEngine {
         playing = false
         queue = emptyList()
         index = 0
+        sleepDeadlineMs = 0L
         closePlayerLocked()
         worker?.interrupt()
         worker = null
@@ -169,6 +203,10 @@ object AudioEngine {
         val start = from.coerceIn(0, snapshot.size - 1)
         index = start
         playing = true
+        // Restored sleep preference becomes active once playback starts.
+        if (sleepMinutes > 0 && sleepDeadlineMs == 0L) {
+            sleepDeadlineMs = System.currentTimeMillis() + sleepMinutes * 60_000L
+        }
         val t = Thread({ runQueue(snapshot, reciter, start, gen) }, "quran-audio-playback")
         t.isDaemon = true
         worker = t
@@ -215,10 +253,20 @@ object AudioEngine {
                     if (activePlayer === player) activePlayer = null
                 }
                 if (gen != generation) return
-                i++
+                // Track finished: sleep timer > ayah repeat > advance / chapter repeat.
+                if (sleepExpired()) {
+                    System.err.println("AudioEngine: sleep timer elapsed")
+                    requestStop(gen)
+                    return
+                }
+                when {
+                    repeatMode == "ayah" -> i-- // replay same index
+                    i + 1 >= snapshot.size && repeatMode == "chapter" -> i = 0
+                    else -> i++
+                }
             }
             synchronized(lock) {
-                if (gen == generation) playing = false
+                if (gen == generation && repeatMode != "chapter") playing = false
             }
         } catch (t: Throwable) {
             System.err.println("AudioEngine: ${t.message}")
@@ -262,6 +310,32 @@ object AudioEngine {
             Preferences.userRoot().node(PREFS_NODE).putInt(KEY_RECITER_ID, id)
         } catch (e: Exception) {
             System.err.println("AudioEngine: persist reciter failed: ${e.message}")
+        }
+    }
+
+    private fun loadPref(key: String, def: String): String = try {
+        Preferences.userRoot().node(PREFS_NODE).get(key, def) ?: def
+    } catch (_: Exception) {
+        def
+    }
+
+    private fun loadPref(key: String, def: Int): Int = try {
+        Preferences.userRoot().node(PREFS_NODE).getInt(key, def)
+    } catch (_: Exception) {
+        def
+    }
+
+    private fun persistPref(key: String, value: String) {
+        try {
+            Preferences.userRoot().node(PREFS_NODE).put(key, value)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun persistPref(key: String, value: Int) {
+        try {
+            Preferences.userRoot().node(PREFS_NODE).putInt(key, value)
+        } catch (_: Exception) {
         }
     }
 }

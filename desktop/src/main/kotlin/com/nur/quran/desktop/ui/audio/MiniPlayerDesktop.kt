@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
@@ -23,7 +24,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +58,7 @@ fun MiniPlayerDesktop(
     onOpenVerse: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showSheet by remember { mutableStateOf(false) }
     val fontUi = rememberUiFontFamily()
     val label = remember(track) {
         if (track == null) "" else {
@@ -120,6 +125,14 @@ fun MiniPlayerDesktop(
                     .clickable(enabled = track != null) { track?.let { onOpenVerse(it.verseKey) } }
                     .padding(vertical = 8.dp)
             )
+            IconButton(onClick = { showSheet = true }, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Audio settings",
+                    tint = pal.inkMid,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
             IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.Filled.Close,
@@ -129,5 +142,8 @@ fun MiniPlayerDesktop(
                 )
             }
         }
+    }
+    if (showSheet) {
+        AudioSetupSheetDesktop(pal = pal, onDismiss = { showSheet = false })
     }
 }
