@@ -53,6 +53,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -62,6 +70,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.AudioEngine
 import com.nur.quran.desktop.data.QuranStore
@@ -164,7 +174,48 @@ fun SurahScreenDesktop(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(pal.white)) {
+    // Desktop keyboard nav: ←/→ switch surah, Home/End jump, Esc closes —
+    // suppressed while the navigation dialog owns the focus (text fields).
+    val focusRequester = remember { FocusRequester() }
+    val keyScope = rememberCoroutineScope()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(pal.white)
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown || showNavDialog) return@onKeyEvent false
+                when (event.key) {
+                    Key.DirectionLeft -> {
+                        if (chapterId > 1) onOpenSurah(chapterId - 1, null)
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        if (chapterId < 114) onOpenSurah(chapterId + 1, null)
+                        true
+                    }
+                    Key.MoveHome -> {
+                        keyScope.launch { listState.scrollToItem(0) }
+                        true
+                    }
+                    Key.MoveEnd -> {
+                        keyScope.launch {
+                            listState.scrollToItem(
+                                (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
+                            )
+                        }
+                        true
+                    }
+                    Key.Escape -> {
+                        onBack()
+                        true
+                    }
+                    else -> false
+                }
+            }
+    ) {
+        LaunchedEffect(chapterId) { focusRequester.requestFocus() }
         Column(modifier = Modifier.fillMaxSize()) {
         SurahTopBar(
             pal = pal,
@@ -273,6 +324,15 @@ fun SurahScreenDesktop(
                             fontUi = fontUi,
                             chapterId = chapterId,
                             onOpenSurah = { id -> onOpenSurah(id, null) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "←/→ switch surah · Home/End jump · Esc back",
+                            fontSize = 10.sp,
+                            color = pal.inkMuted,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
