@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
@@ -43,6 +44,7 @@ object DesktopRoutes {
     const val ANALYTICS = "analytics"
     const val LIBRARY = "library"
     const val DOWNLOADS = "downloads"
+    const val HISTORY = "history"
     const val PROFILE = "profile"
 
     fun isTopLevel(route: String): Boolean =
@@ -52,6 +54,7 @@ object DesktopRoutes {
             route == ANALYTICS ||
             route == LIBRARY ||
             route == DOWNLOADS ||
+            route == HISTORY ||
             route == PROFILE
 
     fun topLevelOf(route: String): String =
@@ -72,6 +75,7 @@ private val navEntries: List<NavEntry> = listOf(
     NavEntry(DesktopRoutes.PLANNER, "Planner", Icons.Filled.CalendarMonth),
     NavEntry(DesktopRoutes.ANALYTICS, "Analytics", Icons.Filled.BarChart),
     NavEntry(DesktopRoutes.LIBRARY, "Library", Icons.Filled.Bookmark),
+    NavEntry(DesktopRoutes.HISTORY, "History", Icons.Filled.History),
     NavEntry(DesktopRoutes.DOWNLOADS, "Downloads", Icons.Filled.Download),
     NavEntry(DesktopRoutes.PROFILE, "Profile", Icons.Filled.Person),
 )

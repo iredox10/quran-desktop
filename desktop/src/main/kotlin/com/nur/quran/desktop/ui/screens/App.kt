@@ -67,7 +67,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.nur.quran.shared.FsrsCard
+import com.nur.quran.shared.HifdhStore
 import com.nur.quran.desktop.PrefsCache
+import com.nur.quran.desktop.data.RecentlyReadStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.components.DesktopFonts
 import com.nur.quran.desktop.ui.components.SettingsDrawerDesktop
@@ -76,6 +79,7 @@ import com.nur.quran.desktop.ui.components.copyToClipboard
 import com.nur.quran.desktop.ui.home.BrowseItem
 import com.nur.quran.desktop.ui.home.GlobalSearch
 import com.nur.quran.desktop.ui.home.HomeStatsRow
+import com.nur.quran.desktop.ui.home.RecentlyReadRow
 import com.nur.quran.desktop.ui.home.buildBrowseItems
 import com.nur.quran.desktop.ui.home.filterBrowseItems
 import com.nur.quran.desktop.ui.nav.AppSidebar
@@ -117,7 +121,9 @@ fun App() {
 
     fun openSurah(chapterId: Int, verseKey: String? = null) {
         val chapter = QuranStore.chapter(chapterId)
-        PrefsCache.putLastRead(chapterId, chapter?.nameSimple ?: "Surah $chapterId", verseKey)
+        val name = chapter?.nameSimple ?: "Surah $chapterId"
+        PrefsCache.putLastRead(chapterId, name, verseKey)
+        RecentlyReadStore.record(chapterId, name, verseKey)
         route = if (verseKey == null) "surah/$chapterId" else "surah/$chapterId/$verseKey"
     }
 
@@ -125,11 +131,9 @@ fun App() {
         val first = QuranStore.versesOfPage(page).firstOrNull()
         if (first != null) {
             val chapter = QuranStore.chapter(first.chapterId)
-            PrefsCache.putLastRead(
-                first.chapterId,
-                chapter?.nameSimple ?: "Surah ${first.chapterId}",
-                first.verseKey
-            )
+            val name = chapter?.nameSimple ?: "Surah ${first.chapterId}"
+            PrefsCache.putLastRead(first.chapterId, name, first.verseKey)
+            RecentlyReadStore.record(first.chapterId, name, first.verseKey)
         }
         route = "page/$page"
     }
@@ -165,7 +169,8 @@ fun App() {
                             onToggleTheme = ::toggleTheme,
                             onSettingsClick = { showSettings = true },
                             onOpenSurah = ::openSurah,
-                            onOpenPage = ::openPage
+                            onOpenPage = ::openPage,
+                            onOpenMemorizeChapter = { id -> route = "memorize/$id" }
                         )
                         route == DesktopRoutes.MEMORIZE -> MemorizeScreenDesktop(
                             pal = pal,
@@ -205,6 +210,11 @@ fun App() {
                             onBack = { route = DesktopRoutes.HOME }
                         )
                         route == DesktopRoutes.LIBRARY -> LibraryScreenDesktop(
+                            pal = pal,
+                            onBack = { route = DesktopRoutes.HOME },
+                            onOpenSurah = ::openSurah
+                        )
+                        route == DesktopRoutes.HISTORY -> HistoryScreenDesktop(
                             pal = pal,
                             onBack = { route = DesktopRoutes.HOME },
                             onOpenSurah = ::openSurah
@@ -270,6 +280,27 @@ private fun isWelcomed(): Boolean = try {
     java.util.prefs.Preferences.userRoot().node("welcome_prefs").getBoolean("seen", false)
 } catch (_: Exception) {
     true
+}
+
+/**
+ * Chapter with the most FSRS-due hifdh verses, or null when nothing is due.
+ * Entries without a card (never reviewed) are treated as due immediately.
+ */
+private fun topDueChapter(): Pair<Int, Int>? {
+    val now = System.currentTimeMillis()
+    val neverDue = FsrsCard(
+        due = 0L, stability = 0.0, difficulty = 0.0,
+        elapsedDays = 0.0, scheduledDays = 0, reps = 0,
+        lapses = 0, learningSteps = 0, state = 0
+    )
+    val counts = HashMap<Int, Int>()
+    HifdhStore.loadHifdhHistory().forEach { (key, entry) ->
+        val chapterId = key.substringBefore(":").toIntOrNull() ?: return@forEach
+        if (chapterId in 1..114 && (entry.card ?: neverDue).isDue(now)) {
+            counts.merge(chapterId, 1, Int::plus)
+        }
+    }
+    return counts.entries.maxByOrNull { it.value }?.let { it.key to it.value }
 }
 
 // ── Top navbar (matches Android TopNavbar / web Layout header) ─────────────
@@ -352,7 +383,8 @@ private fun HomeScreen(
     onToggleTheme: () -> Unit,
     onSettingsClick: () -> Unit,
     onOpenSurah: (Int, String?) -> Unit,
-    onOpenPage: (Int) -> Unit
+    onOpenPage: (Int) -> Unit,
+    onOpenMemorizeChapter: (Int) -> Unit = {}
 ) {
     var browseMode by remember { mutableStateOf("surah") }
     var searchQuery by remember { mutableStateOf("") }
@@ -443,6 +475,43 @@ private fun HomeScreen(
                                 onClick = { onOpenSurah(1, null) }
                             )
                         }
+                    }
+                }
+
+                // ── Recently read ──
+                item {
+                    val recentEntries = remember(lastReadTick) { RecentlyReadStore.all() }
+                    if (recentEntries.isNotEmpty()) {
+                        RecentlyReadRow(
+                            pal = pal,
+                            entries = recentEntries,
+                            onOpen = { id, vk ->
+                                lastReadTick++
+                                onOpenSurah(id, vk)
+                            },
+                            onClear = {
+                                RecentlyReadStore.clear()
+                                lastReadTick++
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(28.dp))
+                    }
+                }
+
+                // ── Due for review ──
+                item {
+                    val topDue = remember(lastReadTick) { topDueChapter() }
+                    if (topDue != null) {
+                        DueReviewCard(
+                            pal = pal,
+                            fontUi = fontUi,
+                            chapterId = topDue.first,
+                            chapterName = QuranStore.chapter(topDue.first)?.nameSimple
+                                ?: "Surah ${topDue.first}",
+                            dueCount = topDue.second,
+                            onReview = { onOpenMemorizeChapter(topDue.first) }
+                        )
+                        Spacer(modifier = Modifier.height(28.dp))
                     }
                 }
 
@@ -824,6 +893,67 @@ private fun ZeroStateContinueCard(
                         modifier = Modifier.size(14.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+// ── Due for review (teal, FSRS-backed) ──────────────────────────────
+@Composable
+private fun DueReviewCard(
+    pal: NurPalette,
+    fontUi: FontFamily,
+    chapterId: Int,
+    chapterName: String,
+    dueCount: Int,
+    onReview: () -> Unit
+) {
+    Surface(
+        onClick = onReview,
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 440.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = Color.Transparent
+    ) {
+        Row(
+            modifier = Modifier
+                .background(Brush.linearGradient(listOf(pal.teal, pal.tealMid)))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "🧠",
+                fontSize = 22.sp
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "$dueCount verses due for review",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    fontFamily = fontUi
+                )
+                Text(
+                    text = "$chapterName · $chapterId — keep your hifdh sharp",
+                    fontSize = 11.sp,
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White.copy(alpha = 0.18f)
+            ) {
+                Text(
+                    text = "Review now",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontFamily = fontUi,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                )
             }
         }
     }
