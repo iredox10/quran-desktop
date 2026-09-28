@@ -20,9 +20,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Quiz
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -30,6 +33,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,10 +45,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.QuranStore
+import com.nur.quran.desktop.ui.hifdh.HifdhBreakdownDialog
+import com.nur.quran.desktop.ui.hifdh.HifdhGoalDialog
+import com.nur.quran.desktop.ui.hifdh.HifdhTestDialog
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
@@ -70,6 +79,10 @@ fun MemorizeScreenDesktop(
 
     // Bumped after every HifdhStore write so load*() results refresh.
     var tick by remember { mutableStateOf(0) }
+    var searchQuery by remember { mutableStateOf("") }
+    var showGoalDialog by remember { mutableStateOf(false) }
+    var breakdownFor by remember { mutableStateOf<Int?>(null) }
+    var testFor by remember { mutableStateOf<Int?>(null) }
     val nowMs = remember(tick) { System.currentTimeMillis() }
     val history = remember(tick) { HifdhStore.loadHifdhHistory() }
     val goals = remember(tick) { HifdhStore.loadHifdhGoals() }
@@ -93,6 +106,16 @@ fun MemorizeScreenDesktop(
             .groupingBy { it.substringBefore(":").toIntOrNull() }
             .eachCount()
             .maxByOrNull { it.value }?.key
+    }
+    val filteredChapters = remember(chapters, searchQuery) {
+        val q = searchQuery.trim()
+        if (q.isEmpty()) chapters
+        else chapters.filter {
+            it.nameSimple.lowercase().contains(q.lowercase()) ||
+                it.nameArabic.contains(q) ||
+                it.id.toString() == q ||
+                it.translatedNameText.lowercase().contains(q.lowercase())
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
@@ -141,6 +164,45 @@ fun MemorizeScreenDesktop(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
+        // ── Chapter search ──
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = {
+                Text(
+                    "Search surah…",
+                    color = pal.inkMuted,
+                    fontSize = 14.sp,
+                    fontFamily = FontFamily.Default
+                )
+            },
+            leadingIcon = {
+                Icon(Icons.Filled.Search, contentDescription = null, tint = pal.inkMuted, modifier = Modifier.size(18.dp))
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Filled.Close, contentDescription = "Clear", tint = pal.inkMuted, modifier = Modifier.size(16.dp))
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = pal.teal,
+                unfocusedBorderColor = pal.boneDark,
+                focusedContainerColor = pal.cream,
+                unfocusedContainerColor = pal.cream,
+                cursorColor = pal.teal,
+                focusedTextColor = pal.ink,
+                unfocusedTextColor = pal.ink
+            ),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
@@ -152,6 +214,17 @@ fun MemorizeScreenDesktop(
             item(key = "goal") {
                 val goal = goals.firstOrNull()
                 if (goal == null) {
+                    if (showGoalDialog) {
+                        HifdhGoalDialog(
+                            pal = pal,
+                            defaultChapterId = 114,
+                            onDismiss = { showGoalDialog = false },
+                            onSaved = {
+                                showGoalDialog = false
+                                tick++
+                            }
+                        )
+                    }
                     Card(
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = pal.cream),
@@ -193,19 +266,7 @@ fun MemorizeScreenDesktop(
                                 )
                             }
                             Button(
-                                onClick = {
-                                    val now = System.currentTimeMillis()
-                                    HifdhStore.saveHifdhGoals(
-                                        goals + HifdhGoal(
-                                            id = now.toString(),
-                                            targetType = "surah",
-                                            targetId = 114,
-                                            targetDate = now + 30L * 24 * 60 * 60 * 1000,
-                                            createdAt = now
-                                        )
-                                    )
-                                    tick++
-                                },
+                                onClick = { showGoalDialog = true },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = pal.gold,
                                     contentColor = Color.White
@@ -307,9 +368,20 @@ fun MemorizeScreenDesktop(
 
             // ── Test entry ──
             item(key = "test") {
+                testFor?.let { testChapter ->
+                    HifdhTestDialog(
+                        pal = pal,
+                        chapterId = testChapter,
+                        onDismiss = { testFor = null },
+                        onOpenSurah = { id, _ ->
+                            testFor = null
+                            onOpenHifdhReader(id)
+                        }
+                    )
+                }
                 Button(
                     onClick = {
-                        onOpenHifdhReader(mostDueSurahId ?: goals.firstOrNull()?.targetId ?: 114)
+                        testFor = mostDueSurahId ?: goals.firstOrNull()?.targetId ?: 114
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = pal.teal,
@@ -334,7 +406,7 @@ fun MemorizeScreenDesktop(
             }
 
             // ── Surah list rows ──
-            items(chapters, key = { it.id }) { chapter ->
+            items(filteredChapters, key = { it.id }) { chapter ->
                 val memCount = memBySurah[chapter.id] ?: 0
                 val isMemorized = chapter.versesCount > 0 && memCount >= chapter.versesCount
                 val progress = if (chapter.versesCount > 0) memCount.toFloat() / chapter.versesCount else 0f
@@ -390,7 +462,19 @@ fun MemorizeScreenDesktop(
                                 color = pal.gold,
                                 fontFamily = fontArabic
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(
+                                onClick = { breakdownFor = chapter.id },
+                                modifier = Modifier.size(30.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Info,
+                                    contentDescription = "Surah breakdown",
+                                    tint = pal.inkMuted,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
                             Button(
                                 onClick = { onOpenHifdhReader(chapter.id) },
                                 colors = ButtonDefaults.buttonColors(
@@ -416,6 +500,28 @@ fun MemorizeScreenDesktop(
                 }
             }
         }
+    }
+
+    // ── Per-surah breakdown dialog (hosted at screen level) ──
+    breakdownFor?.let { bChapter ->
+        val bMem = memBySurah[bChapter] ?: 0
+        val bTotal = QuranStore.chapter(bChapter)?.versesCount ?: 0
+        val bDue = history.keys.count { key ->
+            val e = history[key]
+            key.startsWith("$bChapter:") && (e?.card?.isDue(nowMs) ?: true)
+        }
+        HifdhBreakdownDialog(
+            pal = pal,
+            chapterId = bChapter,
+            memorized = bMem,
+            total = bTotal,
+            due = bDue,
+            onDismiss = { breakdownFor = null },
+            onReview = {
+                breakdownFor = null
+                onOpenHifdhReader(bChapter)
+            }
+        )
     }
 }
 

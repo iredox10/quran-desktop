@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -51,6 +52,7 @@ import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
+import com.nur.quran.desktop.ui.hifdh.HifdhBreakdownDialog
 import com.nur.quran.shared.FsrsRating
 import com.nur.quran.shared.FsrsScheduler
 import com.nur.quran.shared.HifdhHistoryEntry
@@ -98,6 +100,7 @@ fun HifdhReaderScreenDesktop(
     var revealed by remember(chapterId) { mutableStateOf(false) }
     var testMode by remember(chapterId) { mutableStateOf(false) }
     var totalTestRevealed by remember(chapterId) { mutableStateOf(0) }
+    var showBreakdown by remember(chapterId) { mutableStateOf(false) }
     val ratingCounts = remember(chapterId) { mutableStateMapOf<Int, Int>() }
 
     // ── Session timing: log "memorizing" minutes exactly once ──────────────
@@ -152,6 +155,19 @@ fun HifdhReaderScreenDesktop(
         if (index >= queue.size) logSessionOnce()
     }
 
+    if (showBreakdown) {
+        val memCount = history.values.count { it.card != null }
+        HifdhBreakdownDialog(
+            pal = pal,
+            chapterId = chapterId,
+            memorized = memCount,
+            total = verses.size,
+            due = queue.size,
+            onDismiss = { showBreakdown = false },
+            onReview = { showBreakdown = false }
+        )
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(pal.cream)) {
         // ── Top bar ──
         Surface(modifier = Modifier.fillMaxWidth(), color = pal.white, shadowElevation = 1.dp) {
@@ -180,6 +196,14 @@ fun HifdhReaderScreenDesktop(
                         fontFamily = fontBody,
                         fontSize = 12.sp,
                         color = pal.inkMuted
+                    )
+                }
+                IconButton(onClick = { showBreakdown = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Surah breakdown",
+                        tint = pal.inkMuted,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
                 if (queue.isNotEmpty() && index < queue.size) {
