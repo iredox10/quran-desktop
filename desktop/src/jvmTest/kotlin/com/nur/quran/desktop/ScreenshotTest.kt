@@ -1,6 +1,8 @@
 package com.nur.quran.desktop
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toPixelMap
@@ -9,6 +11,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.nur.quran.desktop.data.QuranStore
+import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.screens.AnalyticsScreenDesktop
 import com.nur.quran.desktop.ui.screens.App
 import com.nur.quran.desktop.ui.screens.DownloadsScreenDesktop
@@ -189,8 +192,7 @@ class ScreenshotTest {
     }
 
     @Test
-    fun `welcome renders`() {
-        val scene = ImageComposeScene(width = 1100, height = 900) {
+    fun `welcome renders`() {        val scene = ImageComposeScene(width = 1100, height = 900) {
             NurTheme { WelcomeScreenDesktop(pal = pal) }
         }
         try {
@@ -198,6 +200,29 @@ class ScreenshotTest {
                 ?: error("PNG encode failed")
             val dir = File("build/screenshots").apply { mkdirs() }
             File(dir, "welcome.png").writeBytes(png.bytes)
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun `ayah 2-5 closeup has no tofu`() {
+        val verse = QuranStore.versesOfChapter(2).first { it.verseNumber == 5 }
+        val scene = ImageComposeScene(width = 1400, height = 420) {
+            NurTheme {
+                androidx.compose.material3.Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = pal.white
+                ) {
+                    VerseRow(verse = verse, pal = pal)
+                }
+            }
+        }
+        try {
+            val png = scene.render().encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)
+                ?: error("PNG encode failed")
+            val dir = File("build/screenshots").apply { mkdirs() }
+            File(dir, "verse25.png").writeBytes(png.bytes)
         } finally {
             scene.close()
         }

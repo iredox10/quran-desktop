@@ -13,24 +13,33 @@ object HtmlStripper {
     private val whitespaceRegex = Regex("\\s+")
     private val decimalEntityRegex = Regex("&#(\\d+);")
     private val hexEntityRegex = Regex("&#x([0-9a-fA-F]+);")
+    // Source-data typos like "unseen,keep" (9 translations) and one ";X" case.
+    // Letter-lookahead keeps "1,000" style numerics untouched.
+    private val missingSpaceAfterComma = Regex(",(?=[A-Za-z])")
+    private val missingSpaceAfterSemicolon = Regex(";(?=[A-Za-z])")
 
     /** Matches Android's `<sup foot_note="N">N</sup>` footnote markers. */
     private val footnoteSupRegex =
         Regex("<sup[^>]*foot_note=[\"']?(\\d+)[\"']?[^>]*>\\s*(\\d+)\\s*</sup>")
 
     /**
-     * Strips HTML tags, decodes common entities and collapses runs of
-     * whitespace to a single space (then trims).
+     * Strips HTML tags, decodes common entities, repairs missing spaces after
+     * ","/"}" in the bundled data, and collapses runs of whitespace to a
+     * single space (then trims).
      */
     fun strip(html: String): String {
         if (html.isEmpty()) return ""
-        if ('<' !in html && '&' !in html) return html.trim()
+        if ('<' !in html && '&' !in html) return normalizePunctuationSpacing(html.trim())
         // Keep word boundaries where block tags / line breaks were.
         var text = blockBreakRegex.replace(html, " ")
         text = tagRegex.replace(text, "")
         text = decodeEntities(text)
-        return whitespaceRegex.replace(text, " ").trim()
+        return normalizePunctuationSpacing(whitespaceRegex.replace(text, " ").trim())
     }
+
+    /** Repairs source typos like "unseen,keep" -> "unseen, keep". */
+    fun normalizePunctuationSpacing(text: String): String =
+        missingSpaceAfterSemicolon.replace(missingSpaceAfterComma.replace(text, ", "), "; ")
 
     /**
      * Returns the footnote ids (`foot_note` attribute values) found in
