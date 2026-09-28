@@ -25,6 +25,18 @@ Source of truth for per-page port status. Desktop target: Compose Multiplatform 
 | Android Auto | automotive module | — | Dropped (no desktop backend) | No car head-unit target on desktop |
 | Tours | `PageTourModal`, `Coachmark` | — | Dropped (no desktop backend) | No onboarding-tour framework; Welcome screen covers first run |
 | Splash | `ui/components/SplashScreen.kt` | — | Dropped (no desktop backend) | Desktop launches straight into `Main.kt`; no splash API |
+| Audio repeat + setup sheet | `AudioSetupSheet`, `RepetitionCard`, `PlaybackRangeCard` | `data/AudioEngine.kt` (repeat/sleep) + `ui/audio/AudioSetupSheetDesktop.kt` + `MiniPlayerDesktop.kt` gear | Done | Off/ayah/chapter repeat + 15/30/60 sleep timer; no playback-range card |
+| Prayer slots | `planner` prayer integration | `data/PrayerStore.kt` (Aladhan timingsByCity, day cache) + `PlannerScreenDesktop.kt` Today tab | Done | City/country prefs, `shared.buildPrayerSlots` rows; method=2 fixed |
+| My plans management | `PlannerScreen` plan list | `PlannerScreenDesktop.kt` My plans section + Progress analytics card | Done | Activate/Delete per plan, `getPlannerAnalytics` stats per plan and in Progress |
+| Hifdh modals wiring | `MemorizeScreen` + `HifdhReaderScreen` modals | `MemorizeScreenDesktop.kt` + `HifdhReaderScreenDesktop.kt` | Done | Goal/Breakdown/Test dialogs wired; per-surah info buttons; reader breakdown |
+| Memorize search | browse search | `MemorizeScreenDesktop.kt` search field | Done | Filters by name simple/arabic/translated/id |
+| Recently read | home history | `data/RecentlyReadStore.kt` + `ui/home/RecentlyReadRow.kt` | Done | Newest-first, max 20, Clear button; recorded in App openSurah/openPage |
+| Due-for-review card | home FSRS nudge | `App.kt` `DueReviewCard` | Done | Teal card for the chapter with most due verses → memorize route |
+| Analytics flow chart | `AnalyticsFlowChart.kt` | `ui/analytics/AnalyticsComponents.kt` `FlowChart` | Done | Cumulative weekly area+line chart between Heatmap and ActivityMix |
+| Audio bulk download | `PackDownloadRow`/WorkManager queue | `DownloadsScreenDesktop.kt` offline recitation section | Done | Juz Amma (78–114) sequential download into AudioEngine cache, progress, cancel, cache size + clear |
+| Keyboard navigation | — (desktop only) | `SurahScreenDesktop.kt` | Done | ←/→ switch surah, Home/End jump, Esc back; suppressed while nav dialog open |
+| Reading history | history concept | `ui/screens/HistoryScreenDesktop.kt` + `ui/nav/DesktopNav.kt` HISTORY route | Done | Day-grouped rows with Arabic snippet, two-tap clear-all, sidebar entry |
+| Add to collection | verse collections sheet | `ui/library/AddToCollectionDialog.kt` + `VerseRow.kt` Plus action | Done | Membership toggle per collection, inline create |
 
 ## Rendering safety
 

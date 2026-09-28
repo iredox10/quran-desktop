@@ -42,6 +42,16 @@ gradle :desktop:createDistributable
   18-edition translation picker, reciter picker
 - Page reader: mushaf pages 1–604 with previous/next navigation,
   Verses / page-accurate 15-line Mushaf view (word packs cached offline)
+- Recently-read strip + FSRS due-for-review nudge on the homepage,
+  full reading-history page (day-grouped, clear-all) in the sidebar
+- Audio setup sheet: reciter picker, repeat off/ayah/chapter,
+  sleep timer (15/30/60) — all persisted; mini-player gear opens it
+- Offline recitation manager in Downloads: one-tap Juz Amma (78–114)
+  bulk download into the audio cache, live progress, cancel, cache size + clear
+- Prayer slots in the Planner (Aladhan timings, city/country persisted),
+  My-plans management (activate/delete) and per-plan analytics
+- Keyboard navigation in the surah reader: ←/→ switch surah,
+  Home/End jump, Esc back
 - Memorize: goal card, memorized/due/strong breakdown, per-surah
   progress, FSRS-powered hifdh reader (blur + reveal + Again/Hard/Good/Easy)
 - Planner: Today/Progress/Journal tabs, plan templates + custom plans,
@@ -50,7 +60,12 @@ gradle :desktop:createDistributable
   activity mix, achievements
 - Profile: reading totals, weekly goal stepper, quick links, preferences,
   local backup export/import, danger zone
-- Library: persisted bookmarks + named verse collections (CRUD)
+- Library: persisted bookmarks + named verse collections (CRUD),
+  add-to-collection dialog on every verse row
+- Memorize: chapter search, goal/breakdown/test modals wired
+  into the hub and the hifdh reader
+- Analytics: streak, today/total cards, weekly goal ring, 7-day heatmap,
+  cumulative weekly flow chart, activity mix, achievements
 - Downloads: honest offline-pack inventory (text, metadata, tafsir,
   fonts) + reciter list (audio streaming: future update)
 - Welcome first-run page, light/dark themes, left sidebar navigation
@@ -76,5 +91,6 @@ gradle :desktop:jvmTest
 
 ## Next (not yet ported)
 
-Tajweed word coloring (needs a WebView/JCEF renderer — see
-`ui/components/VerseWebView.kt`), audio playback, planner, memorize, sync.
+Cloud sync, Android Auto, onboarding tours. Everything else in the Android
+app now has a desktop counterpart — see `VERIFY_PAGES.md` for the full
+parity table.
