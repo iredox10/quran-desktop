@@ -36,6 +36,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,13 +50,21 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.desktop.data.AudioEngine
+import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.TranslationStore
 import com.nur.quran.desktop.ui.components.DesktopFonts
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
+import com.nur.quran.shared.Reciters
+import java.io.File
+import java.net.URL
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -166,6 +175,82 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
         }
     }
 
+    // ── Offline recitation (audio cache manager; append-only section) ──
+    val audioScope = rememberCoroutineScope()
+    var audioTick by remember { mutableStateOf(0) }
+    var audioStatus by remember { mutableStateOf("") }
+    var downloadJob by remember { mutableStateOf<Job?>(null) }
+    var cacheBytes by remember(audioTick, AudioEngine.reciterId) { mutableStateOf(0L) }
+    var cacheFiles by remember(audioTick, AudioEngine.reciterId) { mutableStateOf(0) }
+
+    LaunchedEffect(audioTick, AudioEngine.reciterId) {
+        val stats = withContext(Dispatchers.IO) {
+            val dir = File(System.getProperty("user.home"), ".quran-nur/audio/${AudioEngine.reciterId}")
+            val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".mp3") }
+                ?.filter { it.length() > 0 }
+                .orEmpty()
+            files.size to files.sumOf { it.length() }
+        }
+        cacheFiles = stats.first
+        cacheBytes = stats.second
+    }
+
+    fun downloadJuzAmma() {
+        if (downloadJob?.isActive == true) return
+        audioStatus = "Starting…"
+        downloadJob = audioScope.launch(Dispatchers.IO) {
+            val reciter = AudioEngine.reciterId
+            val dir = File(System.getProperty("user.home"), ".quran-nur/audio/$reciter")
+            val verses = (78..114).flatMap { ch -> QuranStore.versesOfChapter(ch) }
+            var done = 0
+            var failed = 0
+            try {
+                for (verse in verses) {
+                    currentCoroutineContext().ensureActive()
+                    val file = File(dir, "${verse.chapterId}_${verse.verseNumber}.mp3")
+                    if (file.isFile && file.length() > 0) {
+                        done++
+                        audioStatus = "$done / ${verses.size} (cached)"
+                        continue
+                    }
+                    val url = Reciters.buildAudioUrl(reciter, verse.verseKey)
+                    if (url == null) {
+                        failed++
+                        continue
+                    }
+                    try {
+                        val bytes = URL(url).openStream().use { it.readBytes() }
+                        dir.mkdirs()
+                        file.writeBytes(bytes)
+                        done++
+                    } catch (_: Exception) {
+                        failed++
+                    }
+                    audioStatus = "$done / ${verses.size}…"
+                }
+                audioStatus = if (failed == 0) "Complete • $done verses offline"
+                else "Done with $failed failed • $done cached"
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) {
+                    audioStatus = "Cancelled • $done / ${verses.size} downloaded"
+                } else {
+                    audioStatus = "Failed • ${e.message ?: "check connection"}"
+                }
+            }
+            audioTick++
+        }
+    }
+
+    fun clearAudioCache() {
+        if (downloadJob?.isActive == true) return
+        audioScope.launch(Dispatchers.IO) {
+            val dir = File(System.getProperty("user.home"), ".quran-nur/audio/${AudioEngine.reciterId}")
+            runCatching { dir.deleteRecursively() }
+            audioStatus = "Cache cleared"
+            audioTick++
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
         DownloadsTopBar(pal = pal, fontUi = fontUi, onBack = onBack)
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -272,6 +357,70 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
                         onDownload = { downloadFatiha(resId) },
                         onDelete = { deleteTranslationPack(resId) },
                     )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SectionHeader(
+                        pal = pal,
+                        title = "OFFLINE RECITATION • RECITER ${AudioEngine.reciterId}"
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "$cacheFiles verses • ${formatBytes(cacheBytes)} cached for the current reciter",
+                        fontFamily = fontBody,
+                        fontSize = 12.sp,
+                        color = pal.inkMuted,
+                    )
+                }
+                item {
+                    val downloading = downloadJob?.isActive == true
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Surface(
+                            onClick = { downloadJuzAmma() },
+                            shape = RoundedCornerShape(12.dp),
+                            color = pal.teal,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(
+                                text = if (downloading) "Downloading…" else "Download Juz Amma (78–114)",
+                                fontFamily = fontUi,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = androidx.compose.ui.graphics.Color.White,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            )
+                        }
+                        Surface(
+                            onClick = {
+                                if (downloading) downloadJob?.cancel() else clearAudioCache()
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = androidx.compose.ui.graphics.Color.Transparent,
+                            border = BorderStroke(1.5.dp, pal.boneDark),
+                        ) {
+                            Text(
+                                text = if (downloading) "Cancel" else "Clear cache",
+                                fontFamily = fontUi,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = pal.inkMid,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            )
+                        }
+                    }
+                    if (audioStatus.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = audioStatus,
+                            fontFamily = fontBody,
+                            fontSize = 12.sp,
+                            color = if (audioStatus.startsWith("Failed")) pal.gold else pal.inkMuted,
+                        )
+                    }
                 }
 
                 item {
