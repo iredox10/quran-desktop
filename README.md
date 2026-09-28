@@ -25,21 +25,23 @@ gradle :desktop:createDistributable
 ## What works (reader-first milestone)
 
 - Homepage (mirrors the Android `HomeScreen` + web `Home.jsx`):
-  top navbar with logo / theme toggle / Arabic-font settings,
-  time-of-day greeting hero, Continue-reading card (persisted last read),
-  Verse of the Day with copy button, and Browse the Quran with
-  Surah / Page / Juz / Hizb mode pills, search, and a responsive
-  1 / 2 / 3-column grid on narrow / medium / wide windows
+  top navbar, greeting hero, Continue-reading card, Verse of the Day,
+  reading-stats strip, full-text Quran search, Browse the Quran with
+  Surah / Page / Juz / Hizb modes and a responsive 1/2/3-column grid
 - Surah reader (mirrors Android `SurahScreen`): top app bar with
   back / title + Surah-Ayah-Page navigator / reading-mode toggle /
-  theme toggle / settings; surah header (35sp name + 40sp gold Arabic
-  name, uppercase meta row, baseline rule); Bismillah; flat verse list
-  with gold verse dividers, Page pills, Juz/Hizb pills, per-verse
-  actions (persisted bookmark, copy-share, expandable Ibn Kathir
-  tafsir), sajdah badges, scroll-to-verse with gold highlight, reading
-  mode (continuous justified pages), and prev/next surah buttons.
-  Settings add Arabic/translation size, line spacing, translation toggle
-- Page reader: mushaf pages 1–604 with previous/next navigation
+  theme toggle / settings; surah header with chapter audio play pill;
+  Bismillah; flat verse list with gold verse dividers, Page pills,
+  Juz/Hizb pills, per-verse actions (persisted bookmark, share dialog
+  with PNG export, expandable Ibn Kathir tafsir, per-verse audio play),
+  word-level tajweed coloring (shape-safe), sajdah badges,
+  scroll-to-verse with gold highlight, reading mode (continuous
+  justified pages), prev/next surah buttons, mini player with
+  auto-advance, and timed reading-session logging.
+  Settings add Arabic/translation size, line spacing, translation toggle,
+  18-edition translation picker, reciter picker
+- Page reader: mushaf pages 1–604 with previous/next navigation,
+  Verses / page-accurate 15-line Mushaf view (word packs cached offline)
 - Memorize: goal card, memorized/due/strong breakdown, per-surah
   progress, FSRS-powered hifdh reader (blur + reveal + Again/Hard/Good/Easy)
 - Planner: Today/Progress/Journal tabs, plan templates + custom plans,
