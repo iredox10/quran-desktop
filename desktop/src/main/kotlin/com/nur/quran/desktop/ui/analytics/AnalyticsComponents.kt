@@ -327,6 +327,134 @@ fun Heatmap7(
 }
 
 /**
+ * Cumulative flow (area + line) of the week's minutes — mirrors the Android
+ * AnalyticsFlowChart. Empty weeks render a muted placeholder line instead.
+ */
+@Composable
+fun FlowChart(
+    pal: NurPalette,
+    last7: List<Pair<String, Int>>,
+    modifier: Modifier = Modifier
+) {
+    val fontUi = rememberUiFontFamily()
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = pal.cream),
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = "📈  WEEKLY FLOW",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = pal.inkMuted
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            if (last7.all { it.second <= 0 }) {
+                Text(
+                    text = "No activity this week",
+                    fontSize = 13.sp,
+                    fontFamily = fontUi,
+                    color = pal.inkMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp)
+                )
+            } else {
+                // Cumulative totals per day (flow view of progress).
+                var run = 0
+                val cum = last7.map { (label, mins) ->
+                    run += mins
+                    label to run
+                }
+                val maxCum = cum.last().second.coerceAtLeast(1)
+                val points = cum.mapIndexed { i, _ ->
+                    val x = if (cum.size == 1) 0.5f else i.toFloat() / (cum.size - 1).toFloat()
+                    val frac = cum[i].second.toFloat() / maxCum.toFloat()
+                    x to frac
+                }
+                Column {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                    ) {
+                        val w = size.width
+                        val h = size.height
+                        val pad = 6f
+                        fun px(i: Int) = points[i].first * (w - 2 * pad) + pad
+                        fun py(f: Float) = (h - pad) - f * (h - 2 * pad)
+                        // Area fill
+                        val area = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(px(0), h - pad)
+                            points.forEachIndexed { i, _ -> lineTo(px(i), py(points[i].second)) }
+                            lineTo(px(points.size - 1), h - pad)
+                            close()
+                        }
+                        drawPath(
+                            area,
+                            color = pal.teal.copy(alpha = 0.18f)
+                        )
+                        // Line
+                        val line = androidx.compose.ui.graphics.Path().apply {
+                            moveTo(px(0), py(points[0].second))
+                            points.drop(1).forEachIndexed { i, _ ->
+                                lineTo(px(i + 1), py(points[i + 1].second))
+                            }
+                        }
+                        drawPath(
+                            line,
+                            color = pal.teal,
+                            style = Stroke(width = 3f, cap = StrokeCap.Round)
+                        )
+                        // Dots
+                        points.forEachIndexed { i, p ->
+                            drawCircle(
+                                color = pal.teal,
+                                radius = 4f,
+                                center = androidx.compose.ui.geometry.Offset(px(i), py(p.second))
+                            )
+                            drawCircle(
+                                color = pal.cream,
+                                radius = 2f,
+                                center = androidx.compose.ui.geometry.Offset(px(i), py(p.second))
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        cum.forEach { (label, mins) ->
+                            Text(
+                                text = label,
+                                fontSize = 10.sp,
+                                fontFamily = fontUi,
+                                color = pal.inkMuted,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        cum.forEach { (_, mins) ->
+                            Text(
+                                text = "${mins}m",
+                                fontSize = 9.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = pal.gold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Minutes breakdown by reading / memorizing / focus / listening
  * with proportional gold/teal bars, mirroring Android ActivityMix.
  */

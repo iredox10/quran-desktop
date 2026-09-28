@@ -32,6 +32,7 @@ import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.analytics.AchievementsList
 import com.nur.quran.desktop.ui.analytics.ActivityMixRow
+import com.nur.quran.desktop.ui.analytics.FlowChart
 import com.nur.quran.desktop.ui.analytics.Heatmap7
 import com.nur.quran.desktop.ui.analytics.QuickCards
 import com.nur.quran.desktop.ui.analytics.TopCards
@@ -195,6 +196,9 @@ fun AnalyticsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
             }
             item {
                 Heatmap7(pal = pal, last7 = last7)
+            }
+            item {
+                FlowChart(pal = pal, last7 = last7)
             }
             item {
                 ActivityMixRow(pal = pal, byType = byType)
