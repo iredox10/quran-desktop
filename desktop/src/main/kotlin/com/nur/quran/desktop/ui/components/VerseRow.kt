@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
@@ -51,6 +52,7 @@ import com.nur.quran.shared.usesEmbeddedEndMarker
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
+import com.nur.quran.desktop.ui.library.AddToCollectionDialog
 
 /**
  * Flat verse item mirroring Android `VerseItem`: verse-key header with action
@@ -84,6 +86,7 @@ fun VerseRow(
             ?: "Surah ${verse.chapterId}"
     }
     var showShare by remember(verse.verseKey) { mutableStateOf(false) }
+    var showCollections by remember(verse.verseKey) { mutableStateOf(false) }
     var bookmarked by remember(verse.verseKey) {
         mutableStateOf(BookmarkStore.isBookmarked(verse.verseKey))
     }
@@ -195,6 +198,18 @@ fun VerseRow(
                         )
                     }
                 }
+                VerseActionIcon(
+                    onClick = { showCollections = true },
+                    pal = pal,
+                    description = "Add to collection"
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = null,
+                        tint = pal.inkMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 
@@ -252,6 +267,14 @@ fun VerseRow(
                 translation = translation,
                 verseRef = "$surahName ${verse.verseKey}",
                 onDismiss = { showShare = false }
+            )
+        }
+
+        if (showCollections) {
+            AddToCollectionDialog(
+                pal = pal,
+                verseKey = verse.verseKey,
+                onDismiss = { showCollections = false }
             )
         }
     }
