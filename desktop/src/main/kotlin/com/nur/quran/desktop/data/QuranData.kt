@@ -38,6 +38,7 @@ data class DeskVerse(
     val verseNumber: Int,
     val arabic: String,
     val textIndopak: String = "",
+    val tajweedHtml: String? = null,
     val translation: String,
     val pageNumber: Int
 )
@@ -67,6 +68,7 @@ object QuranStore {
                     verseNumber = verseNumber,
                     arabic = v.textUthmani,
                     textIndopak = v.textIndopak,
+                    tajweedHtml = v.textUthmaniTajweed,
                     translation = v.translation,
                     pageNumber = v.pageNumber
                 )
@@ -85,6 +87,16 @@ object QuranStore {
         byPage[page].orEmpty().sortedWith(compareBy({ it.chapterId }, { it.verseNumber }))
 
     val verseCount: Int by lazy { allVerses.size }
+
+    /** Full-text search over Arabic + translation, newest-relevance: chapter order. */
+    fun searchVerses(query: String, limit: Int = 50): List<DeskVerse> {
+        val q = query.trim().lowercase()
+        if (q.length < 2) return emptyList()
+        val hits = allVerses.filter {
+            it.arabic.contains(query.trim()) || it.translation.lowercase().contains(q)
+        }
+        return hits.take(limit)
+    }
 
     /** Deterministic verse of the day (rotates with the day of year). */
     fun verseOfDay(): DeskVerse {
