@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -35,8 +38,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.PrefsCache
@@ -56,6 +61,7 @@ import com.nur.quran.shared.HifdhStore
  * one due verse at a time, hidden until tapped, rated Again/Hard/Good/Easy
  * through [FsrsScheduler], with history persisted after each rating.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HifdhReaderScreenDesktop(
     chapterId: Int,
@@ -90,6 +96,8 @@ fun HifdhReaderScreenDesktop(
 
     var index by remember(chapterId) { mutableStateOf(0) }
     var revealed by remember(chapterId) { mutableStateOf(false) }
+    var testMode by remember(chapterId) { mutableStateOf(false) }
+    var totalTestRevealed by remember(chapterId) { mutableStateOf(0) }
     val ratingCounts = remember(chapterId) { mutableStateMapOf<Int, Int>() }
 
     // ── Session timing: log "memorizing" minutes exactly once ──────────────
@@ -109,8 +117,9 @@ fun HifdhReaderScreenDesktop(
         onBack()
     }
 
-    fun rate(rating: Int) {
+    fun rate(rating: Int, testRevealed: Int = 0) {
         val verse = queue.getOrNull(index) ?: return
+        if (testMode) totalTestRevealed += testRevealed
         val nowMs = System.currentTimeMillis()
         val prevCard = history[verse.verseKey]?.card
         val card = if (prevCard != null) {
@@ -174,6 +183,21 @@ fun HifdhReaderScreenDesktop(
                     )
                 }
                 if (queue.isNotEmpty() && index < queue.size) {
+                    Surface(
+                        shape = RoundedCornerShape(100),
+                        color = pal.goldSoft,
+                        modifier = Modifier.clickable { testMode = !testMode }
+                    ) {
+                        Text(
+                            text = if (testMode) "Test: On" else "Test: Off",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = pal.gold,
+                            fontFamily = fontUi,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "${index + 1} / ${queue.size}",
                         fontFamily = fontUi,
@@ -227,6 +251,16 @@ fun HifdhReaderScreenDesktop(
                             color = pal.inkMuted,
                             textAlign = TextAlign.Center
                         )
+                        if (testMode || totalTestRevealed > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Test words revealed: $totalTestRevealed",
+                                fontFamily = fontBody,
+                                fontSize = 13.sp,
+                                color = pal.inkMuted,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             RatingStat(pal, fontUi, "Again", ratingCounts[FsrsRating.AGAIN] ?: 0, Color(0xFFEF4444))
@@ -265,6 +299,89 @@ fun HifdhReaderScreenDesktop(
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
+            // ── Test mode state (resets per verse index) ──
+            val testWords = remember(verse.verseKey, verse.arabic) { verse.arabic.split(" ") }
+            val testMasked: Set<Int> = remember(verse.verseKey, verse.arabic) {
+                testWords.indices.filter { i ->
+                    !isTestEndMarkerWord(testWords[i]) && isTestMasked(verse.verseKey, i)
+                }.toSet()
+            }
+            var testRevealedWords by remember(index, verse.verseKey) { mutableStateOf(mutableSetOf<Int>()) }
+            val testRevealedCount = testRevealedWords.count { it in testMasked }
+            val testGuessed = (testMasked.size - testRevealedCount).coerceAtLeast(0)
+            if (testMode) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(pal.white)
+                        .padding(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                testWords.forEachIndexed { wi, w ->
+                                    if (wi in testMasked && wi !in testRevealedWords) {
+                                        Text(
+                                            text = "█".repeat(w.length.coerceAtLeast(1)),
+                                            fontFamily = fontArabic,
+                                            fontSize = (28 * arabicScale).sp,
+                                            lineHeight = (48 * arabicScale).sp,
+                                            color = pal.ink,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier
+                                                .clickable {
+                                                    testRevealedWords =
+                                                        (testRevealedWords + wi).toMutableSet()
+                                                }
+                                                .padding(horizontal = 4.dp)
+                                        )
+                                    } else {
+                                        Text(
+                                            text = w,
+                                            fontFamily = fontArabic,
+                                            fontSize = (28 * arabicScale).sp,
+                                            lineHeight = (48 * arabicScale).sp,
+                                            color = pal.ink,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(horizontal = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (testRevealedCount < testMasked.size) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Reveal all",
+                                fontFamily = fontUi,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = pal.teal,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .clickable { testRevealedWords = testMasked.toMutableSet() }
+                                    .padding(8.dp)
+                            )
+                        }
+                        if (verse.translation.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = verse.translation,
+                                fontFamily = fontBody,
+                                fontSize = 14.sp,
+                                color = pal.inkMuted,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            } else {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -308,7 +425,18 @@ fun HifdhReaderScreenDesktop(
                     }
                 }
             }
+            }
             Spacer(modifier = Modifier.weight(1f))
+            if (testMode) {
+                Text(
+                    text = "Guessed $testGuessed/${testMasked.size} — tap words you couldn't recall",
+                    fontFamily = fontBody,
+                    fontSize = 13.sp,
+                    color = pal.inkMuted,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+            }
             Text(
                 text = "How well did you recall it?",
                 fontFamily = fontBody,
@@ -325,33 +453,59 @@ fun HifdhReaderScreenDesktop(
                     color = Color(0xFFEF4444),
                     modifier = Modifier.weight(1f),
                     fontUi = fontUi,
-                    onClick = { rate(FsrsRating.AGAIN) }
+                    onClick = { rate(FsrsRating.AGAIN, if (testMode) testRevealedCount else 0) }
                 )
                 RatingButton(
                     label = "Hard",
                     color = Color(0xFFF59E0B),
                     modifier = Modifier.weight(1f),
                     fontUi = fontUi,
-                    onClick = { rate(FsrsRating.HARD) }
+                    onClick = { rate(FsrsRating.HARD, if (testMode) testRevealedCount else 0) }
                 )
                 RatingButton(
                     label = "Good",
                     color = pal.teal,
                     modifier = Modifier.weight(1f),
                     fontUi = fontUi,
-                    onClick = { rate(FsrsRating.GOOD) }
+                    onClick = { rate(FsrsRating.GOOD, if (testMode) testRevealedCount else 0) }
                 )
                 RatingButton(
                     label = "Easy",
                     color = pal.gold,
                     modifier = Modifier.weight(1f),
                     fontUi = fontUi,
-                    onClick = { rate(FsrsRating.EASY) }
+                    onClick = { rate(FsrsRating.EASY, if (testMode) testRevealedCount else 0) }
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
+}
+
+/**
+ * Deterministic ~35% word mask for Test mode: stable per verseKey + word index.
+ */
+private fun isTestMasked(verseKey: String, wordIndex: Int): Boolean {
+    val h = ("$verseKey#$wordIndex").hashCode() and 0x7fffffff
+    return h % 100 < 35
+}
+
+/**
+ * End-marker words (ornate parenthesis U+06DD or bare verse-number digits)
+ * are never masked.
+ */
+private fun isTestEndMarkerWord(word: String): Boolean {
+    if (word.isEmpty()) return true
+    if (word.contains('\u06DD')) return true
+    var hasDigit = false
+    for (c in word) {
+        when {
+            c.isDigit() || c in '٠'..'٩' || c in '۰'..'۹' -> hasDigit = true
+            c == '﴾' || c == '﴿' || c == '(' || c == ')' -> {}
+            else -> return false
+        }
+    }
+    return hasDigit
 }
 
 @Composable

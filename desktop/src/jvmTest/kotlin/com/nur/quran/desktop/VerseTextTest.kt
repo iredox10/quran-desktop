@@ -69,17 +69,20 @@ class VerseTextTest {
     fun `translations have no missing spaces after punctuation`() {
         val badComma = Regex(",(?=[A-Za-z])")
         val badSemi = Regex(";(?=[A-Za-z])")
+        val badPeriod = Regex("\\.(?=[A-Z])")
         var repaired = 0
         for (id in 1..114) {
             for (v in QuranStore.versesOfChapter(id)) {
                 val hadTypo = badComma.containsMatchIn(v.translation) ||
-                    badSemi.containsMatchIn(v.translation)
+                    badSemi.containsMatchIn(v.translation) ||
+                    badPeriod.containsMatchIn(v.translation)
                 val clean = HtmlStripper.strip(v.translation)
                 assertFalse("comma typo in ${v.verseKey}", badComma.containsMatchIn(clean))
                 assertFalse("semicolon typo in ${v.verseKey}", badSemi.containsMatchIn(clean))
+                assertFalse("period typo in ${v.verseKey}", badPeriod.containsMatchIn(clean))
                 if (hadTypo) repaired++
             }
         }
-        assertTrue("expected the 10 known typos to be repaired, got $repaired", repaired == 10)
+        assertTrue("expected the 15 known typos to be repaired, got $repaired", repaired == 15)
     }
 }

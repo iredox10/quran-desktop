@@ -13,10 +13,11 @@ object HtmlStripper {
     private val whitespaceRegex = Regex("\\s+")
     private val decimalEntityRegex = Regex("&#(\\d+);")
     private val hexEntityRegex = Regex("&#x([0-9a-fA-F]+);")
-    // Source-data typos like "unseen,keep" (9 translations) and one ";X" case.
-    // Letter-lookahead keeps "1,000" style numerics untouched.
+    // Source-data typos like "unseen,keep" (9 translations), one ";X" case
+    // and 5 ".X" cases. Letter-lookahead keeps "1,000" style numerics untouched.
     private val missingSpaceAfterComma = Regex(",(?=[A-Za-z])")
     private val missingSpaceAfterSemicolon = Regex(";(?=[A-Za-z])")
+    private val missingSpaceAfterPeriod = Regex("\\.(?=[A-Z])")
 
     /** Matches Android's `<sup foot_note="N">N</sup>` footnote markers. */
     private val footnoteSupRegex =
@@ -38,8 +39,11 @@ object HtmlStripper {
     }
 
     /** Repairs source typos like "unseen,keep" -> "unseen, keep". */
-    fun normalizePunctuationSpacing(text: String): String =
-        missingSpaceAfterSemicolon.replace(missingSpaceAfterComma.replace(text, ", "), "; ")
+    fun normalizePunctuationSpacing(text: String): String {
+        var out = missingSpaceAfterComma.replace(text, ", ")
+        out = missingSpaceAfterSemicolon.replace(out, "; ")
+        return missingSpaceAfterPeriod.replace(out, ". ")
+    }
 
     /**
      * Returns the footnote ids (`foot_note` attribute values) found in

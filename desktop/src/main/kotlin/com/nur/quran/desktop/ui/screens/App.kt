@@ -74,6 +74,8 @@ import com.nur.quran.desktop.ui.components.SettingsDrawerDesktop
 import com.nur.quran.desktop.ui.components.TranslationTextDesktop
 import com.nur.quran.desktop.ui.components.copyToClipboard
 import com.nur.quran.desktop.ui.home.BrowseItem
+import com.nur.quran.desktop.ui.home.GlobalSearch
+import com.nur.quran.desktop.ui.home.HomeStatsRow
 import com.nur.quran.desktop.ui.home.buildBrowseItems
 import com.nur.quran.desktop.ui.home.filterBrowseItems
 import com.nur.quran.desktop.ui.nav.AppSidebar
@@ -460,6 +462,22 @@ private fun HomeScreen(
                             lastReadTick++
                             onOpenSurah(verseOfDay.chapterId, verseOfDay.verseKey)
                         }
+                    )
+                    Spacer(modifier = Modifier.height(28.dp))
+                }
+
+                // ── Reading stats strip ──
+                item {
+                    HomeStatsRow(pal = pal)
+                    Spacer(modifier = Modifier.height(28.dp))
+                }
+
+                // ── Full-text search ──
+                item {
+                    GlobalSearch(
+                        pal = pal,
+                        onOpenSurah = onOpenSurah,
+                        onOpenPage = onOpenPage
                     )
                     Spacer(modifier = Modifier.height(28.dp))
                 }
