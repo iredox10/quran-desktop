@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -67,6 +68,8 @@ fun VerseRow(
     lineHeightMultiplier: Float = PrefsCache.getLineHeightMult(),
     showTranslation: Boolean = PrefsCache.getReaderTranslationEnabled(),
     highlighted: Boolean = false,
+    onPlayVerse: ((verseKey: String) -> Unit)? = null,
+    translationOverride: String? = null,
     modifier: Modifier = Modifier
 ) {
     val fontArabic = rememberArabicFontFamily(fontName)
@@ -75,6 +78,12 @@ fun VerseRow(
     val arabic = remember(verse, fontName, mushafId) {
         verseDisplayArabic(verse, fontName, mushafId)
     }
+    val translation = translationOverride?.takeIf { it.isNotBlank() } ?: verse.translation
+    val surahName = remember(verse.chapterId) {
+        com.nur.quran.desktop.data.QuranStore.chapter(verse.chapterId)?.nameSimple
+            ?: "Surah ${verse.chapterId}"
+    }
+    var showShare by remember(verse.verseKey) { mutableStateOf(false) }
     var bookmarked by remember(verse.verseKey) {
         mutableStateOf(BookmarkStore.isBookmarked(verse.verseKey))
     }
@@ -150,7 +159,7 @@ fun VerseRow(
                     )
                 }
                 VerseActionIcon(onClick = {
-                    copyToClipboard("${verse.arabic}\n${verse.translation} — ${verse.verseKey}")
+                    showShare = true
                 }, pal = pal, description = "Share verse") {
                     Icon(
                         imageVector = Icons.Filled.Share,
@@ -172,6 +181,20 @@ fun VerseRow(
                         modifier = Modifier.size(18.dp)
                     )
                 }
+                if (onPlayVerse != null) {
+                    VerseActionIcon(
+                        onClick = { onPlayVerse(verse.verseKey) },
+                        pal = pal,
+                        description = "Play verse audio"
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            tint = pal.inkMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -180,20 +203,32 @@ fun VerseRow(
         androidx.compose.runtime.CompositionLocalProvider(
             androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl
         ) {
-            PlainVerseText(
-                plainText = arabic,
-                wordRanges = emptyList(),
-                fontScale = fontScale,
-                lineHeightMultiplier = lineHeightMultiplier,
-                fontFamily = fontArabic,
-                modifier = Modifier.fillMaxWidth()
-            )
+            val tajweedHtml = verse.tajweedHtml
+            if (tajweedHtml != null && PrefsCache.getTajweedEnabled()) {
+                TajweedWordText(
+                    plainText = arabic,
+                    tajweedHtml = tajweedHtml,
+                    fontScale = fontScale,
+                    lineHeightMultiplier = lineHeightMultiplier,
+                    fontFamily = fontArabic,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                PlainVerseText(
+                    plainText = arabic,
+                    wordRanges = emptyList(),
+                    fontScale = fontScale,
+                    lineHeightMultiplier = lineHeightMultiplier,
+                    fontFamily = fontArabic,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
-        if (showTranslation && verse.translation.isNotBlank()) {
+        if (showTranslation && translation.isNotBlank()) {
             Spacer(modifier = Modifier.height(20.dp))
             TranslationTextDesktop(
-                html = verse.translation,
+                html = translation,
                 fontScale = translationScale,
                 fontFamily = fontBody,
                 modifier = Modifier.fillMaxWidth()
@@ -207,6 +242,16 @@ fun VerseRow(
                 fontBody = fontBody,
                 text = tafsirText ?: "Loading tafsir…",
                 onClose = { tafsirOpen = false }
+            )
+        }
+
+        if (showShare) {
+            ShareDialogDesktop(
+                pal = pal,
+                arabic = arabic,
+                translation = translation,
+                verseRef = "$surahName ${verse.verseKey}",
+                onDismiss = { showShare = false }
             )
         }
     }

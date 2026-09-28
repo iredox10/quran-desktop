@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -61,7 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.nur.quran.desktop.PrefsCache
+import com.nur.quran.desktop.data.AudioEngine
 import com.nur.quran.desktop.data.QuranStore
+import com.nur.quran.desktop.ui.audio.MiniPlayerDesktop
 import com.nur.quran.desktop.ui.components.PlainVerseText
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
@@ -108,6 +112,26 @@ fun SurahScreenDesktop(
     val fontBody = rememberBodyFontFamily()
     val fontArabic = rememberArabicFontFamily(fontName)
 
+    // Alternate translation pack (downloaded via Downloads); null = bundled.
+    val translationId = remember(settingsTick) {
+        PrefsCache.getTranslation().toIntOrNull() ?: 20
+    }
+    val translationMap = remember(chapterId, translationId, settingsTick) {
+        if (translationId == 20) null
+        else com.nur.quran.desktop.data.TranslationStore.getChapter(chapterId, translationId)
+    }
+
+    // Reading session timer: log minutes spent on this surah when leaving.
+    val entryTime = remember(chapterId) { System.currentTimeMillis() }
+    androidx.compose.runtime.DisposableEffect(chapterId) {
+        onDispose {
+            val mins = ((System.currentTimeMillis() - entryTime) / 60000).toInt()
+            if (mins >= 1) {
+                com.nur.quran.desktop.data.SessionStore.log("reading", chapterId, mins)
+            }
+        }
+    }
+
     val juzByKey = remember { JUZ_STARTS.associateBy { it.verseKey } }
     val hizbByKey = remember { HIZB_STARTS.associateBy { it.verseKey } }
     val listState = rememberLazyListState()
@@ -140,7 +164,8 @@ fun SurahScreenDesktop(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
+    Box(modifier = Modifier.fillMaxSize().background(pal.white)) {
+        Column(modifier = Modifier.fillMaxSize()) {
         SurahTopBar(
             pal = pal,
             dark = dark,
@@ -225,7 +250,10 @@ fun SurahScreenDesktop(
                             translationScale = translationScale,
                             lineHeightMultiplier = lineHeightMult,
                             showTranslation = translationOn,
-                            highlighted = verse.verseKey == targetVerseKey
+                            highlighted = verse.verseKey == targetVerseKey ||
+                                verse.verseKey == AudioEngine.current?.verseKey,
+                            onPlayVerse = { vk -> AudioEngine.playVerse(vk) },
+                            translationOverride = translationMap?.get(verse.verseKey)
                         )
                     }
                 }
@@ -250,6 +278,25 @@ fun SurahScreenDesktop(
                     }
                 }
             }
+        }
+        }
+        val nowPlayingTrack = AudioEngine.current
+        if (nowPlayingTrack != null) {
+            MiniPlayerDesktop(
+                pal = pal,
+                track = nowPlayingTrack,
+                playing = AudioEngine.playing,
+                onToggle = { AudioEngine.togglePlayPause() },
+                onNext = { AudioEngine.next() },
+                onPrev = { AudioEngine.prev() },
+                onClose = { AudioEngine.stop() },
+                onOpenVerse = { vk ->
+                    vk.substringBefore(":").toIntOrNull()?.let { ch ->
+                        onOpenSurah(ch, vk)
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
         }
     }
 }
@@ -448,6 +495,52 @@ private fun SurahHeader(
                     color = if (i == 0) pal.gold else pal.inkMid
                 )
             }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        val audioCurrent = AudioEngine.current
+        val audioPlaying = AudioEngine.playing
+        val isThisChapter = audioCurrent?.chapterId == chapterId
+        val showPlaying = isThisChapter && audioPlaying
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(100.dp))
+                .background(if (showPlaying) pal.goldSoft else Color.Transparent)
+                .border(1.dp, pal.gold, RoundedCornerShape(100.dp))
+                .clickable {
+                    if (isThisChapter) AudioEngine.togglePlayPause()
+                    else AudioEngine.playChapter(chapterId)
+                }
+                .padding(start = 6.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = pal.gold,
+                modifier = Modifier.size(40.dp)
+            ) {
+                IconButton(
+                    onClick = {
+                        if (isThisChapter) AudioEngine.togglePlayPause()
+                        else AudioEngine.playChapter(chapterId)
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = if (showPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (showPlaying) "Pause chapter" else "Play chapter",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = if (showPlaying) "Playing…" else "Play chapter",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = fontUi,
+                color = if (showPlaying) pal.gold else pal.inkMid
+            )
         }
         Spacer(modifier = Modifier.height(20.dp))
         HorizontalDivider(color = pal.boneDark, thickness = 1.dp)
