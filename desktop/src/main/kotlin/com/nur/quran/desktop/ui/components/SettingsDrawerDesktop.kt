@@ -39,23 +39,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.nur.quran.desktop.PrefsCache
+import com.nur.quran.desktop.data.AudioEngine
 import com.nur.quran.desktop.data.BackupStore
+import com.nur.quran.desktop.ui.audio.ReciterLibraryPanel
+import com.nur.quran.shared.Reciters
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import java.io.File
 import javax.swing.JFileChooser
-
-private val TRANSLATION_ROWS = listOf(
-    "Saheeh International",
-    "Haleem",
-    "Yusuf Ali",
-    "Usmani",
-    "Hausa Gumi",
-    "Jalandhari Urdu"
-)
-
-private val RECITER_ROWS = listOf("Mishary Alafasy", "Abdul Basit", "Saad Al-Ghamdi")
 
 private val MUSHAF_ROWS = listOf("Uthmani", "Indopak")
 
@@ -80,7 +72,6 @@ fun SettingsDrawerDesktop(
     var tick by remember { mutableStateOf(0) }
 
     var translation by remember(tick) { mutableStateOf(PrefsCache.getTranslation()) }
-    var reciter by remember(tick) { mutableStateOf(PrefsCache.getReciter()) }
     var mushaf by remember(tick) { mutableStateOf(PrefsCache.getMushaf()) }
     var font by remember(tick) { mutableStateOf(PrefsCache.getFont()) }
     var arabicScale by remember(tick) { mutableStateOf(PrefsCache.getArabicScale()) }
@@ -197,36 +188,28 @@ fun SettingsDrawerDesktop(
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            // Reciter picker
+                            // Reciter picker (selection drives the audio engine)
                             SubLabel(pal, fontBody, "Reciter")
-                            RECITER_ROWS.forEach { option ->
-                                SelectRow(
-                                    pal = pal, fontUi = fontUi,
-                                    title = option,
-                                    selected = reciter == option,
-                                    onClick = {
-                                        reciter = option
-                                        PrefsCache.putReciter(option)
-                                    }
-                                )
-                            }
+                            ReciterLibraryPanel(
+                                pal = pal,
+                                reciters = Reciters.ALL,
+                                selectedId = AudioEngine.reciterId,
+                                onSelect = { AudioEngine.reciterId = it }
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
-                            // Translation picker
+                            // Translation picker (18 editions; packs download on demand)
                             SubLabel(pal, fontBody, "Translation")
-                            TRANSLATION_ROWS.forEach { option ->
-                                SelectRow(
-                                    pal = pal, fontUi = fontUi,
-                                    title = option,
-                                    selected = translation == option,
-                                    onClick = {
-                                        translation = option
-                                        PrefsCache.putTranslation(option)
-                                    }
-                                )
-                            }
+                            TranslationPickerDesktop(
+                                pal = pal,
+                                selectedId = translation.toIntOrNull() ?: 20,
+                                onPick = {
+                                    translation = it.toString()
+                                    PrefsCache.putTranslation(it.toString())
+                                }
+                            )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Bundled translation: Saheeh International — more packs arrive with Downloads.",
+                                text = "Bundled translation: Saheeh International — other packs download on first use.",
                                 fontFamily = fontBody,
                                 fontSize = 11.sp,
                                 color = pal.inkMuted

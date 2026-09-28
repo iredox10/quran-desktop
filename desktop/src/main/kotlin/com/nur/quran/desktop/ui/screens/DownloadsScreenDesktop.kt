@@ -34,8 +34,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,11 +49,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.desktop.data.TranslationStore
 import com.nur.quran.desktop.ui.components.DesktopFonts
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private data class BundledPack(
     val title: String,
@@ -127,6 +136,36 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
 
     val reciters = remember { desktopAudioReciters }
 
+    // ── Available translation packs (append-only section; bundled UI above untouched)
+    val packScope = rememberCoroutineScope()
+    var packTick by remember { mutableStateOf(0) }
+    var busyPackId by remember { mutableStateOf<Int?>(null) }
+    var packStatus by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+
+    fun downloadFatiha(resId: Int) {
+        if (busyPackId != null || resId == TranslationStore.BUNDLED_ID) return
+        busyPackId = resId
+        packStatus = packStatus + (resId to "Downloading Al-Fatiha…")
+        packScope.launch {
+            val result = withContext(Dispatchers.IO) { TranslationStore.getChapter(1, resId) }
+            packStatus = packStatus + (
+                resId to if (result != null) "Cached • ${result.size} verses offline"
+                else "Failed • check connection and retry"
+            )
+            if (result != null) packTick++
+            busyPackId = null
+        }
+    }
+
+    fun deleteTranslationPack(resId: Int) {
+        if (busyPackId != null) return
+        packScope.launch {
+            val ok = withContext(Dispatchers.IO) { TranslationStore.deletePack(resId) }
+            packStatus = packStatus + (resId to if (ok) "Deleted • cache cleared" else "Delete failed • retry")
+            packTick++
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
         DownloadsTopBar(pal = pal, fontUi = fontUi, onBack = onBack)
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -195,6 +234,44 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
 
                 items(reciters) { reciter ->
                     AudioReciterRow(pal = pal, fontUi = fontUi, fontBody = fontBody, reciter = reciter)
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SectionHeader(
+                        pal = pal,
+                        title = "AVAILABLE TRANSLATION PACKS • ${TranslationStore.KNOWN_EDITIONS.size}"
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Download Al-Fatiha to test an edition. Chapters load on demand and stay cached offline.",
+                        fontFamily = fontBody,
+                        fontSize = 12.sp,
+                        color = pal.inkMuted,
+                    )
+                }
+
+                items(TranslationStore.KNOWN_EDITIONS) { edition ->
+                    val (resId, name) = edition
+                    val cached = remember(packTick, resId) { TranslationStore.hasAnyCache(resId) }
+                    val status = packStatus[resId] ?: when {
+                        resId == TranslationStore.BUNDLED_ID -> "Bundled • built-in translation"
+                        cached -> "Cached • Al-Fatiha offline"
+                        else -> "Not downloaded"
+                    }
+                    TranslationPackRow(
+                        pal = pal,
+                        fontUi = fontUi,
+                        fontBody = fontBody,
+                        name = name,
+                        resId = resId,
+                        status = status,
+                        cached = cached,
+                        busy = busyPackId == resId,
+                        actionsEnabled = busyPackId == null,
+                        onDownload = { downloadFatiha(resId) },
+                        onDelete = { deleteTranslationPack(resId) },
+                    )
                 }
 
                 item {
@@ -420,6 +497,104 @@ private fun StatusChip(
             fontWeight = FontWeight.Bold,
             color = content,
         )
+    }
+}
+
+// ── Translation pack rows (append-only; bundled rows above untouched) ─────────
+@Composable
+private fun TranslationPackRow(
+    pal: NurPalette,
+    fontUi: FontFamily,
+    fontBody: FontFamily,
+    name: String,
+    resId: Int,
+    status: String,
+    cached: Boolean,
+    busy: Boolean,
+    actionsEnabled: Boolean,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = pal.cream),
+        border = BorderStroke(1.dp, pal.boneDark),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(pal.goldLight),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(imageVector = Icons.Filled.MenuBook, contentDescription = null, tint = pal.gold, modifier = Modifier.size(18.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = name,
+                        fontFamily = fontUi,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = pal.ink,
+                    )
+                    Text(
+                        text = "Resource #$resId",
+                        fontFamily = fontBody,
+                        fontSize = 12.sp,
+                        color = pal.inkMuted,
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                StatusChip(
+                    text = if (resId == TranslationStore.BUNDLED_ID) "Bundled" else if (cached) "Cached" else "Online",
+                    container = if (resId == TranslationStore.BUNDLED_ID || cached) {
+                        pal.green.copy(alpha = 0.14f)
+                    } else {
+                        pal.bone
+                    },
+                    content = if (resId == TranslationStore.BUNDLED_ID || cached) pal.green else pal.inkMuted,
+                    icon = if (resId == TranslationStore.BUNDLED_ID || cached) {
+                        Icons.Filled.CheckCircle
+                    } else {
+                        Icons.Filled.CloudOff
+                    },
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = status,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    color = pal.inkMid,
+                    modifier = Modifier.weight(1f),
+                )
+                if (resId != TranslationStore.BUNDLED_ID) {
+                    TextButton(onClick = onDownload, enabled = actionsEnabled && !busy) {
+                        Text(
+                            text = if (busy) "Working…" else "Download Fatiha",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+                if (cached) {
+                    TextButton(onClick = onDelete, enabled = actionsEnabled && !busy) {
+                        Text(
+                            text = "Delete",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
