@@ -397,8 +397,9 @@ private fun SurahTopBar(
                     )
                 }
                 Row(
+                    // Content-sized: the weighted spacer below owns the free
+                    // space so the action icons align to the right edge.
                     modifier = Modifier
-                        .weight(1f, fill = false)
                         .clip(RoundedCornerShape(8.dp))
                         .clickable(onClick = onTitleClick)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -422,6 +423,7 @@ private fun SurahTopBar(
                         modifier = Modifier.size(14.dp)
                     )
                 }
+                Spacer(modifier = Modifier.weight(1f))
                 TopBarIconBtn(
                     pal = pal,
                     active = readingMode,
