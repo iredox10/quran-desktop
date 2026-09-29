@@ -70,7 +70,7 @@ fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<Word>, verseN
 }
 
 private val ORNAMENT_EMBEDDED_REGEX =
-    "[\\u06D6-\\u06DC\\u06DE\\u06DD\\u06DF\\u06E0\\u06E2-\\u06EC\\u25CC\\uFD3E\\uFD3F{}]".toRegex()
+    "[\u06D6-\u06DC\u06DE\u06DD\u06DF-\u06E8\u06EA-\u06ED\u25CC\u06E9\uFD3E\uFD3F{}]".toRegex()
 
 /**
  * Floating small-ornament marks. Verse-level display strips ALL of them —
@@ -79,9 +79,16 @@ private val ORNAMENT_EMBEDDED_REGEX =
  * between words instead of attaching over the preceding glyph. The end-of-ayah
  * frame U+06DD is intentionally NOT in this set (non-KFGQPC fonts need it for
  * the medallion) — it is canonicalized separately below.
+ *
+ * NOTE: this set must ALSO cover the recitation marks U+06DF..U+06E8 and
+ * U+06EA..U+06ED (sajdah U+06E9 included): a standalone combining mark with no
+ * base renders on desktop Skia as a dotted-circle / floating blob, and PIL /
+ * headless shaping confirmed KFGQPC has no dotted-circle fallback of its own —
+ * the blobs come from the fallback font. U+06E9 is stripped too (the reader
+ * shows a "Sajdah N" badge instead).
  */
 private val ORNAMENT_PLAIN_REGEX =
-    "[\\u06D6-\\u06DC\\u06DE\\u06DF\\u06E0\\u06E2-\\u06EC\\u25CC]".toRegex()
+    "[\u06D6-\u06DC\u06DE\u06DF-\u06E8\u06EA-\u06ED\u06E9\u25CC]".toRegex()
 
 private fun foldExtendedArabicDigitsToStandard(text: String): String {
     val sb = StringBuilder(text.length)

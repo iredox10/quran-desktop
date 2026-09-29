@@ -27,8 +27,8 @@ class VerseTextTest {
     /**
      * New policy (mirrors ORNAMENT_PLAIN_REGEX in shared/VerseText.kt):
      * - ALL floating ornaments are stripped for EVERY font — waqf signs
-     *   (U+06D6-U+06DC), rub-el-hizb (U+06DE), U+06DF/U+06E0, the sajdah and
-     *   small-raise/lower marks (U+06E2-U+06EC) and U+25CC — because a
+     *   (U+06D6-U+06DC), rub-el-hizb (U+06DE), recitation marks U+06DF-U+06E8 /
+     *   U+06EA-U+06ED incl. sajdah U+06E9, and U+25CC — because a
      *   standalone combining mark with non-zero advance renders as a floating
      *   blob instead of attaching to a glyph.
      * - U+06DD (end-of-ayah frame) is NOT stripped: KFGQPC never receives it
@@ -37,7 +37,7 @@ class VerseTextTest {
      * - Runs of whitespace collapse to a single space so a removed token never
      *   leaves a visible double gap.
      */
-    private val bannedEverywhere = Regex("[\u06D6-\u06DC\u06DE\u06DF\u06E0\u06E2-\u06EC\u25CC]")
+    private val bannedEverywhere = Regex("[\u06D6-\u06DC\u06DE\u06DF-\u06E8\u06EA-\u06ED\u06E9\u25CC]")
     private val bannedKfgqpcOnly = Regex("[\u06DD\uFD3E\uFD3F{}]")
     private val arabicDigits = Regex("[\u0660-\u0669]")
 
