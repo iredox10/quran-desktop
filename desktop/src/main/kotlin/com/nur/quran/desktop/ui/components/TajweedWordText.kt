@@ -40,8 +40,8 @@ import com.nur.quran.shared.TajweedSegment
  * the largest total character overlap onto the word's range; ties go to the
  * earliest segment in list order. Words with no colored overlap (or only the
  * default-ink sentinel) get NO override — they inherit the base style.
- * Segments with `ruleClass == "end"` are forced to gold `#B8924A`, mirroring
- * the existing HTML renderer.
+ * Segments with `ruleClass == "end"` are forced to the theme gold
+ * [markerGold], mirroring the existing HTML renderer.
  *
  * Segment alignment: [TajweedProcessor.getWordTajweedSegments] aligns to the
  * verse text WITHOUT the end-of-ayah marker, so [plainText] (the display
@@ -57,9 +57,10 @@ fun TajweedWordText(
     fontFamily: FontFamily = FontFamily.Default,
     onWordClick: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
+    markerGold: Color = TajweedWordGold,
 ) {
-    val annotated = remember(plainText, tajweedHtml) {
-        buildTajweedWordAnnotatedString(plainText, tajweedHtml)
+    val annotated = remember(plainText, tajweedHtml, markerGold) {
+        buildTajweedWordAnnotatedString(plainText, tajweedHtml, markerGold)
     }
 
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
@@ -100,6 +101,7 @@ fun TajweedWordText(
 internal fun buildTajweedWordAnnotatedString(
     displayText: String,
     tajweedHtml: String?,
+    markerGold: Color = TajweedWordGold,
 ): AnnotatedString {
     if (displayText.isEmpty()) return AnnotatedString("")
     // verseDisplayArabic appends " $digits" (or " \u06DD$digits") after the
@@ -128,13 +130,13 @@ internal fun buildTajweedWordAnnotatedString(
             val we = j
             if (ws >= bodyEnd) {
                 // End-of-ayah marker word — always gold.
-                addStyle(SpanStyle(color = TajweedWordGold), ws, we)
+                addStyle(SpanStyle(color = markerGold), ws, we)
             } else {
                 // Words never straddle bodyEnd (it sits on a space); clamp
                 // defensively for the segment lookup only.
                 val cws = ws.coerceIn(0, body.length)
                 val cwe = we.coerceIn(cws, body.length)
-                majorityColorForWord(cws, cwe, segments)?.let { color ->
+                majorityColorForWord(cws, cwe, segments, markerGold)?.let { color ->
                     addStyle(SpanStyle(color = color), ws, we)
                 }
             }
@@ -157,6 +159,7 @@ private fun majorityColorForWord(
     start: Int,
     end: Int,
     segments: List<TajweedSegment>,
+    markerGold: Color,
 ): Color? {
     if (start >= end || segments.isEmpty()) return null
     val coverage = mutableMapOf<String, Int>()
@@ -164,7 +167,7 @@ private fun majorityColorForWord(
     for ((order, seg) in segments.withIndex()) {
         val overlap = minOf(seg.end, end) - maxOf(seg.start, start)
         if (overlap <= 0) continue
-        val hex = if (seg.ruleClass == "end") TAJWEED_WORD_END_GOLD_HEX else seg.colorHex
+        val hex = if (seg.ruleClass == "end") WORD_END_SEGMENT_KEY else seg.colorHex
         if (hex == WORD_DEFAULT_SENTINEL) continue
         coverage[hex] = (coverage[hex] ?: 0) + overlap
         if (!firstOrder.containsKey(hex)) firstOrder[hex] = order
@@ -174,7 +177,7 @@ private fun majorityColorForWord(
         .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { firstOrder[it.key] ?: Int.MAX_VALUE })
         .first()
         .key
-    return parseTajweedHexColor(best)
+    return if (best == WORD_END_SEGMENT_KEY) markerGold else parseTajweedHexColor(best)
 }
 
 private fun parseTajweedHexColor(hex: String): Color? {
@@ -191,17 +194,20 @@ private fun parseTajweedHexColor(hex: String): Color? {
     }
 }
 
-private const val WORD_INDEX_TAG_TAJWEED = "WORD_INDEX"
-
 /**
  * Sentinel passed as `defaultColor` to [TajweedProcessor.getWordTajweedSegments].
  * Uncolored chars (and unknown rule classes) come back tagged with this, so the
  * majority vote can skip them and leave default-ink words unstyled. Chosen to
  * never collide with a real `#…` tajweed hex.
  */
+private const val WORD_INDEX_TAG_TAJWEED = "WORD_INDEX"
+
 private const val WORD_DEFAULT_SENTINEL = "DEFAULT_INK"
 
-/** Forced color for `ruleClass == "end"` segments — mirrors the HTML renderer. */
-private const val TAJWEED_WORD_END_GOLD_HEX = "#B8924A"
+/**
+ * Coverage key for `ruleClass == "end"` segments — never a real hex, so the
+ * winning entry can be swapped for the theme's [markerGold] at resolve time.
+ */
+private const val WORD_END_SEGMENT_KEY = "\u0001end"
 
 private val TajweedWordGold = Color(0xFFB8924A)

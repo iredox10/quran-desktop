@@ -158,7 +158,7 @@ fun GlobalSearch(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = verse.arabic,
+                                    text = com.nur.quran.desktop.ui.components.verseSnippetArabic(verse),
                                     fontFamily = fontArabic,
                                     fontSize = 17.sp,
                                     color = pal.ink,

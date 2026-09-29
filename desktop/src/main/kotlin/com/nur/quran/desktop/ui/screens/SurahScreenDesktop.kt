@@ -79,6 +79,7 @@ import com.nur.quran.desktop.ui.audio.MiniPlayerDesktop
 import com.nur.quran.desktop.ui.components.PlainVerseText
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
+import com.nur.quran.desktop.ui.components.verseEndMarkerLength
 import com.nur.quran.shared.HIZB_STARTS
 import com.nur.quran.shared.JUZ_STARTS
 import com.nur.quran.shared.getHizbByPage
@@ -873,7 +874,12 @@ private fun ContinuousReadingList(
                     PageDivider(pal = pal, fontBody = fontBody, page = page)
                     val paragraph = remember(pageVerses, fontName) {
                         pageVerses.joinToString(" ") { v ->
+                            // Drop the end marker: in continuous flow the gold
+                            // digits after each verse look like stray flecks;
+                            // page dividers already carry the page number.
                             verseDisplayArabic(v, fontName)
+                                .dropLast(verseEndMarkerLength(fontName, v.verseNumber))
+                                .trimEnd()
                         }
                     }
                     androidx.compose.runtime.CompositionLocalProvider(

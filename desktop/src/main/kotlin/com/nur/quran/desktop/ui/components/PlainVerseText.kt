@@ -56,10 +56,18 @@ fun PlainVerseText(
     fontFamily: FontFamily = FontFamily.Default,
     onWordClick: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
+    endMarkerLength: Int = 0,
+    markerGold: Color = EndMarkerGold,
 ) {
-    val annotated = remember(plainText, wordRanges) {
+    val annotated = remember(plainText, wordRanges, endMarkerLength, markerGold) {
         buildAnnotatedString {
             append(plainText)
+            // Desktop verse-level pipeline: no word metadata, so gold-span the
+            // trailing end-of-ayah marker directly by length.
+            if (endMarkerLength > 0) {
+                val start = (plainText.length - endMarkerLength).coerceAtLeast(0)
+                addStyle(SpanStyle(color = markerGold), start, plainText.length)
+            }
             for ((range, wordIndex) in wordRanges) {
                 val start = range.first.coerceIn(0, plainText.length)
                 // NOTE: range.last is the EXCLUSIVE end per buildVerseDisplayText
@@ -67,8 +75,8 @@ fun PlainVerseText(
                 val end = range.last.coerceIn(start, plainText.length)
                 if (end <= start) continue
                 val slice = plainText.substring(start, end)
-                if (slice.contains(END_OF_AYAH_CHAR)) {
-                    addStyle(SpanStyle(color = EndMarkerGold), start, end)
+                if (endMarkerLength <= 0 && slice.contains(END_OF_AYAH_CHAR)) {
+                    addStyle(SpanStyle(color = markerGold), start, end)
                 }
                 addStringAnnotation(WORD_INDEX_TAG, wordIndex.toString(), start, end)
             }
@@ -110,5 +118,5 @@ private const val WORD_INDEX_TAG = "WORD_INDEX"
 /** U+06DD ARABIC END OF AYAH ("۝"). */
 private const val END_OF_AYAH_CHAR = '۝'
 
-/** Light-theme hGold (#B8924A); dark theme uses #C6A87C (caller-themed later). */
+/** Light-theme hGold (#B8924A); pass NurPalette.gold so dark themes get #C6A87C. */
 private val EndMarkerGold = Color(0xFFB8924A)

@@ -69,8 +69,19 @@ fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<Word>, verseN
     return baseHtml.trimEnd() + cleanEndMarker
 }
 
-private val ORNAMENT_EMBEDDED_REGEX = "[۝۞۪۟۠ۢ-۬◌﴿﴾{}]".toRegex()
-private val ORNAMENT_PLAIN_REGEX = "[۪۟۠ۢ-۬◌]".toRegex()
+private val ORNAMENT_EMBEDDED_REGEX =
+    "[\\u06D6-\\u06DC\\u06DE\\u06DD\\u06DF\\u06E0\\u06E2-\\u06EC\\u25CC\\uFD3E\\uFD3F{}]".toRegex()
+
+/**
+ * Floating small-ornament marks. Verse-level display strips ALL of them —
+ * including the waqf signs (U+06D6-06DC) and rub-el-hizb (U+06DE) — because a
+ * standalone combining mark with non-zero advance renders as a floating blob
+ * between words instead of attaching over the preceding glyph. The end-of-ayah
+ * frame U+06DD is intentionally NOT in this set (non-KFGQPC fonts need it for
+ * the medallion) — it is canonicalized separately below.
+ */
+private val ORNAMENT_PLAIN_REGEX =
+    "[\\u06D6-\\u06DC\\u06DE\\u06DF\\u06E0\\u06E2-\\u06EC\\u25CC]".toRegex()
 
 private fun foldExtendedArabicDigitsToStandard(text: String): String {
     val sb = StringBuilder(text.length)
@@ -150,12 +161,16 @@ fun mushafPlainVerseText(verse: Verse, mushafId: String, fontName: String): Stri
     t = if (usesEmbeddedEndMarker(fontName)) {
         t.replace(ORNAMENT_EMBEDDED_REGEX, "")
     } else {
-        // Strip small ornaments + ornate brackets/braces (keep the U+06DD frame and rub),
-        // then canonicalize to a single U+06DD + standard digits: glyph-identical to ON-path.
-        val stripped = t.replace(ORNAMENT_PLAIN_REGEX, "").filter { c -> c.code != 0xFD3F && c.code != 0xFD3E && c != '{' && c != '}' }
+        // Strip ALL floating ornaments (waqf signs included — they are mushaf
+        // punctuation, not recitation text), then canonicalize to a single
+        // U+06DD + standard digits: glyph-identical to ON-path rebuilt marker.
+        val stripped = t.replace(ORNAMENT_PLAIN_REGEX, "")
+            .filter { c -> c.code != 0xFD3F && c.code != 0xFD3E && c != '{' && c != '}' }
         ensureSingleEndMarkerFrame(stripped)
     }
-    return t
+    // Stripping a standalone mark leaves its leading space behind ("كُمْ  إِنَّ").
+    // Collapse runs of whitespace so no visible gap artifact remains.
+    return t.replace(Regex("\\s+"), " ").trim()
 }
 
 /**

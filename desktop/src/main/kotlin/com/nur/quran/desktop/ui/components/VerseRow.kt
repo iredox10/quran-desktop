@@ -226,7 +226,8 @@ fun VerseRow(
                     fontScale = fontScale,
                     lineHeightMultiplier = lineHeightMultiplier,
                     fontFamily = fontArabic,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    markerGold = pal.gold
                 )
             } else {
                 PlainVerseText(
@@ -235,7 +236,9 @@ fun VerseRow(
                     fontScale = fontScale,
                     lineHeightMultiplier = lineHeightMultiplier,
                     fontFamily = fontArabic,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    endMarkerLength = verseEndMarkerLength(fontName, verse.verseNumber),
+                    markerGold = pal.gold
                 )
             }
         }
@@ -370,6 +373,27 @@ private fun Modifier.drawGoldBar(pal: NurPalette): Modifier = this.drawBehind {
  * shapes bare digits into a medallion via GSUB; every other font needs the
  * U+06DD frame.
  */
+/** The trailing end-of-ayah marker appended by [verseDisplayArabic]. */
+internal fun verseEndMarkerLength(fontName: String, verseNumber: Int): Int {
+    // +1 for the leading space that always precedes the marker.
+    return 1 + formatArabicDigits(verseNumber).length +
+        if (usesEmbeddedEndMarker(fontName)) 0 else 1 // U+06DD frame
+}
+
+/**
+ * Short cleaned Arabic for snippets (search rows, history rows): routes
+ * through the same pipeline as the reader but without the end marker.
+ */
+internal fun verseSnippetArabic(
+    verse: DeskVerse,
+    fontName: String = PrefsCache.getFont(),
+    maxChars: Int = 80
+): String {
+    val full = verseDisplayArabic(verse, fontName)
+        .dropLast(verseEndMarkerLength(fontName, verse.verseNumber))
+    return full.take(maxChars).trimEnd()
+}
+
 internal fun verseDisplayArabic(
     verse: DeskVerse,
     fontName: String,
@@ -386,7 +410,7 @@ internal fun verseDisplayArabic(
         pageNumber = verse.pageNumber,
         juzNumber = 0
     )
-    val clean = mushafPlainVerseText(v, mushafId, fontName).trimEnd()
+    val clean = mushafPlainVerseText(v, mushafId, fontName)
     val digits = formatArabicDigits(verse.verseNumber)
     val marker = if (usesEmbeddedEndMarker(fontName)) " $digits" else " \u06DD$digits"
     return "$clean$marker"

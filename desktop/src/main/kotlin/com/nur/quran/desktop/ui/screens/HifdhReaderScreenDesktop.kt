@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
+import com.nur.quran.desktop.ui.components.verseDisplayArabic
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
@@ -324,7 +325,12 @@ fun HifdhReaderScreenDesktop(
             }
             Spacer(modifier = Modifier.height(16.dp))
             // ── Test mode state (resets per verse index) ──
-            val testWords = remember(verse.verseKey, verse.arabic) { verse.arabic.split(" ") }
+            // Display text routes through the shared mushaf pipeline (floating
+            // marks stripped, single end marker) — same as the reader.
+            val displayArabic = remember(verse.verseKey, fontArabic) {
+                verseDisplayArabic(verse, PrefsCache.getFont())
+            }
+            val testWords = remember(verse.verseKey, displayArabic) { displayArabic.split(" ") }
             val testMasked: Set<Int> = remember(verse.verseKey, verse.arabic) {
                 testWords.indices.filter { i ->
                     !isTestEndMarkerWord(testWords[i]) && isTestMasked(verse.verseKey, i)
@@ -417,7 +423,7 @@ fun HifdhReaderScreenDesktop(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = verse.arabic,
+                        text = displayArabic,
                         fontFamily = fontArabic,
                         fontSize = (28 * arabicScale).sp,
                         lineHeight = (48 * arabicScale).sp,

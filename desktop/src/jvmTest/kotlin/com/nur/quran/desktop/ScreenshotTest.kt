@@ -1,6 +1,7 @@
 package com.nur.quran.desktop
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.ImageComposeScene
@@ -10,8 +11,13 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.QuranStore
+import com.nur.quran.desktop.ui.components.DesktopFonts
 import com.nur.quran.desktop.ui.components.VerseRow
+import com.nur.quran.desktop.ui.components.verseDisplayArabic
 import com.nur.quran.desktop.ui.screens.AnalyticsScreenDesktop
 import com.nur.quran.desktop.ui.screens.App
 import com.nur.quran.desktop.ui.screens.DownloadsScreenDesktop
@@ -25,10 +31,12 @@ import com.nur.quran.desktop.ui.screens.SurahScreenDesktop
 import com.nur.quran.desktop.ui.screens.WelcomeScreenDesktop
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.NurTheme
+import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.shared.PlannerEngine
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
+import kotlin.math.abs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
@@ -226,6 +234,118 @@ class ScreenshotTest {
         } finally {
             scene.close()
         }
+    }
+
+    /**
+     * Regression closeups for the floating-waqf-blob bug on Surah Sad 38:6/38:8:
+     * verse-level text_uthmani carries waqf signs (ۖ ۚ) as space-separated
+     * tokens, which used to render as detached rings between words.
+     *
+     * Saves, per verse:
+     * - `verse38_6.png` — the FIXED VerseRow pipeline (artifact + gold check).
+     * - `verse38_6_plain.png` / `verse38_6_prefix.png` — like-for-like
+     *   arabic-only renders of the fixed vs pre-fix string (same font, size,
+     *   alignment) so a connected-component diff isolates the removed blobs.
+     *
+     * Asserts the fixed render draws real ink and the gold end marker.
+     */
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `surah sad scrolled to 38 6 renders`() {
+        rule.setContent {
+            NurTheme {
+                SurahScreenDesktop(chapterId = 38, targetVerseKey = "38:6", pal = pal)
+            }
+        }
+        rule.waitForIdle()
+        save(rule.onRoot().captureToImage(), "surah38_6.png")
+    }
+
+    @Test
+    fun `surah sad closeups render with gold marker and no waqf blobs`() {
+        val font = DesktopFonts.KFGQPC_HAFS
+        var goldSeen = 0
+        for ((key, name) in listOf("38:6" to "verse38_6", "38:8" to "verse38_8")) {
+            val verse = QuranStore.versesOfChapter(38).first { it.verseKey == key }
+
+            // 1) Fixed pipeline — exactly what the app renders.
+            val fixed = ImageComposeScene(width = 1400, height = 420) {
+                NurTheme {
+                    androidx.compose.material3.Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = pal.white
+                    ) {
+                        VerseRow(verse = verse, pal = pal, fontName = font)
+                    }
+                }
+            }
+            try {
+                val png = fixed.render().encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)
+                    ?: error("PNG encode failed")
+                val img = ImageIO.read(java.io.ByteArrayInputStream(png.bytes))
+                    ?: error("PNG decode failed")
+                var ink = 0
+                var markerGold = 0
+                for (y in 0 until img.height) {
+                    for (x in 0 until img.width) {
+                        val argb = img.getRGB(x, y)
+                        val r = (argb shr 16) and 0xFF
+                        val g = (argb shr 8) and 0xFF
+                        val b = argb and 0xFF
+                        if (r < 90 && g < 90 && b < 90) ink++
+                        // hGold #B8924A (light theme) with antialiasing slack.
+                        if (abs(r - 184) <= 30 && abs(g - 146) <= 30 && abs(b - 74) <= 40) markerGold++
+                    }
+                }
+                assertTrue("$key rendered almost no text (ink=$ink)", ink > 5_000)
+                assertTrue("$key end marker not gold (gold=$markerGold)", markerGold > 50)
+                goldSeen += markerGold
+                File("build/screenshots").apply { mkdirs() }
+                File("build/screenshots", "$name.png").writeBytes(png.bytes)
+            } finally {
+                fixed.close()
+            }
+
+            // 2) Differential pair: identical render, only the string differs.
+            val digits = com.nur.quran.shared.formatArabicDigits(verse.verseNumber)
+            val marker = if (com.nur.quran.shared.usesEmbeddedEndMarker(font)) " $digits"
+            else " \u06DD$digits"
+            val fixedText = verseDisplayArabic(verse, font)
+            val rawText = verse.arabic + marker
+            for ((suffix, text) in listOf("plain" to fixedText, "prefix" to rawText)) {
+                val scene = ImageComposeScene(width = 1400, height = 420) {
+                    NurTheme {
+                        androidx.compose.material3.Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = pal.white
+                        ) {
+                            androidx.compose.foundation.text.BasicText(
+                                text = text,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    fontSize = 26.sp,
+                                    lineHeight = 52.sp,
+                                    textAlign = TextAlign.Right,
+                                    fontFamily = rememberArabicFontFamily(font),
+                                    color = pal.ink
+                                ),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 40.dp, vertical = 40.dp)
+                            )
+                        }
+                    }
+                }
+                try {
+                    val png = scene.render().encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)
+                        ?: error("PNG encode failed")
+                    val dir = File("build/screenshots").apply { mkdirs() }
+                    File(dir, "${name}_$suffix.png").writeBytes(png.bytes)
+                } finally {
+                    scene.close()
+                }
+            }
+        }
+        assertTrue("no gold pixels anywhere", goldSeen > 100)
     }
 
     private fun save(image: ImageBitmap, name: String) {

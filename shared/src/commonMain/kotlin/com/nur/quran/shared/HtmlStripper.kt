@@ -19,6 +19,9 @@ object HtmlStripper {
     private val missingSpaceAfterSemicolon = Regex(";(?=[A-Za-z])")
     private val missingSpaceAfterPeriod = Regex("\\.(?=[A-Z])")
 
+    /** Floating mushaf ornaments (waqf signs etc.) must never appear in translation text. */
+    private val arabicOrnamentRegex = Regex("[\\u06D6-\\u06DC\\u06DE\\u06DD\\u06DF\\u06E0\\u06E2-\\u06EC\\u25CC]")
+
     /** Matches Android's `<sup foot_note="N">N</sup>` footnote markers. */
     private val footnoteSupRegex =
         Regex("<sup[^>]*foot_note=[\"']?(\\d+)[\"']?[^>]*>\\s*(\\d+)\\s*</sup>")
@@ -30,11 +33,16 @@ object HtmlStripper {
      */
     fun strip(html: String): String {
         if (html.isEmpty()) return ""
-        if ('<' !in html && '&' !in html) return normalizePunctuationSpacing(html.trim())
+        if ('<' !in html && '&' !in html) {
+            return normalizePunctuationSpacing(
+                whitespaceRegex.replace(arabicOrnamentRegex.replace(html, " "), " ").trim()
+            )
+        }
         // Keep word boundaries where block tags / line breaks were.
         var text = blockBreakRegex.replace(html, " ")
         text = tagRegex.replace(text, "")
         text = decodeEntities(text)
+        text = arabicOrnamentRegex.replace(text, " ")
         return normalizePunctuationSpacing(whitespaceRegex.replace(text, " ").trim())
     }
 

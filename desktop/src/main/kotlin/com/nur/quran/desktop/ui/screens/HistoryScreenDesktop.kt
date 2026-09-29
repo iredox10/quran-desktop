@@ -196,7 +196,8 @@ private fun HistoryRow(
     val snippet = remember(entry.chapterId, entry.verseKey) {
         entry.verseKey?.let { key ->
             QuranStore.versesOfChapter(entry.chapterId)
-                .firstOrNull { it.verseKey == key }?.arabic?.take(80)
+                .firstOrNull { it.verseKey == key }
+                ?.let { com.nur.quran.desktop.ui.components.verseSnippetArabic(it) }
         }
     }
     Row(

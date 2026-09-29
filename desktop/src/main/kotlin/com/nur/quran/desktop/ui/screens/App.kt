@@ -71,8 +71,10 @@ import com.nur.quran.shared.FsrsCard
 import com.nur.quran.shared.HifdhStore
 import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.RecentlyReadStore
+import com.nur.quran.desktop.data.DeskVerse
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.components.DesktopFonts
+import com.nur.quran.desktop.ui.components.verseDisplayArabic
 import com.nur.quran.desktop.ui.components.SettingsDrawerDesktop
 import com.nur.quran.desktop.ui.components.TranslationTextDesktop
 import com.nur.quran.desktop.ui.components.copyToClipboard
@@ -517,9 +519,12 @@ private fun HomeScreen(
 
                 // ── Verse of the day ──
                 item {
+                    val vodArabic = remember(verseOfDay) {
+                        verseDisplayArabic(verseOfDay, PrefsCache.getFont())
+                    }
                     VerseOfDayCard(
                         pal = pal,
-                        verseArabic = verseOfDay.arabic,
+                        verseArabic = vodArabic,
                         verseTranslation = verseOfDay.translation,
                         verseRef = "$verseOfDaySurah ${verseOfDay.verseKey}",
                         onOpenVerse = {
