@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -29,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +49,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.PrefsCache
+import com.nur.quran.desktop.data.AudioEngine
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
@@ -102,6 +106,7 @@ fun HifdhReaderScreenDesktop(
     var testMode by remember(chapterId) { mutableStateOf(false) }
     var totalTestRevealed by remember(chapterId) { mutableStateOf(0) }
     var showBreakdown by remember(chapterId) { mutableStateOf(false) }
+    var audioEnabled by remember(chapterId) { mutableStateOf(false) }
     val ratingCounts = remember(chapterId) { mutableStateMapOf<Int, Int>() }
 
     // ── Session timing: log "memorizing" minutes exactly once ──────────────
@@ -115,6 +120,19 @@ fun HifdhReaderScreenDesktop(
     }
     DisposableEffect(chapterId) {
         onDispose { logSessionOnce() }
+    }
+    // ── Audio-assisted review: play current verse while toggle is on ──────
+    // No auto-advance on track end; user still rates manually.
+    LaunchedEffect(index, audioEnabled) {
+        if (!audioEnabled) return@LaunchedEffect
+        val currentVerse = queue.getOrNull(index) ?: run {
+            AudioEngine.stop()
+            return@LaunchedEffect
+        }
+        AudioEngine.playVerse(currentVerse.verseKey)
+    }
+    DisposableEffect(chapterId) {
+        onDispose { AudioEngine.stop() }
     }
     fun goBack() {
         logSessionOnce()
@@ -153,7 +171,10 @@ fun HifdhReaderScreenDesktop(
         ratingCounts[rating] = (ratingCounts[rating] ?: 0) + 1
         revealed = false
         index++
-        if (index >= queue.size) logSessionOnce()
+        if (index >= queue.size) {
+            AudioEngine.stop()
+            logSessionOnce()
+        }
     }
 
     if (showBreakdown) {
@@ -204,6 +225,20 @@ fun HifdhReaderScreenDesktop(
                         imageVector = Icons.Filled.Info,
                         contentDescription = "Surah breakdown",
                         tint = pal.inkMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                IconButton(
+                    onClick = {
+                        if (audioEnabled) AudioEngine.stop()
+                        audioEnabled = !audioEnabled
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (audioEnabled) Icons.Filled.Stop else Icons.Filled.VolumeUp,
+                        contentDescription = if (audioEnabled) "Stop verse audio" else "Play verse audio",
+                        tint = if (audioEnabled) pal.gold else pal.inkMuted,
                         modifier = Modifier.size(18.dp)
                     )
                 }
