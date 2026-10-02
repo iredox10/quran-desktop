@@ -25,20 +25,25 @@ import org.junit.Test
 class VerseTextTest {
 
     /**
-     * New policy (mirrors ORNAMENT_PLAIN_REGEX in shared/VerseText.kt):
-     * - ALL floating ornaments are stripped for EVERY font — waqf signs
-     *   (U+06D6-U+06DC), rub-el-hizb (U+06DE), recitation marks U+06DF-U+06E8 /
-     *   U+06EA-U+06ED incl. sajdah U+06E9, and U+25CC — because a
-     *   standalone combining mark with non-zero advance renders as a floating
-     *   blob instead of attaching to a glyph.
-     * - U+06DD (end-of-ayah frame) is NOT stripped: KFGQPC never receives it
-     *   (embedded medallion from bare digits), every other font gets EXACTLY
-     *   one from verseDisplayArabic.
-     * - Runs of whitespace collapse to a single space so a removed token never
-     *   leaves a visible double gap.
+     * Mirrors production predicates in shared/VerseText.kt EXACTLY
+     * (isOrnamentalNoFrame for every font, isOrnamental extras for KFGQPC):
+     * - stripped for EVERY font: waqf signs U+06D6-U+06DC, rub-el-hizb U+06DE,
+     *   recitation marks U+06DF / U+06E0 / U+06E2-U+06E8 / U+06EA-U+06ED,
+     *   sajdah U+06E9, U+25CC dotted circle.
+     * - U+06E1 is CARVED OUT (load-bearing vowel in both scripts, 62k hits).
+     * - KFGQPC additionally strips U+06DD + ornate brackets (bare-digit
+     *   medallion needs no frame); other fonts get exactly one U+06DD marker.
      */
-    private val bannedEverywhere = Regex("[\u06D6-\u06DC\u06DE\u06DF-\u06E8\u06EA-\u06ED\u06E9\u25CC]")
+    private val bannedEverywhere = Regex("[\u06D6-\u06DC\u06DE\u06DF\u06E0\u06E2-\u06E8\u06EA-\u06ED\u06E9\u25CC]")
+    private val indopakVowelKept = 0x6E1.toChar()
     private val bannedKfgqpcOnly = Regex("[\u06DD\uFD3E\uFD3F{}]")
+
+    /** U+0615 must be gone from Indopak-script display text (waqf rings). */
+    private fun hasIndopakWaqf(s: String): Boolean = s.any { it.code == 0x615 }
+
+    /** ZWSP/ZWNBSP/PUA must be gone (unmapped -> dotted-circle tofu). */
+    private fun hasIndopakInvisible(s: String): Boolean =
+        s.any { it.code == 0x200B || it.code == 0xFEFF || it.code in 0xE000..0xF8FF }
     private val arabicDigits = Regex("[\u0660-\u0669]")
 
     /** `verseDisplayArabic` marker tail for [font] + [verseNumber]. */
@@ -57,6 +62,28 @@ class VerseTextTest {
             for (id in 1..114) {
                 for (v in QuranStore.versesOfChapter(id)) {
                     val text = verseDisplayArabic(v, font)
+                    // Indopak-script pass (mushaf id "indopak"): U+0615 waqf and
+                    // ZWSP/ZWNBSP/PUA must be gone; U+06E1 vowel must survive
+                    // (it is a letter in this script, 62k hits).
+                    val indoText = verseDisplayArabic(v, font, "indopak")
+                    assertFalse(
+                        "indopak waqf U+0615 survived in ${v.verseKey} [$font]",
+                        hasIndopakWaqf(indoText),
+                    )
+                    assertFalse(
+                        "indopak invisible/PUA survived in ${v.verseKey} [$font]",
+                        hasIndopakInvisible(indoText),
+                    )
+                    assertFalse(
+                        "indopak double space in ${v.verseKey} [$font]",
+                        indoText.contains("  "),
+                    )
+                    assertTrue(
+                        "indopak vowel U+06E1 lost in ${v.verseKey} [$font] " +
+                            "(raw has ${v.textIndopak.count { it.code == 0x6E1 }})",
+                        v.textIndopak.none { it.code == 0x6E1 } ||
+                            indoText.contains(indopakVowelKept),
+                    )
                     assertFalse(
                         "floating ornament survived in ${v.verseKey} [$font]: ${text.takeLast(30)}",
                         bannedEverywhere.containsMatchIn(text)

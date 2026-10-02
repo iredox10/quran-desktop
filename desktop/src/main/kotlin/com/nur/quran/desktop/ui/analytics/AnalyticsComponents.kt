@@ -394,7 +394,7 @@ fun FlowChart(
                         }
                         drawPath(
                             area,
-                            color = pal.teal.copy(alpha = 0.18f)
+                            color = pal.tealSoft
                         )
                         // Line
                         val line = androidx.compose.ui.graphics.Path().apply {

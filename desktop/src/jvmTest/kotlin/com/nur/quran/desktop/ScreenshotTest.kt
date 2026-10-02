@@ -1,6 +1,7 @@
 package com.nur.quran.desktop
 
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
@@ -18,9 +19,11 @@ import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.components.DesktopFonts
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
+import com.nur.quran.desktop.ui.library.AddToCollectionDialog
 import com.nur.quran.desktop.ui.screens.AnalyticsScreenDesktop
 import com.nur.quran.desktop.ui.screens.App
 import com.nur.quran.desktop.ui.screens.DownloadsScreenDesktop
+import com.nur.quran.desktop.ui.screens.HistoryScreenDesktop
 import com.nur.quran.desktop.ui.screens.HifdhReaderScreenDesktop
 import com.nur.quran.desktop.ui.screens.LibraryScreenDesktop
 import com.nur.quran.desktop.ui.screens.MemorizeScreenDesktop
@@ -346,6 +349,53 @@ class ScreenshotTest {
             }
         }
         assertTrue("no gold pixels anywhere", goldSeen > 100)
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `history screen renders`() {
+        rule.setContent { NurTheme { HistoryScreenDesktop(pal = pal) } }
+        rule.waitForIdle()
+        save(rule.onRoot().captureToImage(), "history.png")
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `audio setup sheet composes`() {
+        // ModalBottomSheet lives in its own window (scene capture stays black),
+        // so this is a composition smoke test: it fails on any throw/recompose loop.
+        rule.setContent {
+            NurTheme {
+                com.nur.quran.desktop.ui.audio.AudioSetupSheetDesktop(pal = pal, onDismiss = {})
+            }
+        }
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun `add to collection dialog renders`() {
+        renderScene("collections.png", 900, 800) {
+            NurTheme {
+                AddToCollectionDialog(pal = pal, verseKey = "2:255", onDismiss = {})
+            }
+        }
+    }
+
+    private fun renderScene(
+        name: String,
+        width: Int,
+        height: Int,
+        content: @Composable () -> Unit
+    ) {
+        val scene = ImageComposeScene(width = width, height = height, content = content)
+        try {
+            val png = scene.render().encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)
+                ?: error("PNG encode failed")
+            val dir = File("build/screenshots").apply { mkdirs() }
+            File(dir, name).writeBytes(png.bytes)
+        } finally {
+            scene.close()
+        }
     }
 
     private fun save(image: ImageBitmap, name: String) {

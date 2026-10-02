@@ -59,6 +59,7 @@ import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.shared.Reciters
 import java.io.File
+import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -219,10 +220,19 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
                         continue
                     }
                     try {
-                        val bytes = URL(url).openStream().use { it.readBytes() }
-                        dir.mkdirs()
-                        file.writeBytes(bytes)
-                        done++
+                        val conn = URL(url).openConnection() as HttpURLConnection
+                        conn.connectTimeout = 15_000
+                        conn.readTimeout = 15_000
+                        conn.instanceFollowRedirects = true
+                        try {
+                            conn.connect()
+                            val bytes = conn.inputStream.use { it.readBytes() }
+                            dir.mkdirs()
+                            file.writeBytes(bytes)
+                            done++
+                        } finally {
+                            conn.disconnect()
+                        }
                     } catch (_: Exception) {
                         failed++
                     }
