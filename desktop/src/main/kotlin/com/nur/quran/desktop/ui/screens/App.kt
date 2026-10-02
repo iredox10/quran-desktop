@@ -391,6 +391,7 @@ private fun HomeScreen(
     var browseMode by remember { mutableStateOf("surah") }
     var searchQuery by remember { mutableStateOf("") }
     var lastReadTick by remember { mutableStateOf(0) }
+    var historyTick by remember { mutableStateOf(0) }
 
     val chapters = remember { QuranStore.chapters }
     val browseItems = remember(browseMode, chapters, searchQuery) {
@@ -482,18 +483,20 @@ private fun HomeScreen(
 
                 // ── Recently read ──
                 item {
-                    val recentEntries = remember(lastReadTick) { RecentlyReadStore.all() }
+                    val recentEntries = remember(lastReadTick, historyTick) { RecentlyReadStore.all() }
                     if (recentEntries.isNotEmpty()) {
                         RecentlyReadRow(
                             pal = pal,
                             entries = recentEntries,
                             onOpen = { id, vk ->
                                 lastReadTick++
+                                historyTick++
                                 onOpenSurah(id, vk)
                             },
                             onClear = {
                                 RecentlyReadStore.clear()
                                 lastReadTick++
+                                historyTick++
                             }
                         )
                         Spacer(modifier = Modifier.height(28.dp))
@@ -502,7 +505,7 @@ private fun HomeScreen(
 
                 // ── Due for review ──
                 item {
-                    val topDue = remember(lastReadTick) { topDueChapter() }
+                    val topDue = remember(lastReadTick, historyTick) { topDueChapter() }
                     if (topDue != null) {
                         DueReviewCard(
                             pal = pal,
@@ -534,6 +537,7 @@ private fun HomeScreen(
                                 verseOfDay.verseKey
                             )
                             lastReadTick++
+                            historyTick++
                             onOpenSurah(verseOfDay.chapterId, verseOfDay.verseKey)
                         }
                     )
@@ -689,6 +693,8 @@ private fun HomeScreen(
                                 fontBody = fontBody,
                                 modifier = Modifier.weight(1f),
                                 onClick = {
+                                    lastReadTick++
+                                    historyTick++
                                     when {
                                         item.pageNumber != null && browseMode != "surah" ->
                                             onOpenPage(item.pageNumber)

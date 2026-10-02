@@ -214,22 +214,11 @@ fun MemorizeScreenDesktop(
             item(key = "goal") {
                 val goal = goals.firstOrNull()
                 if (goal == null) {
-                    if (showGoalDialog) {
-                        HifdhGoalDialog(
-                            pal = pal,
-                            defaultChapterId = 114,
-                            onDismiss = { showGoalDialog = false },
-                            onSaved = {
-                                showGoalDialog = false
-                                tick++
-                            }
-                        )
-                    }
                     Card(
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = pal.cream),
                         border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().clickable { showGoalDialog = true }
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(18.dp),
@@ -288,7 +277,7 @@ fun MemorizeScreenDesktop(
                         border = androidx.compose.foundation.BorderStroke(
                             1.5.dp, pal.gold.copy(alpha = 0.4f)
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().clickable { showGoalDialog = true }
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(18.dp),
@@ -500,6 +489,19 @@ fun MemorizeScreenDesktop(
                 }
             }
         }
+    }
+
+    // ── Goal dialog (goal card click; default = first goal target or 114) ──
+    if (showGoalDialog) {
+        HifdhGoalDialog(
+            pal = pal,
+            defaultChapterId = goals.firstOrNull()?.targetId ?: 114,
+            onDismiss = { showGoalDialog = false },
+            onSaved = {
+                showGoalDialog = false
+                tick++
+            }
+        )
     }
 
     // ── Per-surah breakdown dialog (hosted at screen level) ──

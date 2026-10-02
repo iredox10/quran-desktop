@@ -20,7 +20,7 @@ object RecentlyReadStore {
     )
 
     private val prefs: Preferences =
-        Preferences.userNodeForPackage(RecentlyReadStore::class.java)
+        Preferences.userRoot().node("recently_read")
     private val gson = Gson()
     private val type = object : TypeToken<List<Entry>>() {}.type
     private const val KEY = "items_json"
@@ -43,6 +43,7 @@ object RecentlyReadStore {
     @Synchronized
     fun clear() {
         prefs.remove(KEY)
+        runCatching { prefs.flush() }
     }
 
     private fun isToday(ts: Long): Boolean {
@@ -60,5 +61,6 @@ object RecentlyReadStore {
 
     private fun save(entries: List<Entry>) {
         prefs.put(KEY, gson.toJson(entries.filter { it.timestamp > 0L }))
+        runCatching { prefs.flush() }
     }
 }

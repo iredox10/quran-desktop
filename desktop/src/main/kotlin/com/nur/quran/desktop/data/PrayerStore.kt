@@ -1,12 +1,13 @@
 package com.nur.quran.desktop.data
 
 import com.google.gson.Gson
-import com.nur.quran.shared.PlannerEngine
 import com.nur.quran.shared.PrayerTimings
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.prefs.Preferences
 
 /**
@@ -39,7 +40,7 @@ object PrayerStore {
      */
     @Synchronized
     fun getToday(): PrayerTimings? {
-        val today = PlannerEngine.formatPlannerDate()
+        val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
         val city = getCity()
         val country = getCountry()
         val key = "$today|$city|$country"

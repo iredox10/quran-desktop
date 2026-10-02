@@ -266,7 +266,7 @@ private fun HistoryRow(
     }
 }
 
-/** Groups newest-first entries into Today / Yesterday / "Sep 28" buckets. */
+/** Groups newest-first entries into Today / Yesterday / "yyyy-MM-dd" buckets. */
 private fun groupByDay(
     entries: List<RecentlyReadStore.Entry>
 ): List<Pair<String, List<RecentlyReadStore.Entry>>> {
@@ -274,7 +274,7 @@ private fun groupByDay(
     val today = cal.get(Calendar.DAY_OF_YEAR) to cal.get(Calendar.YEAR)
     cal.add(Calendar.DAY_OF_YEAR, -1)
     val yesterday = cal.get(Calendar.DAY_OF_YEAR) to cal.get(Calendar.YEAR)
-    val fmt = SimpleDateFormat("MMM d", Locale.ENGLISH)
+    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
 
     val buckets = LinkedHashMap<String, MutableList<RecentlyReadStore.Entry>>()
     entries.forEach { entry ->
@@ -283,7 +283,7 @@ private fun groupByDay(
         val label = when {
             day == today -> "Today"
             day == yesterday -> "Yesterday"
-            else -> fmt.format(Date(entry.timestamp)).uppercase()
+            else -> fmt.format(Date(entry.timestamp))
         }
         buckets.getOrPut(label) { mutableListOf() }.add(entry)
     }

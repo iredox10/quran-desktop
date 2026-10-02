@@ -328,7 +328,7 @@ fun SurahScreenDesktop(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "←/→ switch surah · Home/End jump · Esc back",
+                            text = "←/→ switch surah",
                             fontSize = 10.sp,
                             color = pal.inkMuted,
                             fontFamily = FontFamily.Monospace,
