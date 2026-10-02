@@ -216,6 +216,39 @@ class ScreenshotTest {
         }
     }
 
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `dark surah with translation shows arabic`() {
+        rule.setContent {
+            NurTheme(dark = true) {
+                SurahScreenDesktop(
+                    chapterId = 8,
+                    targetVerseKey = "8:4",
+                    pal = NurPalette(true),
+                    dark = true
+                )
+            }
+        }
+        rule.waitForIdle()
+        save(rule.onRoot().captureToImage(), "surah8_dark.png")
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `reading mode keeps aya markers`() {
+        rule.setContent {
+            NurTheme {
+                SurahScreenDesktop(
+                    chapterId = 8,
+                    pal = pal,
+                    startInReadingMode = true
+                )
+            }
+        }
+        rule.waitForIdle()
+        save(rule.onRoot().captureToImage(), "surah8_reading.png")
+    }
+
     @Test
     fun `ayah 2-5 closeup has no tofu`() {
         val verse = QuranStore.versesOfChapter(2).first { it.verseNumber == 5 }

@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.BackupStore
 import com.nur.quran.desktop.data.BookmarkStore
+import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.components.DesktopFonts
 import com.nur.quran.desktop.ui.theme.NurPalette
@@ -167,6 +168,14 @@ fun ProfileScreenDesktop(
                         onOpenLibrary = onOpenLibrary,
                         onOpenDownloads = onOpenDownloads,
                         onOpenPlanner = onOpenPlanner
+                    )
+                }
+                item {
+                    ProfileRecentSessionsDesktop(
+                        pal = pal,
+                        fontUi = fontUi,
+                        fontBody = fontBody,
+                        sessions = sessions
                     )
                 }
                 item {
@@ -584,6 +593,111 @@ private fun QuickLinkRow(
             tint = pal.inkMuted.copy(alpha = 0.5f),
             modifier = Modifier.size(16.dp)
         )
+    }
+}
+
+// ── Recent sessions ────────────────────────────────────────────────────────
+@Composable
+private fun ProfileRecentSessionsDesktop(
+    pal: NurPalette,
+    fontUi: FontFamily,
+    fontBody: FontFamily,
+    sessions: List<AnalyticsStats.Session>
+) {
+    val recent = remember(sessions) { sessions.reversed().take(8) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        ProfileSectionHeaderDesktop(pal = pal, title = "RECENT SESSIONS")
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = pal.cream),
+            border = BorderStroke(1.5.dp, pal.boneDark)
+        ) {
+            if (recent.isEmpty()) {
+                Text(
+                    text = "No sessions yet",
+                    fontFamily = fontBody,
+                    fontSize = 13.sp,
+                    color = pal.inkMuted,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 18.dp),
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                Column {
+                    recent.forEachIndexed { index, session ->
+                        RecentSessionRow(pal = pal, fontUi = fontUi, fontBody = fontBody, session = session)
+                        if (index < recent.lastIndex) {
+                            HorizontalDivider(color = pal.boneDark.copy(alpha = 0.6f), thickness = 1.dp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun sessionIcon(type: String): ImageVector {
+    return when (type.lowercase()) {
+        "reading" -> Icons.Filled.MenuBook
+        "memorizing" -> Icons.Filled.LibraryBooks
+        "focus", "pomodoro" -> Icons.Filled.Timer
+        "listening" -> Icons.Filled.Mic
+        else -> Icons.Filled.MenuBook
+    }
+}
+
+@Composable
+private fun RecentSessionRow(
+    pal: NurPalette,
+    fontUi: FontFamily,
+    fontBody: FontFamily,
+    session: AnalyticsStats.Session
+) {
+    val chapterName = remember(session.chapterId) {
+        val id = session.chapterId
+        if (id == null) null
+        else runCatching { QuranStore.chapter(id)?.nameSimple }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(pal.goldLight),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = sessionIcon(session.type),
+                contentDescription = null,
+                tint = pal.gold,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${session.date} · ${AnalyticsStats.formatMinutes(session.durationSec)}",
+                fontFamily = fontUi,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = pal.ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (chapterName != null) {
+                Text(
+                    text = chapterName,
+                    fontFamily = fontBody,
+                    fontSize = 12.sp,
+                    color = pal.inkMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }
 

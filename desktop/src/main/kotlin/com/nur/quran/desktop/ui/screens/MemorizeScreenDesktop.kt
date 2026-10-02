@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -59,6 +60,10 @@ import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.shared.HifdhGoal
 import com.nur.quran.shared.HifdhStore
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 /**
  * Desktop memorization hub mirroring Android `MemorizeScreen` (condensed):
@@ -99,6 +104,21 @@ fun MemorizeScreenDesktop(
     val memBySurah = remember(history) {
         history.keys.groupingBy { it.substringBefore(":").toIntOrNull() }.eachCount()
     }
+    // Last 30 days (oldest → today) with review counts bucketed by yyyy-MM-dd.
+    val activityDays = remember(history) {
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now(zone)
+        val days = (29 downTo 0).map { today.minusDays(it.toLong()) }
+        val counts = IntArray(30)
+        for (entry in history.values) {
+            if (entry.lastReviewed <= 0L) continue
+            val day = Instant.ofEpochMilli(entry.lastReviewed).atZone(zone).toLocalDate()
+            val idx = 29 - ChronoUnit.DAYS.between(day, today).toInt()
+            if (idx in 0..29) counts[idx]++
+        }
+        days.zip(counts.toList())
+    }
+    val activityTotal = remember(activityDays) { activityDays.sumOf { it.second } }
     // Surah with the most due verses — test-entry target.
     val mostDueSurahId = remember(history, nowMs) {
         history.keys
@@ -352,6 +372,89 @@ fun MemorizeScreenDesktop(
                         label = "STRONG",
                         modifier = Modifier.weight(1f)
                     )
+                }
+            }
+
+            // ── Memorization activity: 30-day bar strip ──
+            item(key = "activity") {
+                val maxCount = activityDays.maxOfOrNull { it.second } ?: 0
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = pal.cream),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "ACTIVITY — LAST 30 DAYS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = pal.inkMuted,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "$activityTotal",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = pal.ink,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            activityDays.forEachIndexed { index, (day, count) ->
+                                val isToday = index == activityDays.lastIndex
+                                val fraction =
+                                    if (maxCount > 0) count.toFloat() / maxCount else 0f
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(pal.bone)
+                                            .then(
+                                                if (isToday) Modifier.border(
+                                                    1.dp,
+                                                    pal.gold,
+                                                    RoundedCornerShape(6.dp)
+                                                ) else Modifier
+                                            ),
+                                        contentAlignment = Alignment.BottomCenter
+                                    ) {
+                                        if (fraction > 0f) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .fillMaxHeight(fraction)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .background(pal.teal)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = if ((index + 1) % 5 == 0) "${day.dayOfMonth}" else "",
+                                        fontSize = 8.sp,
+                                        color = pal.inkMuted,
+                                        fontFamily = FontFamily.Monospace,
+                                        modifier = Modifier.height(10.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
