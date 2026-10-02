@@ -3,6 +3,7 @@ package com.nur.quran.desktop.ui.components
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -103,6 +104,7 @@ fun PlainVerseText(
                     }
                 },
             style = TextStyle(
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = (26 * fontScale).sp,
                 lineHeight = (52 * fontScale * lineHeightMultiplier).sp,
                 textAlign = TextAlign.Right,

@@ -1,9 +1,11 @@
 package com.nur.quran.desktop.ui.theme
 
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -74,9 +76,18 @@ private val DarkScheme = darkColorScheme(
 /** App theme wrapping Material3 with the Nur palette. */
 @Composable
 fun NurTheme(dark: Boolean = false, content: @Composable () -> Unit) {
+    val colorScheme = if (dark) DarkScheme else LightScheme
     MaterialTheme(
-        colorScheme = if (dark) DarkScheme else LightScheme,
-        content = content
+        colorScheme = colorScheme,
+        content = {
+            // Plain Text/BasicText without an explicit color inherits
+            // LocalContentColor (default Black). Screens use raw Column/Box
+            // backgrounds with no Surface to provide it, so dark mode broke.
+            CompositionLocalProvider(
+                LocalContentColor provides colorScheme.onBackground,
+                content = content
+            )
+        }
     )
 }
 
