@@ -36,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.QuranStore
@@ -66,10 +68,10 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
- * Desktop memorization hub mirroring Android `MemorizeScreen` (condensed):
- * header with due count, active-goal card (or "Set a goal" zero state),
- * memorization breakdown strip, test entry, and a per-surah chapter list
- * with memorized/total progress bars and a Review button each.
+ * Desktop memorization hub mirroring Android `MemorizeScreen`:
+ * hero goal card, compact stat strip, review/test actions, activity chart
+ * (only when there is data), and a clean per-surah list where tapping a row
+ * starts review.
  */
 @Composable
 fun MemorizeScreenDesktop(
@@ -183,45 +185,6 @@ fun MemorizeScreenDesktop(
             }
             Spacer(modifier = Modifier.width(8.dp))
         }
-
-        // ── Chapter search ──
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            placeholder = {
-                Text(
-                    "Search surah…",
-                    color = pal.inkMuted,
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily.Default
-                )
-            },
-            leadingIcon = {
-                Icon(Icons.Filled.Search, contentDescription = null, tint = pal.inkMuted, modifier = Modifier.size(18.dp))
-            },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Filled.Close, contentDescription = "Clear", tint = pal.inkMuted, modifier = Modifier.size(16.dp))
-                    }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = pal.teal,
-                unfocusedBorderColor = pal.boneDark,
-                focusedContainerColor = pal.cream,
-                unfocusedContainerColor = pal.cream,
-                cursorColor = pal.teal,
-                focusedTextColor = pal.ink,
-                unfocusedTextColor = pal.ink
-            ),
-            singleLine = true
-        )
-        Spacer(modifier = Modifier.height(10.dp))
 
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -350,33 +313,130 @@ fun MemorizeScreenDesktop(
 
             // ── Breakdown strip: memorized / due now / strong ──
             item(key = "breakdown") {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = pal.cream,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        StatCell(
+                            pal = pal,
+                            countText = "$totalMemorized",
+                            label = "MEMORIZED",
+                            fontUi = fontUi,
+                            fontBody = fontBody,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Box(
+                            modifier = Modifier.width(1.dp).height(32.dp)
+                                .background(pal.boneDark)
+                        )
+                        StatCell(
+                            pal = pal,
+                            countText = "$dueCount",
+                            label = "DUE NOW",
+                            accent = dueCount > 0,
+                            fontUi = fontUi,
+                            fontBody = fontBody,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Box(
+                            modifier = Modifier.width(1.dp).height(32.dp)
+                                .background(pal.boneDark)
+                        )
+                        StatCell(
+                            pal = pal,
+                            countText = "$strongCount",
+                            label = "STRONG",
+                            fontUi = fontUi,
+                            fontBody = fontBody,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            // ── Primary actions: review dues + test ──
+            item(key = "actions") {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    BreakdownStat(
+                    Button(
+                        onClick = {
+                            mostDueSurahId?.let { onOpenHifdhReader(it) }
+                        },
+                        enabled = dueCount > 0,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = pal.teal,
+                            contentColor = Color.White,
+                            disabledContainerColor = pal.bone,
+                            disabledContentColor = pal.inkMuted
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.School,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (dueCount > 0) "Review due ($dueCount)" else "Nothing due",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = fontUi
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            testFor = mostDueSurahId ?: goals.firstOrNull()?.targetId ?: 114
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = pal.tealSoft,
+                            contentColor = pal.teal
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Quiz,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Test me",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = fontUi
+                        )
+                    }
+                }
+                if (testFor != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                testFor?.let { testChapter ->
+                    HifdhTestDialog(
                         pal = pal,
-                        countText = "$totalMemorized",
-                        label = "MEMORIZED",
-                        modifier = Modifier.weight(1f)
-                    )
-                    BreakdownStat(
-                        pal = pal,
-                        countText = "$dueCount",
-                        label = "DUE NOW",
-                        modifier = Modifier.weight(1f)
-                    )
-                    BreakdownStat(
-                        pal = pal,
-                        countText = "$strongCount",
-                        label = "STRONG",
-                        modifier = Modifier.weight(1f)
+                        chapterId = testChapter,
+                        onDismiss = { testFor = null },
+                        onOpenSurah = { id, _ ->
+                            testFor = null
+                            onOpenHifdhReader(id)
+                        }
                     )
                 }
             }
 
-            // ── Memorization activity: 30-day bar strip ──
-            item(key = "activity") {
+            // ── Memorization activity: only worth the space once it exists ──
+            if (activityTotal > 0) {
+                item(key = "activity") {
                 val maxCount = activityDays.maxOfOrNull { it.second } ?: 0
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -457,67 +517,77 @@ fun MemorizeScreenDesktop(
                     }
                 }
             }
-
-            // ── Test entry ──
-            item(key = "test") {
-                testFor?.let { testChapter ->
-                    HifdhTestDialog(
-                        pal = pal,
-                        chapterId = testChapter,
-                        onDismiss = { testFor = null },
-                        onOpenSurah = { id, _ ->
-                            testFor = null
-                            onOpenHifdhReader(id)
-                        }
-                    )
-                }
-                Button(
-                    onClick = {
-                        testFor = mostDueSurahId ?: goals.firstOrNull()?.targetId ?: 114
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = pal.teal,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Quiz,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (dueCount > 0) "Test my hifdh ($dueCount due)" else "Test my hifdh",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = fontUi
-                    )
-                }
             }
 
-            // ── Surah list rows ──
+            // ── Surah list header + chapter search ──
+            item(key = "list-header") {
+                Text(
+                    text = "YOUR SURAHS",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                    color = pal.inkMuted,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            "Search surah…",
+                            color = pal.inkMuted,
+                            fontSize = 14.sp,
+                            fontFamily = fontBody
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Filled.Search, contentDescription = null, tint = pal.inkMuted, modifier = Modifier.size(18.dp))
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Filled.Close, contentDescription = "Clear", tint = pal.inkMuted, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = pal.teal,
+                        unfocusedBorderColor = pal.boneDark,
+                        focusedContainerColor = pal.cream,
+                        unfocusedContainerColor = pal.cream,
+                        cursorColor = pal.teal,
+                        focusedTextColor = pal.ink,
+                        unfocusedTextColor = pal.ink
+                    ),
+                    singleLine = true
+                )
+            }
+
+            // ── Surah list rows: tap a row to review ──
             items(filteredChapters, key = { it.id }) { chapter ->
                 val memCount = memBySurah[chapter.id] ?: 0
                 val isMemorized = chapter.versesCount > 0 && memCount >= chapter.versesCount
                 val progress = if (chapter.versesCount > 0) memCount.toFloat() / chapter.versesCount else 0f
                 Card(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = pal.cream),
                     border = androidx.compose.foundation.BorderStroke(
-                        1.5.dp, if (isMemorized) pal.green else pal.boneDark
+                        1.dp, if (isMemorized) pal.green.copy(alpha = 0.5f) else pal.boneDark
                     ),
-                    modifier = Modifier.fillMaxWidth().clickable { onOpenSurah(chapter.id, null) }
+                    modifier = Modifier.fillMaxWidth().clickable { onOpenHifdhReader(chapter.id) }
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(42.dp)
+                                    .size(38.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(
                                         if (isMemorized) pal.green.copy(alpha = 0.15f) else pal.bone
@@ -536,58 +606,48 @@ fun MemorizeScreenDesktop(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = chapter.nameSimple,
-                                    fontSize = 16.sp,
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = pal.ink,
-                                    fontFamily = fontUi
+                                    fontFamily = fontUi,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = "$memCount / ${chapter.versesCount} ayahs",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     color = pal.inkMuted,
                                     fontFamily = fontBody
                                 )
                             }
                             Text(
                                 text = chapter.nameArabic,
-                                fontSize = 22.sp,
+                                fontSize = 20.sp,
                                 color = pal.gold,
-                                fontFamily = fontArabic
+                                fontFamily = fontArabic,
+                                maxLines = 1
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
                             IconButton(
                                 onClick = { breakdownFor = chapter.id },
-                                modifier = Modifier.size(30.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Info,
                                     contentDescription = "Surah breakdown",
-                                    tint = pal.inkMuted,
-                                    modifier = Modifier.size(16.dp)
+                                    tint = pal.inkMuted.copy(alpha = 0.55f),
+                                    modifier = Modifier.size(14.dp)
                                 )
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Button(
-                                onClick = { onOpenHifdhReader(chapter.id) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = pal.tealSoft,
-                                    contentColor = pal.teal
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                    horizontal = 12.dp, vertical = 8.dp
-                                )
-                            ) {
-                                Text("Review", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = fontUi)
                             }
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        LinearProgressIndicator(
-                            progress = { progress.coerceIn(0f, 1f) },
-                            modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-                            color = if (isMemorized) pal.green else pal.teal,
-                            trackColor = pal.bone
-                        )
+                        if (progress > 0f) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LinearProgressIndicator(
+                                progress = { progress.coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)),
+                                color = if (isMemorized) pal.green else pal.teal,
+                                trackColor = pal.bone
+                            )
+                        }
                     }
                 }
             }
@@ -631,38 +691,34 @@ fun MemorizeScreenDesktop(
 }
 
 @Composable
-private fun BreakdownStat(
+private fun StatCell(
     pal: NurPalette,
     countText: String,
     label: String,
+    fontUi: FontFamily,
+    fontBody: FontFamily,
+    accent: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val fontUi = rememberUiFontFamily()
-    val fontBody = rememberBodyFontFamily()
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, pal.boneDark, RoundedCornerShape(16.dp))
-            .background(pal.cream)
-            .padding(vertical = 14.dp, horizontal = 8.dp),
-        contentAlignment = Alignment.Center
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = countText,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = pal.ink,
-                fontFamily = fontUi
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = label,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = pal.inkMuted,
-                fontFamily = fontBody
-            )
-        }
+        Text(
+            text = countText,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (accent) pal.gold else pal.ink,
+            fontFamily = fontUi
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = pal.inkMuted,
+            fontFamily = fontBody
+        )
     }
 }
