@@ -127,6 +127,15 @@ object AudioEngine {
         }
     }
 
+    /** Replace the queue with [tracks] and start playback from the first one. */
+    fun playTracks(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        synchronized(lock) {
+            queue = tracks.toList()
+            launchLocked(0)
+        }
+    }
+
     /** Pause if playing, resume the current track if paused. No-op when empty. */
     fun togglePlayPause() {
         synchronized(lock) {
