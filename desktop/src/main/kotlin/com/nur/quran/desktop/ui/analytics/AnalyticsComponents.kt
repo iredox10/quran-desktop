@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -325,6 +327,113 @@ fun Heatmap7(
         }
     }
 }
+
+/**
+ * 30-day activity grid ("This month"): small day cells in rows of 7,
+ * colored with the same [AnalyticsStats.heatmapLevel] mapping as [Heatmap7].
+ * Empty months still render the full grid (no zero-state special casing).
+ */
+@Composable
+fun MonthHeatmap(
+    pal: NurPalette,
+    sessions: List<AnalyticsStats.Session>,
+    modifier: Modifier = Modifier
+) {
+    val fontUi = rememberUiFontFamily()
+    val days = remember(sessions) {
+        val keyFmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val numFmt = java.text.SimpleDateFormat("d", java.util.Locale.US)
+        val todayStr = keyFmt.format(java.util.Date())
+        (29 downTo 0).map { i ->
+            val cal = java.util.Calendar.getInstance()
+            cal.add(java.util.Calendar.DATE, -i)
+            val dateStr = keyFmt.format(cal.time)
+            MonthDay(
+                dateStr = dateStr,
+                dayNum = numFmt.format(cal.time),
+                mins = AnalyticsStats.dayMinutes(sessions, dateStr),
+                isToday = dateStr == todayStr
+            )
+        }
+    }
+    val totalMins = remember(days) { days.sumOf { it.mins } }
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = pal.cream),
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "\uD83D\uDCC5  THIS MONTH",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = pal.inkMuted
+                )
+                Text(
+                    text = "${totalMins}m total",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = fontUi,
+                    color = pal.ink
+                )
+            }
+            Spacer(modifier = Modifier.height(14.dp))
+            // Chunked Rows (not LazyVerticalGrid) to avoid nested-scroll issues
+            // inside the parent LazyColumn.
+            days.chunked(7).forEach { week ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    week.forEach { day ->
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(heatColor(pal, day.mins))
+                                .border(
+                                    if (day.isToday) 2.dp else 1.dp,
+                                    if (day.isToday) pal.gold
+                                    else if (day.mins > 0) pal.gold.copy(alpha = 0.25f)
+                                    else pal.boneDark,
+                                    RoundedCornerShape(8.dp)
+                                )
+                        ) {
+                            Text(
+                                text = day.dayNum,
+                                fontSize = 10.sp,
+                                fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
+                                fontFamily = fontUi,
+                                color = if (day.mins > 0) Color.White else pal.inkMuted,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    repeat(7 - week.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+        }
+    }
+}
+
+private data class MonthDay(
+    val dateStr: String,
+    val dayNum: String,
+    val mins: Int,
+    val isToday: Boolean
+)
 
 /**
  * Cumulative flow (area + line) of the week's minutes — mirrors the Android

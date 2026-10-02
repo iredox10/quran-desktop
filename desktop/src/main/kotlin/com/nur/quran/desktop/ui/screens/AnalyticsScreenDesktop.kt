@@ -34,6 +34,7 @@ import com.nur.quran.desktop.ui.analytics.AchievementsList
 import com.nur.quran.desktop.ui.analytics.ActivityMixRow
 import com.nur.quran.desktop.ui.analytics.FlowChart
 import com.nur.quran.desktop.ui.analytics.Heatmap7
+import com.nur.quran.desktop.ui.analytics.MonthHeatmap
 import com.nur.quran.desktop.ui.analytics.QuickCards
 import com.nur.quran.desktop.ui.analytics.TopCards
 import com.nur.quran.desktop.ui.theme.NurPalette
@@ -196,6 +197,9 @@ fun AnalyticsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
             }
             item {
                 Heatmap7(pal = pal, last7 = last7)
+            }
+            item {
+                MonthHeatmap(pal = pal, sessions = stats)
             }
             item {
                 FlowChart(pal = pal, last7 = last7)
