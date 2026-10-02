@@ -45,11 +45,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 import com.nur.quran.desktop.data.AudioEngine
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.TranslationStore
@@ -145,6 +149,23 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
     val totalBytes = remember(packSizes) { packSizes.sum() }
 
     val reciters = remember { desktopAudioReciters }
+
+    // ── Bundled-pack integrity verification (read-only; never downloads) ──
+    val verifyScope = rememberCoroutineScope()
+    var verifying by remember { mutableStateOf(false) }
+    var packVerdicts by remember { mutableStateOf<Map<Int, Boolean>>(emptyMap()) }
+
+    fun verifyPacks() {
+        if (verifying) return
+        verifying = true
+        verifyScope.launch(Dispatchers.IO) {
+            val results = bundledPacks.indices.associateWith { index ->
+                verifyBundledPack(bundledPacks[index])
+            }
+            packVerdicts = results
+            verifying = false
+        }
+    }
 
     // ── Available translation packs (append-only section; bundled UI above untouched)
     val packScope = rememberCoroutineScope()
@@ -302,6 +323,19 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
                     SectionHeader(pal = pal, title = "BUNDLED PACKS • ${bundledPacks.size}")
                 }
 
+                item {
+                    VerifyPacksRow(
+                        pal = pal,
+                        fontUi = fontUi,
+                        fontBody = fontBody,
+                        verifying = verifying,
+                        healthy = packVerdicts.values.count { it },
+                        total = bundledPacks.size,
+                        checked = packVerdicts.isNotEmpty(),
+                        onVerify = { verifyPacks() },
+                    )
+                }
+
                 items(bundledPacks.indices.toList()) { index ->
                     val pack = bundledPacks[index]
                     BundledPackRow(
@@ -312,6 +346,7 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
                         detail = pack.detail,
                         sizeBytes = packSizes[index],
                         icon = pack.icon,
+                        verdict = packVerdicts[index],
                     )
                 }
 
@@ -532,6 +567,7 @@ private fun BundledPackRow(
     detail: String,
     sizeBytes: Long,
     icon: ImageVector,
+    verdict: Boolean? = null,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -568,6 +604,15 @@ private fun BundledPackRow(
                     color = pal.inkMuted,
                     maxLines = 2,
                 )
+                if (verdict != null) {
+                    Text(
+                        text = if (verdict) "✓ Verified" else "✗ Corrupt — reinstall",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (verdict) pal.green else VerifyRed,
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(8.dp))
             StatusChip(
@@ -575,6 +620,56 @@ private fun BundledPackRow(
                 container = pal.green.copy(alpha = 0.14f),
                 content = pal.green,
                 icon = Icons.Filled.CheckCircle,
+            )
+        }
+    }
+}
+
+// ── Verify-packs integrity row (bundled section only; never downloads) ──────
+@Composable
+private fun VerifyPacksRow(
+    pal: NurPalette,
+    fontUi: FontFamily,
+    fontBody: FontFamily,
+    verifying: Boolean,
+    healthy: Int,
+    total: Int,
+    checked: Boolean,
+    onVerify: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Surface(
+            onClick = onVerify,
+            shape = RoundedCornerShape(12.dp),
+            color = if (verifying) pal.bone else pal.teal,
+        ) {
+            Text(
+                text = if (verifying) "Verifying…" else "Verify packs",
+                fontFamily = fontUi,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (verifying) pal.inkMuted else androidx.compose.ui.graphics.Color.White,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            )
+        }
+        if (verifying) {
+            Text(
+                text = "Checking bundled resources…",
+                fontFamily = fontBody,
+                fontSize = 12.sp,
+                color = pal.inkMuted,
+            )
+        } else if (checked) {
+            Text(
+                text = "$healthy/$total packs healthy",
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (healthy == total) pal.green else VerifyRed,
             )
         }
     }
@@ -824,6 +919,78 @@ private fun resourceBytes(path: String): Long {
 }
 
 private object DownloadsScreenDesktopAnchor
+
+// ── Bundled-pack integrity checks (read-only; reuse the size helpers above) ──
+private val VerifyRed = Color(0xFFDC2626)
+
+private val verifyGson = Gson()
+
+private data class VerifyVerseKey(
+    @SerializedName("verse_key") val verseKey: String = "",
+)
+
+private data class VerifyChapter(val id: Int = 0)
+
+private data class VerifyTafsirRow(
+    @SerializedName("verse_key") val verseKey: String = "",
+    val text: String = "",
+)
+
+private fun readResourceText(path: String): String? {
+    return try {
+        DownloadsScreenDesktopAnchor::class.java.getResourceAsStream(path)
+            ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun verifyBundledPack(pack: BundledPack): Boolean {
+    return try {
+        when {
+            pack.resourcePaths == listOf("data/quran_full.json") -> verifyVerseCount()
+            pack.resourcePaths == listOf("data/chapters.json") -> verifyChapterCount()
+            pack.resourcePaths == listOf("data/tafsir_ibn_kathir.json") -> verifyTafsirNonEmpty()
+            else -> pack.resourcePaths.isNotEmpty() &&
+                pack.resourcePaths.all { resourceBytes("/$it") > 0L }
+        }
+    } catch (_: Exception) {
+        false
+    }
+}
+
+private fun verifyVerseCount(): Boolean {
+    val text = readResourceText("/data/quran_full.json") ?: return false
+    return try {
+        val rows: List<VerifyVerseKey> =
+            verifyGson.fromJson(text, object : TypeToken<List<VerifyVerseKey>>() {}.type)
+        rows.size == 6236
+    } catch (_: Exception) {
+        text.split("verse_key").size - 1 == 6236
+    }
+}
+
+private fun verifyChapterCount(): Boolean {
+    val text = readResourceText("/data/chapters.json") ?: return false
+    return try {
+        val rows: List<VerifyChapter> =
+            verifyGson.fromJson(text, object : TypeToken<List<VerifyChapter>>() {}.type)
+        rows.size == 114
+    } catch (_: Exception) {
+        text.split("verses_count").size - 1 == 114
+    }
+}
+
+private fun verifyTafsirNonEmpty(): Boolean {
+    val text = readResourceText("/data/tafsir_ibn_kathir.json") ?: return false
+    return try {
+        val rows: List<VerifyTafsirRow> =
+            verifyGson.fromJson(text, object : TypeToken<List<VerifyTafsirRow>>() {}.type)
+        rows.isNotEmpty()
+    } catch (_: Exception) {
+        text.contains("verse_key")
+    }
+}
 
 private fun formatBytes(bytes: Long): String {
     if (bytes <= 0L) return "0 MB"

@@ -33,6 +33,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,6 +59,9 @@ import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
+import com.nur.quran.shared.HtmlStripper
+import java.io.File
+import javax.swing.JFileChooser
 
 /**
  * Desktop Library screen mirroring Android `LibraryScreen` +
@@ -493,6 +497,7 @@ private fun CollectionCardDesktop(
 ) {
     var editing by remember { mutableStateOf(false) }
     var draftName by remember(collection.id) { mutableStateOf(collection.name) }
+    var exportStatus by remember(collection.id) { mutableStateOf("") }
 
     val items: List<String> = remember(collection.id, bookmarks) {
         runCatching { CollectionStore.items(collection.id) }.getOrDefault(emptyList())
@@ -600,6 +605,61 @@ private fun CollectionCardDesktop(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    OutlinedButton(
+                        onClick = {
+                            if (items.isEmpty()) {
+                                exportStatus = "Nothing to export"
+                            } else {
+                                try {
+                                    val safeName = collection.name
+                                        .replace(Regex("[\\\\/:*?\"<>|]"), "-")
+                                        .trim()
+                                        .ifBlank { "collection" }
+                                    val chooser = JFileChooser()
+                                    chooser.dialogTitle = "Export ${collection.name}"
+                                    chooser.selectedFile = File("$safeName.txt")
+                                    if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+                                        var target = chooser.selectedFile
+                                        if (target.extension.isBlank()) {
+                                            target = File(target.parentFile, "${target.name}.txt")
+                                        }
+                                        val sb = StringBuilder()
+                                        items.forEachIndexed { index, key ->
+                                            val chapterId = key.substringBefore(":").toIntOrNull()
+                                            val chapter = chapterId?.let {
+                                                runCatching { QuranStore.chapter(it) }.getOrNull()
+                                            }
+                                            val verse = chapterId?.let {
+                                                runCatching {
+                                                    QuranStore.versesOfChapter(it)
+                                                        .firstOrNull { v -> v.verseKey == key }
+                                                }.getOrNull()
+                                            }
+                                            val surahName = chapter?.nameSimple ?: "Surah $chapterId"
+                                            sb.appendLine("$surahName $key")
+                                            sb.appendLine(verse?.arabic.orEmpty())
+                                            sb.appendLine(HtmlStripper.strip(verse?.translation.orEmpty()))
+                                            if (index < items.size - 1) sb.appendLine()
+                                        }
+                                        target.writeText(sb.toString())
+                                        exportStatus = "Saved to ${target.absolutePath}"
+                                    }
+                                } catch (e: Exception) {
+                                    exportStatus = "Export failed: ${e.message}"
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Export",
+                            fontFamily = fontBody,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = pal.ink
+                        )
+                    }
                     if (!editing) {
                         IconButton(
                             onClick = {
@@ -709,11 +769,20 @@ private fun CollectionCardDesktop(
                                     tint = Color.White,
                                     modifier = Modifier.size(14.dp)
                                 )
-                            }
-                        }
-                    }
                 }
             }
+            if (exportStatus.isNotBlank()) {
+                Text(
+                    text = exportStatus,
+                    fontFamily = fontBody,
+                    fontSize = 12.sp,
+                    color = pal.inkMuted,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
         }
     }
 }
