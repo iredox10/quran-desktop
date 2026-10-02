@@ -22,11 +22,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -71,15 +74,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.AudioEngine
 import com.nur.quran.desktop.data.QuranStore
+import com.nur.quran.desktop.ui.audio.AudioSetupSheetDesktop
 import com.nur.quran.desktop.ui.audio.MiniPlayerDesktop
 import com.nur.quran.desktop.ui.components.PlainVerseText
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
-import com.nur.quran.desktop.ui.components.verseEndMarkerLength
 import com.nur.quran.shared.HIZB_STARTS
 import com.nur.quran.shared.JUZ_STARTS
 import com.nur.quran.shared.getHizbByPage
@@ -106,12 +110,16 @@ fun SurahScreenDesktop(
     settingsTick: Int = 0,
     onBack: () -> Unit = {},
     onOpenSurah: (Int, String?) -> Unit = { _, _ -> },
-    onOpenPage: (Int) -> Unit = {}
+    onOpenPage: (Int) -> Unit = {},
+    startInReadingMode: Boolean = false
 ) {
     val chapter = remember(chapterId) { QuranStore.chapter(chapterId) }
     val verses = remember(chapterId) { QuranStore.versesOfChapter(chapterId) }
-    var readingMode by remember(chapterId) { mutableStateOf(false) }
+    var readingMode by remember(chapterId, startInReadingMode) { mutableStateOf(startInReadingMode) }
     var showNavDialog by remember(chapterId) { mutableStateOf(false) }
+    var showAudioSheet by remember(chapterId) { mutableStateOf(false) }
+    var isAutoScrollActive by remember(chapterId) { mutableStateOf(false) }
+    val audioActive = AudioEngine.current?.chapterId == chapterId
 
     val fontName = remember(settingsTick) { PrefsCache.getFont() }
     val arabicScale = remember(settingsTick) { PrefsCache.getArabicScale() }
@@ -175,6 +183,10 @@ fun SurahScreenDesktop(
         )
     }
 
+    if (showAudioSheet) {
+        AudioSetupSheetDesktop(pal = pal, onDismiss = { showAudioSheet = false })
+    }
+
     // Desktop keyboard nav: ←/→ switch surah, Home/End jump, Esc closes —
     // suppressed while the navigation dialog owns the focus (text fields).
     val focusRequester = remember { FocusRequester() }
@@ -224,6 +236,10 @@ fun SurahScreenDesktop(
             title = chapter?.nameSimple ?: "Surah $chapterId",
             fontUi = fontUi,
             readingMode = readingMode,
+            isAutoScrollActive = isAutoScrollActive,
+            onToggleAutoScroll = { isAutoScrollActive = !isAutoScrollActive },
+            audioActive = audioActive,
+            onAudioClick = { showAudioSheet = true },
             onBack = onBack,
             onTitleClick = { showNavDialog = true },
             onToggleReadingMode = { readingMode = !readingMode },
@@ -238,9 +254,18 @@ fun SurahScreenDesktop(
                 fontName = fontName,
                 arabicScale = arabicScale,
                 lineHeightMult = lineHeightMult,
-                chapterId = chapterId
+                chapterId = chapterId,
+                isAutoScrollActive = isAutoScrollActive
             )
         } else {
+            if (isAutoScrollActive) {
+                LaunchedEffect(chapterId) {
+                    while (true) {
+                        delay(400)
+                        listState.animateScrollBy(120f)
+                    }
+                }
+            }
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
@@ -370,6 +395,10 @@ private fun SurahTopBar(
     title: String,
     fontUi: FontFamily,
     readingMode: Boolean,
+    isAutoScrollActive: Boolean,
+    onToggleAutoScroll: () -> Unit,
+    audioActive: Boolean,
+    onAudioClick: () -> Unit,
     onBack: () -> Unit,
     onTitleClick: () -> Unit,
     onToggleReadingMode: () -> Unit,
@@ -426,6 +455,19 @@ private fun SurahTopBar(
                 Spacer(modifier = Modifier.weight(1f))
                 TopBarIconBtn(
                     pal = pal,
+                    active = isAutoScrollActive,
+                    description = "Auto-scroll",
+                    onClick = onToggleAutoScroll
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowDownward,
+                        contentDescription = null,
+                        tint = if (isAutoScrollActive) pal.gold else pal.inkMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                TopBarIconBtn(
+                    pal = pal,
                     active = readingMode,
                     description = "Reading mode",
                     onClick = onToggleReadingMode
@@ -434,6 +476,19 @@ private fun SurahTopBar(
                         imageVector = Icons.Filled.AutoStories,
                         contentDescription = null,
                         tint = if (readingMode) pal.gold else pal.inkMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                TopBarIconBtn(
+                    pal = pal,
+                    active = audioActive,
+                    description = "Audio",
+                    onClick = onAudioClick
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.VolumeUp,
+                        contentDescription = null,
+                        tint = if (audioActive) pal.gold else pal.inkMuted,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -861,12 +916,23 @@ private fun ContinuousReadingList(
     fontName: String,
     arabicScale: Float,
     lineHeightMult: Float,
-    chapterId: Int
+    chapterId: Int,
+    isAutoScrollActive: Boolean = false
 ) {
     val verses = remember(chapterId) { QuranStore.versesOfChapter(chapterId) }
     val byPage = remember(verses) { verses.groupBy { it.pageNumber }.toSortedMap() }
     val fontBody = rememberBodyFontFamily()
+    val readingListState = rememberLazyListState()
+    if (isAutoScrollActive) {
+        LaunchedEffect(chapterId) {
+            while (true) {
+                delay(400)
+                readingListState.animateScrollBy(120f)
+            }
+        }
+    }
     LazyColumn(
+        state = readingListState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 48.dp)
     ) {
@@ -875,13 +941,11 @@ private fun ContinuousReadingList(
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     PageDivider(pal = pal, fontBody = fontBody, page = page)
                     val paragraph = remember(pageVerses, fontName) {
+                        // Keep the full verse text including the aya end
+                        // markers (bare-digit medallions for KFGQPC,
+                        // U+06DD frames for other fonts).
                         pageVerses.joinToString(" ") { v ->
-                            // Drop the end marker: in continuous flow the gold
-                            // digits after each verse look like stray flecks;
-                            // page dividers already carry the page number.
                             verseDisplayArabic(v, fontName)
-                                .dropLast(verseEndMarkerLength(fontName, v.verseNumber))
-                                .trimEnd()
                         }
                     }
                     androidx.compose.runtime.CompositionLocalProvider(
