@@ -86,7 +86,11 @@ object TajweedProcessor {
                 }
             }
             val tagText = tag.text.trim()
-            if (tagText != "م" && tagText != "ۘ" && tagText != "ۙ" && tagText != "ۚ" && tagText != "ۛ" && tagText != "ۜ") {
+            // Standalone Indopak waqf token U+0615 (NOT covered by the ornament
+            // range above — it sorts before it): catches " ؕ " rings. Kept in
+            // the display-text pass only; alignmentBase must ignore it.
+            if (tagText != "م" && tagText != "ۘ" && tagText != "ۙ" && tagText != "ۚ" && tagText != "ۛ" && tagText != "ۜ"
+                && !tagText.contains(0x615.toChar())) {
                 rawSegments.add(RawSegment(tag.text, tag.className))
             }
             lastIndex = tag.end

@@ -69,26 +69,93 @@ fun buildCleanVerseTajweedHtml(fullVerseHtml: String?, words: List<Word>, verseN
     return baseHtml.trimEnd() + cleanEndMarker
 }
 
-private val ORNAMENT_EMBEDDED_REGEX =
-    "[\u06D6-\u06DC\u06DE\u06DD\u06DF-\u06E8\u06EA-\u06ED\u25CC\u06E9\uFD3E\uFD3F{}]".toRegex()
+private fun isOrnamental(c: Char): Boolean {
+    val v = c.code
+    // U+06E1 carved OUT: load-bearing vowel in both scripts (NOT stripped).
+    return v in 0x06D6..0x06DC || v == 0x06DE || v == 0x06DD ||
+        v == 0x06DF || v == 0x06E0 || v in 0x06E2..0x06E8 || v in 0x06EA..0x06ED ||
+        v == 0x25CC || v == 0x06E9 || v == 0xFD3E || v == 0xFD3F || c == '{' || c == '}'
+}
+
+private fun isOrnamentalNoFrame(c: Char): Boolean {
+    val v = c.code
+    return v in 0x06D6..0x06DC || v == 0x06DE ||
+        v == 0x06DF || v == 0x06E0 || v in 0x06E2..0x06E8 || v in 0x06EA..0x06ED ||
+        v == 0x25CC || v == 0x06E9
+}
 
 /**
- * Floating small-ornament marks. Verse-level display strips ALL of them —
- * including the waqf signs (U+06D6-06DC) and rub-el-hizb (U+06DE) — because a
- * standalone combining mark with non-zero advance renders as a floating blob
- * between words instead of attaching over the preceding glyph. The end-of-ayah
- * frame U+06DD is intentionally NOT in this set (non-KFGQPC fonts need it for
- * the medallion) — it is canonicalized separately below.
+ * Ornament predicate for Uthmani-script display text. Covers the waqf signs
+ * (U+06D6-U+06DC), rub-el-hizb (U+06DE), the recitation marks U+06DF / U+06E0 /
+ * U+06E2-U+06E8 / U+06EA-U+06ED, sajdah U+06E9, U+25CC and the ornate
+ * bracket/brace glyphs. Reason: a standalone combining mark with no base
+ * glyph renders as a dotted-circle / floating blob in the gaps BETWEEN words
+ * (neither KFGQPC nor Scheherazade ships a dotted-circle glyph - headless
+ * shaping confirmed the rings come from the system fallback font). Sajdah
+ * U+06E9 is dropped here too; the reader shows a "Sajdah N" badge instead.
  *
- * NOTE: this set must ALSO cover the recitation marks U+06DF..U+06E8 and
- * U+06EA..U+06ED (sajdah U+06E9 included): a standalone combining mark with no
- * base renders on desktop Skia as a dotted-circle / floating blob, and PIL /
- * headless shaping confirmed KFGQPC has no dotted-circle fallback of its own —
- * the blobs come from the fallback font. U+06E9 is stripped too (the reader
- * shows a "Sajdah N" badge instead).
+ * [isOrnamental] also drops the U+06DD end-of-ayah frame, because an
+ * embedded-medallion font (KFGQPC) draws the ornament from the bare digits
+ * via GSUB and would otherwise render a second, empty medallion.
+ * [isOrnamentalNoFrame] keeps U+06DD: every other font needs the frame, and
+ * [ensureSingleEndMarkerFrame] canonicalizes exactly one of them.
+ *
+ * U+06E1 is deliberately OUT of both ranges: it is load-bearing in BOTH
+ * scripts (62k Indopak hits as a vowel, plus inside Uthmani words such as
+ * the bismillah, where KFGQPC draws it attached). U+0615, the Indopak waqf
+ * token, is handled by [stripIndopakOnly].
  */
-private val ORNAMENT_PLAIN_REGEX =
-    "[\u06D6-\u06DC\u06DE\u06DF-\u06E8\u06EA-\u06ED\u06E9\u25CC]".toRegex()
+private fun ornamentsEmbedded(s: String): String = s.filterNot(::isOrnamental)
+
+private fun ornamentsPlain(s: String): String = s.filterNot(::isOrnamentalNoFrame)
+
+
+/**
+ * Indopak-only cleanups: U+0615 SMALL HIGH TAH (3542 hits) is the Indopak
+ * waqf token — always space-separated in data, i.e. a standalone combining
+ * mark whose fallback renders as the ring blobs. U+06E1 (62k hits) is a
+ * load-bearing Indopak vowel and is intentionally NOT stripped.
+ */
+private fun isIndopakScript(mushafId: String): Boolean {
+    val k = mushafId.trim().lowercase()
+    return k == "indopak" || k == "indopak-naskh"
+}
+
+/**
+ * ZWSP U+200B, ZWNBSP U+FEFF and PUA U+E000-U+F8FF (API metadata, unmapped in
+ * all bundled fonts -> dotted-circle tofu). U+200F RLM is KEPT (valid bidi).
+ */
+private fun isIndopakInvisible(c: Char): Boolean {
+    val v = c.code
+    return v == 0x200B || v == 0xFEFF || v in 0xE000..0xF8FF
+}
+
+/**
+ * True for the Indopak waqf token U+0615 ARABIC SMALL HIGH TAH: in the bundled
+ * data it is always space-separated, so it lands between words as an isolated
+ * combining mark and its fallback glyph renders as a detached ring.
+ */
+private fun isIndopakWaqf(c: Char): Boolean = c.code == 0x615
+
+/** Applies the Indopak-only cleanups (waqf + invisible chars). */
+private fun stripIndopakOnly(text: String): String {
+    val sb = StringBuilder(text.length)
+    var i = 0
+    while (i < text.length) {
+        val c = text[i]
+        // Strip U+0615 waqf token with one optional ZWSP neighbour on each side.
+        if (isIndopakWaqf(c)) {
+            if (sb.isNotEmpty() && sb.last().code == 0x200B) sb.setLength(sb.length - 1)
+            var j = i + 1
+            if (j < text.length && text[j].code == 0x200B) j++
+            i = j
+            continue
+        }
+        if (!isIndopakInvisible(c)) sb.append(c)
+        i++
+    }
+    return sb.toString()
+}
 
 private fun foldExtendedArabicDigitsToStandard(text: String): String {
     val sb = StringBuilder(text.length)
@@ -141,10 +208,12 @@ private fun ensureSingleEndMarkerFrame(text: String): String {
 fun mushafPlainWordTexts(words: List<Word>, mushafId: String, fontName: String): List<String> {
     val mushaf = Mushaf.fromId(mushafId)
     val embedded = usesEmbeddedEndMarker(fontName)
+    val indopak = isIndopakScript(mushaf.id)
     var endSeen = false
     return words.map { word ->
         var t = wordTextForMushaf(mushaf, word.textUthmani, word.textIndopak, word.textQpcHafs)
-        t = if (embedded) t.replace(ORNAMENT_EMBEDDED_REGEX, "") else t.replace(ORNAMENT_PLAIN_REGEX, "")
+        if (indopak) t = stripIndopakOnly(t)
+        t = if (embedded) ornamentsEmbedded(t) else ornamentsPlain(t)
         if (word.charTypeName == "end") {
             if (endSeen) return@map ""
             endSeen = true
@@ -153,7 +222,7 @@ fun mushafPlainWordTexts(words: List<Word>, mushafId: String, fontName: String):
             } else {
                 // Canonicalize to a single U+06DD + bare standard digits so the OFF path is
                 // glyph-identical to the ON-path rebuilt marker (U+06DD + verseNumber digits).
-                val bare = foldExtendedArabicDigitsToStandard(t.replace(ORNAMENT_EMBEDDED_REGEX, "").trim())
+                val bare = foldExtendedArabicDigitsToStandard(ornamentsEmbedded(t).trim())
                 t = if (bare.isBlank()) "" else 0x06DD.toChar().toString() + bare
             }
         }
@@ -165,13 +234,17 @@ fun mushafPlainWordTexts(words: List<Word>, mushafId: String, fontName: String):
 fun mushafPlainVerseText(verse: Verse, mushafId: String, fontName: String): String {
     val mushaf = Mushaf.fromId(mushafId)
     var t = verseTextForMushaf(mushaf, verse.textUthmani, verse.textIndopak, verse.textQpcHafs)
+    // Indopak field carries U+0615 waqf tokens + ZWSP/ZWNBSP/PUA metadata that no
+    // bundled font maps (dotted-circle tofu). Clean BEFORE the ornament pass so
+    // the space-separated waqf token vanishes with its gap.
+    if (isIndopakScript(mushaf.id)) t = stripIndopakOnly(t)
     t = if (usesEmbeddedEndMarker(fontName)) {
-        t.replace(ORNAMENT_EMBEDDED_REGEX, "")
+        ornamentsEmbedded(t)
     } else {
         // Strip ALL floating ornaments (waqf signs included — they are mushaf
         // punctuation, not recitation text), then canonicalize to a single
         // U+06DD + standard digits: glyph-identical to ON-path rebuilt marker.
-        val stripped = t.replace(ORNAMENT_PLAIN_REGEX, "")
+        val stripped = ornamentsPlain(t)
             .filter { c -> c.code != 0xFD3F && c.code != 0xFD3E && c != '{' && c != '}' }
         ensureSingleEndMarkerFrame(stripped)
     }
