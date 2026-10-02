@@ -17,6 +17,8 @@ import java.util.prefs.Preferences
  * - data class Track(verseKey, chapterId, verseNumber)
  * - var queue: List<Track>, var index: Int, var playing: Boolean (Compose-observable)
  * - var reciterId: Int (observable, persisted in Preferences node "audio_prefs", key "reciter_id")
+ * - var repeatMode: String ("off" / "ayah" / "chapter", persisted key "repeat_mode", default "off")
+ * - var sleepMinutes: Int (persisted key "sleep_minutes", default 0; >0 arms a stop deadline)
  * - val current: Track?
  * - playChapter(chapterId, startVerse = 1), playVerse(verseKey),
  *   togglePlayPause(), next(), prev(), stop()
@@ -40,11 +42,25 @@ object AudioEngine {
     private const val KEY_REPEAT_MODE = "repeat_mode"
     private const val KEY_SLEEP_MINUTES = "sleep_minutes"
 
-    /** Repeat behavior at track/queue end: "off" / "ayah" / "chapter". */
-    val repeatMode: String get() = repeatModeState.value
+    /** Repeat behavior at track/queue end: "off" / "ayah" / "chapter". Persisted. */
+    var repeatMode: String
+        get() = repeatModeState.value
+        set(value) {
+            repeatModeState.value = value
+            persistPref(KEY_REPEAT_MODE, value)
+        }
 
-    /** Sleep-timer length in minutes; 0 disables. Stops playback at the deadline. */
-    val sleepMinutes: Int get() = sleepMinutesState.value
+    /**
+     * Sleep-timer length in minutes; 0 disables. Setting > 0 arms the stop
+     * deadline from now; 0 clears it. Persisted. Stops playback at the deadline.
+     */
+    var sleepMinutes: Int
+        get() = sleepMinutesState.value
+        set(value) {
+            sleepMinutesState.value = value
+            persistPref(KEY_SLEEP_MINUTES, value)
+            sleepDeadlineMs = if (value > 0) System.currentTimeMillis() + value * 60_000L else 0L
+        }
 
     @Volatile
     private var sleepDeadlineMs: Long = 0L
@@ -72,19 +88,6 @@ object AudioEngine {
 
     val current: Track?
         get() = queue.getOrNull(index)
-
-    /** Repeat mode: "off" | "ayah" | "chapter"; setting persists. */
-    fun setRepeatMode(mode: String) {
-        repeatModeState.value = mode
-        persistPref(KEY_REPEAT_MODE, mode)
-    }
-
-    /** Sleep timer minutes (0 clears); restarts the deadline from now. */
-    fun setSleepMinutes(minutes: Int) {
-        sleepMinutesState.value = minutes
-        persistPref(KEY_SLEEP_MINUTES, minutes)
-        sleepDeadlineMs = if (minutes > 0) System.currentTimeMillis() + minutes * 60_000L else 0L
-    }
 
     val sleepRemainingMs: Long
         get() = if (sleepDeadlineMs <= 0L) 0L
@@ -260,7 +263,7 @@ object AudioEngine {
                     return
                 }
                 when {
-                    repeatMode == "ayah" -> i-- // replay same index
+                    repeatMode == "ayah" -> { /* replay same index */ }
                     i + 1 >= snapshot.size && repeatMode == "chapter" -> i = 0
                     else -> i++
                 }

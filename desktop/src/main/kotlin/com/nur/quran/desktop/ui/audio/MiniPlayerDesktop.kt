@@ -43,8 +43,9 @@ import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 
 /**
  * Bottom playback pill: prev / play-pause / next circle buttons, the current
- * "SurahName verseKey" label (click jumps to the verse), and a close button
- * that stops playback. Every control is wired to its callback.
+ * "SurahName verseKey" label (click jumps to the verse), a gear button that
+ * opens the audio setup sheet (and notifies [onSettings] when provided),
+ * and a close button that stops playback. Every control is wired to its callback.
  */
 @Composable
 fun MiniPlayerDesktop(
@@ -56,6 +57,7 @@ fun MiniPlayerDesktop(
     onPrev: () -> Unit,
     onClose: () -> Unit,
     onOpenVerse: (String) -> Unit,
+    onSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showSheet by remember { mutableStateOf(false) }
@@ -125,7 +127,7 @@ fun MiniPlayerDesktop(
                     .clickable(enabled = track != null) { track?.let { onOpenVerse(it.verseKey) } }
                     .padding(vertical = 8.dp)
             )
-            IconButton(onClick = { showSheet = true }, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = { onSettings?.invoke(); showSheet = true }, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.Filled.Settings,
                     contentDescription = "Audio settings",

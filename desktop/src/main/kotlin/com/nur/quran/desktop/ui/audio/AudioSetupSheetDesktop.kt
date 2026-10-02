@@ -90,21 +90,21 @@ fun AudioSetupSheetDesktop(
                     pal = pal,
                     label = "Off",
                     selected = AudioEngine.repeatMode == "off",
-                    onClick = { AudioEngine.setRepeatMode("off") },
+                    onClick = { AudioEngine.repeatMode = "off" },
                     modifier = Modifier.weight(1f)
                 )
                 Pill(
                     pal = pal,
                     label = "Repeat ayah",
                     selected = AudioEngine.repeatMode == "ayah",
-                    onClick = { AudioEngine.setRepeatMode("ayah") },
+                    onClick = { AudioEngine.repeatMode = "ayah" },
                     modifier = Modifier.weight(1f)
                 )
                 Pill(
                     pal = pal,
                     label = "Repeat chapter",
                     selected = AudioEngine.repeatMode == "chapter",
-                    onClick = { AudioEngine.setRepeatMode("chapter") },
+                    onClick = { AudioEngine.repeatMode = "chapter" },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -124,7 +124,7 @@ fun AudioSetupSheetDesktop(
                         pal = pal,
                         label = if (minutes == 0) "Off" else "$minutes min",
                         selected = AudioEngine.sleepMinutes == minutes,
-                        onClick = { AudioEngine.setSleepMinutes(minutes) },
+                        onClick = { AudioEngine.sleepMinutes = minutes },
                         modifier = Modifier.weight(1f)
                     )
                 }
