@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.desktop.data.Notifier
 import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.planner.JournalEditor
@@ -273,6 +274,19 @@ fun PlannerScreenDesktop(
                                 ?: plan.assignments.firstOrNull()
                         }
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            LaunchedEffect(plan) {
+                                if (todayAssignment != null) {
+                                    Notifier.notifyOncePerDay(
+                                        "plan-due",
+                                        "Today's reading"
+                                    ) {
+                                        listOfNotNull(
+                                            todayAssignment.title,
+                                            todayAssignment.subtitle
+                                        ).joinToString(" · ")
+                                    }
+                                }
+                            }
                             PaceRing(
                                 pal = pal,
                                 progress = overview?.completionRatio ?: 0f,
@@ -290,6 +304,34 @@ fun PlannerScreenDesktop(
                                     onOpenDay(todayAssignment?.date ?: plan.startDate)
                                 }
                             )
+
+                            // ── Reminders ──
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SectionTitle(pal = pal, text = "Reminders")
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "System notifications: " +
+                                            if (java.awt.SystemTray.isSupported()) "on" else "off",
+                                        fontSize = 12.sp,
+                                        color = pal.inkMuted,
+                                        fontFamily = fontBody
+                                    )
+                                    TextButton(
+                                        onClick = {
+                                            Notifier.notify(
+                                                "Quran Nur",
+                                                "Reminders work — today's reading is ready."
+                                            )
+                                        }
+                                    ) {
+                                        Text("Test notification", color = pal.teal, fontSize = 12.sp)
+                                    }
+                                }
+                            }
 
                             // ── Prayer slots (shared buildPrayerSlots) ──
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
