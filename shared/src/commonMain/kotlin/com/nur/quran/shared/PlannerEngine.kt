@@ -946,11 +946,65 @@ object PlannerEngine {
             dateStr
         }
     }
+
+    // ── Pace Stats ────────────────────────────────────────────────────
+    // Web parity (Planner.jsx getPaceStats): daily pages, per-prayer split,
+    // and an end label that skips excludeDays (Sunday=0..Saturday=6 via
+    // Calendar.DAY_OF_WEEK - 1).
+    fun getPaceStats(
+        durationDays: Int,
+        excludeDays: List<Int> = emptyList(),
+        startDateStr: String? = null,
+        totalUnits: Int = 604
+    ): PaceStats {
+        val safeDuration = durationDays.coerceAtLeast(1)
+        val dailyPages = ceil(totalUnits.toDouble() / safeDuration).toInt()
+        val perPrayer = ceil(dailyPages.toDouble() / 5).toInt()
+        var endDate: Date = if (startDateStr != null) {
+            try {
+                parsePlannerDate(startDateStr)
+            } catch (_: Exception) {
+                Date()
+            }
+        } else {
+            Date()
+        }
+        val cal = Calendar.getInstance().apply { time = endDate }
+        var daysFound = 0
+        while (daysFound < safeDuration) {
+            val dow = cal.get(Calendar.DAY_OF_WEEK) - 1
+            if (!excludeDays.contains(dow)) {
+                daysFound++
+            }
+            if (daysFound < safeDuration) {
+                cal.add(Calendar.DAY_OF_MONTH, 1)
+            }
+        }
+        endDate = cal.time
+        val endLabel = try {
+            SimpleDateFormat("MMM d, yyyy", Locale.US).format(endDate)
+        } catch (_: Exception) {
+            ""
+        }
+        return PaceStats(dailyPages = dailyPages, perPrayer = perPrayer, endLabel = endLabel)
+    }
+
+    // ── Adjust Pace ───────────────────────────────────────────────────
+    // Web parity (planner.js adjustPlannerPace): rebalance with custom_pace.
+    fun adjustPlannerPace(planner: ReadingPlan, newDurationDays: Int): ReadingPlan {
+        return rebalancePlanner(planner, "custom_pace", newDurationDays)
+    }
 }
 
 // ── Additional Data Classes ─────────────────────────────────────────────
 // Web parity (planner.js getWeeklySummary): pages-based { label, completedUnits
 // (read pages), totalUnits (total pages) } per 7-day block.
+data class PaceStats(
+    val dailyPages: Int,
+    val perPrayer: Int,
+    val endLabel: String
+)
+
 data class WeeklySummary(
     val label: String,
     val completedUnits: Int,
