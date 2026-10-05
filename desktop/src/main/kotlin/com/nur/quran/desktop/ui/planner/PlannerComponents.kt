@@ -38,6 +38,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.ui.theme.NurPalette
@@ -50,24 +52,27 @@ import com.nur.quran.shared.PlanTemplate
  * (teal/gold palette, cream cards with 14-18dp corners and bone-dark borders).
  */
 
-/** Circular progress ring: bone-dark track, gold sweep, centered [label]. */
+/** Circular progress ring: bone-dark track, gold sweep, centered [label]. Web parity (Planner.jsx TODAY hero RingProgress size=240): pass diameter=200.dp for the hero. */
 @Composable
 fun PaceRing(
     pal: NurPalette,
     progress: Float,
     label: String,
     modifier: Modifier = Modifier,
-    subLabel: String? = null
+    subLabel: String? = null,
+    diameter: Dp = 200.dp,
+    labelFontSize: TextUnit = 44.sp,
+    subLabelFontSize: TextUnit = 8.sp
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
     val p = progress.coerceIn(0f, 1f)
-    Box(modifier = modifier.size(120.dp), contentAlignment = Alignment.Center) {
+    Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
-            val strokeWidth = 10.dp.toPx()
+            val strokeWidth = 12.dp.toPx()
             val arcSize = Size(size.width, size.height)
             drawArc(
-                color = pal.boneDark,
+                color = pal.gold.copy(alpha = 0.12f),
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -91,18 +96,19 @@ fun PaceRing(
             Text(
                 text = label,
                 fontFamily = fontUi,
-                fontSize = 22.sp,
+                fontSize = labelFontSize,
                 fontWeight = FontWeight.Bold,
-                color = pal.ink,
-                lineHeight = 24.sp
+                letterSpacing = (-1).sp,
+                color = pal.gold,
+                lineHeight = labelFontSize * 1.05f
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = subLabel ?: "${(p * 100).toInt()}% COMPLETE",
                 fontFamily = fontBody,
-                fontSize = 8.sp,
-                letterSpacing = 0.8.sp,
-                color = pal.inkMuted
+                fontSize = subLabelFontSize,
+                letterSpacing = 1.2.sp,
+                color = pal.inkMid
             )
         }
     }
