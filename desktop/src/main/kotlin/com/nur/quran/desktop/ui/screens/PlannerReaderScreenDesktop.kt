@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,7 +51,10 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.AudioEngine
@@ -263,10 +267,13 @@ fun PlannerReaderScreenDesktop(
         }
     }
 
-    // Reflection journal, keyed per plan + day (web parity).
-    val journalKey = remember(currentPlan.id, dayDate) { "plan:${currentPlan.id}:$dayDate" }
-    var reflection by remember(journalKey) { mutableStateOf(PlannerStore.getJournal(journalKey)) }
-    var journalSaved by remember(journalKey) { mutableStateOf(false) }
+    // Day reflection — web parity: addPlannerReflection(assignment.date) →
+    // plannerReflections[plan.id] (the key JournalTab / PlanNotesSection read).
+    val reflectionKey = remember(currentPlan.id, dayDate) { "${currentPlan.id}|$dayDate" }
+    var reflection by remember(reflectionKey) {
+        mutableStateOf(PlannerStore.getReflection(currentPlan.id, dayDate))
+    }
+    var reflectionSaved by remember(reflectionKey) { mutableStateOf(false) }
 
     val isDayComplete = progress.isComplete ||
         currentPlan.completedDays.contains(assignment.dayNumber)
@@ -517,43 +524,117 @@ fun PlannerReaderScreenDesktop(
             }
         }
 
-        // ── Completion card with reflection ────────────────────────
+        // ── Success card: Alhamdulillah + insight verse + reflection ──
         if (isDayComplete) {
+            val insightVerse = remember(assignment.dayNumber, isDayComplete) {
+                if (isDayComplete && verses.isNotEmpty()) verses.random() else null
+            }
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(pal.cream)
-                    .padding(12.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(pal.teal)
+                    .padding(20.dp)
             ) {
                 Text(
-                    "Day complete — Takeaway of the Day",
-                    fontSize = 13.sp,
+                    "Alhamdulillah! 🎉",
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = pal.teal
+                    color = pal.white
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "You have completed Day ${assignment.dayNumber}.",
+                    fontSize = 13.sp,
+                    color = pal.white.copy(alpha = 0.9f)
+                )
+                if (insightVerse != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black.copy(alpha = 0.12f))
+                            .padding(14.dp)
+                    ) {
+                        Text(
+                            "TAKEAWAY OF THE DAY",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = pal.white.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            insightVerse.arabic,
+                            fontSize = 19.sp,
+                            color = pal.white,
+                            textAlign = TextAlign.Right,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            insightVerse.translation,
+                            fontSize = 13.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = pal.white.copy(alpha = 0.9f),
+                            lineHeight = 20.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            "— Surah ${insightVerse.verseKey.replace(":", ", Ayah ")}",
+                            fontSize = 11.sp,
+                            color = pal.white.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Daily Reflection (Optional)",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = pal.white.copy(alpha = 0.9f)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
                     value = reflection,
-                    onValueChange = { reflection = it; journalSaved = false },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
-                    placeholder = { Text("Takeaway of the Day…") },
-                    singleLine = false
+                    onValueChange = { reflection = it; reflectionSaved = false },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
+                    placeholder = {
+                        Text(
+                            "Write a brief reflection for today's reading…",
+                            color = pal.inkMuted
+                        )
+                    },
+                    singleLine = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = pal.white,
+                        unfocusedBorderColor = pal.white.copy(alpha = 0.4f),
+                        focusedTextColor = pal.white,
+                        unfocusedTextColor = pal.white,
+                        cursorColor = pal.white
+                    )
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(
                         onClick = {
-                            PlannerStore.saveJournal(journalKey, reflection)
-                            journalSaved = true
+                            PlannerStore.saveReflection(currentPlan.id, dayDate, reflection.trim())
+                            reflectionSaved = true
                             onBackToPlanner()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = pal.green)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = pal.white,
+                            contentColor = pal.teal
+                        )
                     ) {
-                        Text("Save & Return", color = pal.white, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (reflection.trim().isNotEmpty()) "Save & Return"
+                            else "Return to Planner",
+                            fontWeight = FontWeight.Bold
+                        )
                     }
-                    if (journalSaved) {
+                    if (reflectionSaved) {
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Saved ✓", fontSize = 12.sp, color = pal.green)
+                        Text("Saved ✓", fontSize = 12.sp, color = pal.white)
                     }
                 }
             }
