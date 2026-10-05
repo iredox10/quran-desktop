@@ -2,6 +2,7 @@ package com.nur.quran.desktop.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +42,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -127,6 +132,38 @@ fun PlannerReaderScreenDesktop(
         } catch (_: Exception) {
             dayDate
         }
+    }
+
+    // Shared per-item completion (web markPlannerItemComplete): union the
+    // rangeValue into assignmentCompletedItems, bump assignmentProgress,
+    // stamp assignmentCompletedAt when the day becomes complete, recompute
+    // completedDays. Used by the per-item button AND page-flip auto-complete.
+    fun markItemComplete(rangeValue: String) {
+        if (progress.completedRangeValues.contains(rangeValue)) return
+        val dayNumber = assignment.dayNumber
+        val completedItemsMap = currentPlan.assignmentCompletedItems.toMutableMap()
+        val cur = completedItemsMap[dayNumber].orEmpty().toMutableSet()
+        cur.add(rangeValue)
+        completedItemsMap[dayNumber] = cur.toList()
+        val progressMap = currentPlan.assignmentProgress.toMutableMap()
+        progressMap[dayNumber] = assignment.items.count { cur.contains(it.rangeValue) }
+        val completedAtMap = currentPlan.assignmentCompletedAt.toMutableMap()
+        val nowComplete = assignment.items.all { cur.contains(it.rangeValue) }
+        if (nowComplete && !completedAtMap.containsKey(dayNumber)) {
+            completedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
+        }
+        val completedDays = currentPlan.assignments
+            .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
+            .map { it.dayNumber }
+            .sorted()
+        val updated = currentPlan.copy(
+            assignmentProgress = progressMap,
+            assignmentCompletedItems = completedItemsMap,
+            assignmentCompletedAt = completedAtMap,
+            completedDays = completedDays
+        )
+        PlannerStore.saveActivePlan(updated)
+        plan = updated
     }
     val resumePage = remember(currentPlan, assignment) {
         // Web parity (PlannerReader lines 101-107): honor planner.lastReadPage
@@ -221,7 +258,37 @@ fun PlannerReaderScreenDesktop(
     val isDayComplete = progress.isComplete ||
         currentPlan.completedDays.contains(assignment.dayNumber)
 
-    Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
+    // Desktop keyboard nav (web lines 565-572): ArrowRight = prev page,
+    // ArrowLeft = next page — bounded to the assignment range.
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    Column(
+        modifier = Modifier.fillMaxSize().background(pal.white)
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) {
+                    return@onKeyEvent false
+                }
+                when (event.key) {
+                    androidx.compose.ui.input.key.Key.DirectionLeft -> {
+                        if (currentPage < assignment.pageEnd) {
+                            currentPage = currentPage + 1
+                            scrollToPage(currentPage)
+                        }
+                        true
+                    }
+                    androidx.compose.ui.input.key.Key.DirectionRight -> {
+                        if (currentPage > assignment.pageStart) {
+                            currentPage = currentPage - 1
+                            scrollToPage(currentPage)
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            }
+    ) {
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
         // ── Header ───────────────────────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -347,37 +414,7 @@ fun PlannerReaderScreenDesktop(
                         Text("Done ✓", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = pal.green)
                     } else {
                         Button(
-                            onClick = {
-                                // Mirror the whole-day mutation shapes, scoped to one item:
-                                // union rangeValue into assignmentCompletedItems, bump
-                                // assignmentProgress, stamp assignmentCompletedAt when the
-                                // day becomes complete, recompute completedDays.
-                                val dayNumber = assignment.dayNumber
-                                val completedItemsMap = currentPlan.assignmentCompletedItems.toMutableMap()
-                                val cur = completedItemsMap[dayNumber].orEmpty().toMutableSet()
-                                cur.add(item.rangeValue)
-                                completedItemsMap[dayNumber] = cur.toList()
-                                val progressMap = currentPlan.assignmentProgress.toMutableMap()
-                                progressMap[dayNumber] =
-                                    assignment.items.count { cur.contains(it.rangeValue) }
-                                val completedAtMap = currentPlan.assignmentCompletedAt.toMutableMap()
-                                val nowComplete = assignment.items.all { cur.contains(it.rangeValue) }
-                                if (nowComplete && !completedAtMap.containsKey(dayNumber)) {
-                                    completedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
-                                }
-                                val completedDays = currentPlan.assignments
-                                    .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
-                                    .map { it.dayNumber }
-                                    .sorted()
-                                val updated = currentPlan.copy(
-                                    assignmentProgress = progressMap,
-                                    assignmentCompletedItems = completedItemsMap,
-                                    assignmentCompletedAt = completedAtMap,
-                                    completedDays = completedDays
-                                )
-                                PlannerStore.saveActivePlan(updated)
-                                plan = updated
-                            },
+                            onClick = { markItemComplete(item.rangeValue) },
                             colors = ButtonDefaults.buttonColors(containerColor = pal.teal)
                         ) {
                             Text("Mark Done", color = pal.white, fontSize = 12.sp)
@@ -412,6 +449,18 @@ fun PlannerReaderScreenDesktop(
             )
             Button(
                 onClick = {
+                    // Web handleNextPage parity: auto-complete the item being
+                    // left when its final page is passed (page-unit plans mark
+                    // on every page).
+                    val outgoing = assignment.items.find {
+                        currentPage >= it.pageStart && currentPage <= it.pageEnd
+                    }
+                    if (outgoing != null &&
+                        !progress.completedRangeValues.contains(outgoing.rangeValue) &&
+                        (assignment.unitType == "page" || currentPage >= outgoing.pageEnd)
+                    ) {
+                        markItemComplete(outgoing.rangeValue)
+                    }
                     val target = (currentPage + 1).coerceAtMost(assignment.pageEnd)
                     currentPage = target
                     scrollToPage(target)
