@@ -127,10 +127,17 @@ fun PlannerReaderScreenDesktop(
         }
     }
     val resumePage = remember(currentPlan, assignment) {
-        try {
-            PlannerEngine.getAssignmentResumePageNumber(currentPlan, assignment)
-        } catch (_: Exception) {
-            assignment.pageStart
+        // Web parity (PlannerReader lines 101-107): honor planner.lastReadPage
+        // when it lands inside this assignment, else the resume helper.
+        val lastRead = currentPlan.lastReadPage
+        if (lastRead != null && lastRead >= assignment.pageStart && lastRead <= assignment.pageEnd) {
+            lastRead
+        } else {
+            try {
+                PlannerEngine.getAssignmentResumePageNumber(currentPlan, assignment)
+            } catch (_: Exception) {
+                assignment.pageStart
+            }
         }
     }
 
@@ -184,19 +191,20 @@ fun PlannerReaderScreenDesktop(
         }
     }
 
-    // Page-read tracking: union composed verse pages into
-    // assignmentReadPages[dayNumber] via plan copy + save.
-    val composedPages = remember(assignment.dayNumber) { mutableSetOf<Int>() }
-    LaunchedEffect(verses) {
-        if (verses.isEmpty()) return@LaunchedEffect
-        composedPages.addAll(verses.map { it.pageNumber })
+    // Page-read tracking: mark ONLY the page the reader is currently on (web
+    // parity — markPlannerPageRead(currentDay, pageNumber) on page change) and
+    // persist lastReadPage for the next Resume jump.
+    LaunchedEffect(currentPage, assignment) {
         val dayNumber = assignment.dayNumber
-        val existing = currentPlan.assignmentReadPages[dayNumber].orEmpty().toSet()
-        val union = (existing + composedPages).sorted()
-        if (union.size != existing.size) {
+        val existingPages = currentPlan.assignmentReadPages[dayNumber].orEmpty().toSet()
+        var base = currentPlan
+        if (!existingPages.contains(currentPage)) {
             val readMap = currentPlan.assignmentReadPages.toMutableMap()
-            readMap[dayNumber] = union
-            val updated = currentPlan.copy(assignmentReadPages = readMap)
+            readMap[dayNumber] = (existingPages + currentPage).sorted()
+            base = currentPlan.copy(assignmentReadPages = readMap)
+        }
+        val updated = if (base.lastReadPage != currentPage) base.copy(lastReadPage = currentPage) else base
+        if (updated !== currentPlan) {
             PlannerStore.saveActivePlan(updated)
             plan = updated
         }
