@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
@@ -153,8 +155,9 @@ fun PlannerReaderScreenDesktop(
 
     // ── Session timer (mm:ss ticking) ────────────────────────────────
     var elapsedSec by remember(dayDate) { mutableStateOf(0) }
-    LaunchedEffect(dayDate) {
-        while (true) {
+    var isTimerRunning by remember(dayDate) { mutableStateOf(true) }
+    LaunchedEffect(dayDate, isTimerRunning) {
+        while (isTimerRunning) {
             delay(1000)
             elapsedSec++
         }
@@ -241,6 +244,29 @@ fun PlannerReaderScreenDesktop(
                     color = pal.inkMuted
                 )
             }
+            // Current-chapter pill (web line 640-646).
+            val currentChapter = remember(currentPage) {
+                QuranStore.chapters.firstOrNull { ch ->
+                    ch.pages.isNotEmpty() &&
+                        currentPage >= ch.pages.first() &&
+                        currentPage <= ch.pages.last()
+                }
+            }
+            if (currentChapter != null) {
+                Box(
+                    modifier = Modifier.clip(RoundedCornerShape(100.dp))
+                        .background(pal.tealSoft)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        "${currentChapter.id}. ${currentChapter.nameSimple}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = pal.teal
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+            }
             // Status chip.
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(100.dp)).background(pal.goldLight)
@@ -249,13 +275,30 @@ fun PlannerReaderScreenDesktop(
                 Text(status.replaceFirstChar { it.uppercase() }, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = pal.gold)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            // Timer pill.
-            Box(
+            // Timer pill — tap to pause/resume (web isTimerRunning toggle).
+            Row(
                 modifier = Modifier.clip(RoundedCornerShape(100.dp)).background(pal.tealSoft)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .clickable { isTimerRunning = !isTimerRunning }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    if (isTimerRunning) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isTimerRunning) "Pause session timer" else "Resume session timer",
+                    tint = pal.teal,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(timerLabel, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = pal.teal)
             }
+            Spacer(modifier = Modifier.width(8.dp))
+            // "X% Achieved" (web line 661-663).
+            Text(
+                "${(progress.completionRatio * 100f + 0.5f).toInt()}% Achieved",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = pal.teal
+            )
         }
 
         // Progress bar.
