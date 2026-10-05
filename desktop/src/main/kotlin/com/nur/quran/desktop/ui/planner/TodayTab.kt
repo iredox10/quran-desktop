@@ -368,7 +368,10 @@ fun TodayTab(
                                 )
                             }
                             isCurrent -> Button(
-                                onClick = { onOpenDay(dayDate) },
+                                // Web parity (lines 1033-1037): Start/Resume
+                                // deep-links to the day reader; Resume goes to
+                                // the first-incomplete day when available.
+                                onClick = { onOpenDay(resumeDayDate ?: dayDate) },
                                 shape = RoundedCornerShape(100.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = pal.gold,
