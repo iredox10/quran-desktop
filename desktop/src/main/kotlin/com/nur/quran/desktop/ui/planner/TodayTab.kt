@@ -55,6 +55,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
+ * Web parity (Planner.jsx lines 803-810): totalSeconds -> "1h 5m" / "5m 3s" / "12s".
+ */
+internal fun formatSessionTime(totalSeconds: Int): String {
+    val h = totalSeconds / 3600
+    val m = (totalSeconds % 3600) / 60
+    val s = totalSeconds % 60
+    if (h > 0) return "${h}h ${m}m"
+    if (m > 0) return "${m}m ${s}s"
+    return "${s}s"
+}
+
+/**
  * TODAY tab of the planner, mirroring web `Planner.jsx` ActiveView TODAY tab
  * (lines 669-1063): 200dp RingProgress hero with "% + day count"
  * + "Daily Ritual" column (session-time pill, share-progress, settings gear
@@ -93,8 +105,8 @@ fun TodayTab(
         todayAssignment?.let { PlannerEngine.getAssignmentProgress(plan, it) }
     }
     // Web parity (Planner.jsx lines 764-766): page-unit counts.
-    val todayDone = progress?.readPages ?: 0
-    val todayTotal = progress?.totalPages ?: 0
+    val todayDone = progress?.readPagesCount ?: 0
+    val todayTotal = progress?.totalPagesCount ?: 0
     val todayPct = if (todayTotal > 0) ((todayDone * 100) / todayTotal).coerceIn(0, 100) else 0
     // Web parity (line 769): hasStartedReading = todayDone > 0 || lastReadPage.
     val hasStarted = todayDone > 0 || plan.lastReadPage != null
