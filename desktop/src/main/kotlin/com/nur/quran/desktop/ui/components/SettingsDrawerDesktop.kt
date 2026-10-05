@@ -266,7 +266,7 @@ fun SettingsDrawerDesktop(
                             SwitchRow(
                                 pal = pal, fontUi = fontUi, fontBody = fontBody,
                                 title = "Tajweed colors",
-                                subtitle = "Tajweed colors arrive with the WebView renderer",
+                                subtitle = "Color cues for pronunciation rules (Madani scripts only)",
                                 checked = tajweed,
                                 onChecked = {
                                     tajweed = it

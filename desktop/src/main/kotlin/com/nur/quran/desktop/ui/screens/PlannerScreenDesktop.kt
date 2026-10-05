@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,10 +48,16 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.Notifier
 import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.QuranStore
+import com.nur.quran.desktop.ui.planner.ArchivesModal
+import com.nur.quran.desktop.ui.planner.CustomPlanModal
+import com.nur.quran.desktop.ui.planner.CustomPlanParams
+import com.nur.quran.desktop.ui.planner.IntentionView
 import com.nur.quran.desktop.ui.planner.JournalEditor
 import com.nur.quran.desktop.ui.planner.PaceRing
 import com.nur.quran.desktop.ui.planner.PlanTodayCard
 import com.nur.quran.desktop.ui.planner.SectionTitle
+import com.nur.quran.desktop.ui.planner.TemplatePreviewModal
+import com.nur.quran.desktop.ui.planner.TodayTab
 import com.nur.quran.desktop.data.PrayerStore
 import com.nur.quran.desktop.ui.planner.TemplatesGrid
 import com.nur.quran.shared.buildPrayerSlots
@@ -99,6 +106,10 @@ fun PlannerScreenDesktop(
     var refresh by remember { mutableStateOf(0) }
     var journalDate by remember { mutableStateOf(PlannerEngine.formatPlannerDate()) }
     var customError by remember { mutableStateOf<String?>(null) }
+    var showCustomModal by remember { mutableStateOf(false) }
+    var showArchivesModal by remember { mutableStateOf(false) }
+    var previewTemplate by remember { mutableStateOf<PlanTemplate?>(null) }
+    var showPlannerSettings by remember { mutableStateOf(false) }
 
     // ── Prayer slots state (Aladhan, cache-first via PrayerStore) ──
     var prayerCity by remember { mutableStateOf(PrayerStore.getCity()) }
@@ -145,11 +156,47 @@ fun PlannerScreenDesktop(
         refresh++
     }
 
+    /** Prayer-slot mark/undo: writes a progress count for the assignment date. */
+    fun setSlotProgress(plan: ReadingPlan, dayDate: String, count: Int) {
+        val assignment = plan.assignments.firstOrNull { it.date == dayDate } ?: return
+        val total = PlannerEngine.getAssignmentProgress(plan, assignment).totalCount
+            .coerceAtLeast(1)
+        val clamped = count.coerceIn(0, total)
+        val progress = plan.assignmentProgress.toMutableMap()
+        progress[assignment.dayNumber] = clamped
+        var completedDays = plan.completedDays.toMutableList()
+        var completedAt = plan.assignmentCompletedAt.toMutableMap()
+        if (clamped >= total) {
+            if (!completedDays.contains(assignment.dayNumber)) {
+                completedDays.add(assignment.dayNumber)
+            }
+            completedAt.putIfAbsent(
+                assignment.dayNumber,
+                PlannerEngine.formatPlannerDate()
+            )
+        } else {
+            completedDays.remove(assignment.dayNumber)
+            completedAt.remove(assignment.dayNumber)
+        }
+        PlannerStore.saveActivePlan(
+            plan.copy(
+                assignmentProgress = progress,
+                completedDays = completedDays,
+                assignmentCompletedAt = completedAt
+            )
+        )
+        refresh++
+    }
+
     fun startFromTemplate(template: PlanTemplate) {
+        previewTemplate = template
+    }
+
+    fun confirmTemplate(template: PlanTemplate) {
         try {
             val built = PlannerEngine.buildReadingPlanner(
                 unitType = template.unitType,
-                durationDays = 30,
+                durationDays = template.durationDays,
                 startDate = todayStr,
                 startUnit = template.startUnit,
                 endUnit = template.endUnit,
@@ -157,10 +204,87 @@ fun PlannerScreenDesktop(
                 excludeDays = emptyList(),
                 chapters = planChapters()
             )
+            previewTemplate = null
             adoptPlan(built)
         } catch (e: Exception) {
+            previewTemplate = null
             customError = e.message ?: "Could not start plan"
         }
+    }
+
+    fun createCustomPlan(params: CustomPlanParams) {
+        try {
+            val totalUnits = (params.endUnit - params.startUnit + 1).coerceAtLeast(1)
+            val duration = (totalUnits + params.perDay - 1) / params.perDay.coerceAtLeast(1)
+            val built = PlannerEngine.buildReadingPlanner(
+                unitType = params.unitType,
+                durationDays = duration.coerceAtLeast(1),
+                startDate = params.startDate,
+                startUnit = params.startUnit,
+                endUnit = params.endUnit,
+                customTitle = params.title.ifBlank { null },
+                excludeDays = params.excludeDays,
+                chapters = planChapters()
+            )
+            showCustomModal = false
+            adoptPlan(built)
+        } catch (e: Exception) {
+            customError = e.message ?: "Could not create plan"
+        }
+    }
+
+    // ── No active plan → intention/onboarding view ──
+    if (activePlan == null) {
+        Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
+            IntentionView(
+                pal = pal,
+                hasActivePlan = false,
+                plans = allPlans,
+                activePlanId = null,
+                chapters = planChapters(),
+                onBegin = { adoptPlan(it) },
+                onViewActive = {},
+                onSwitchPlan = { id ->
+                    allPlans.firstOrNull { it.id == id }?.let { activatePlan(it) }
+                },
+                onDeletePlan = { id ->
+                    allPlans.firstOrNull { it.id == id }?.let { deletePlan(it) }
+                },
+                onNewCustom = { showCustomModal = true },
+                onOpenArchives = { showArchivesModal = true },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (showCustomModal) {
+            CustomPlanModal(
+                pal = pal,
+                chapters = planChapters(),
+                onDismiss = { showCustomModal = false },
+                onCreate = { createCustomPlan(it) }
+            )
+        }
+        if (showArchivesModal) {
+            ArchivesModal(
+                pal = pal,
+                archived = PlannerStore.getArchived(),
+                onDismiss = { showArchivesModal = false },
+                onRestore = {
+                    PlannerStore.restoreArchived(it.plan.id)
+                    showArchivesModal = false
+                    refresh++
+                }
+            )
+        }
+        previewTemplate?.let { tmpl ->
+            TemplatePreviewModal(
+                pal = pal,
+                template = tmpl,
+                startDate = todayStr,
+                onDismiss = { previewTemplate = null },
+                onConfirm = { confirmTemplate(tmpl) }
+            )
+        }
+        return
     }
 
     LazyColumn(
@@ -254,7 +378,8 @@ fun PlannerScreenDesktop(
         when (tab) {
             0 -> {
                 item(key = "today") {
-                    if (activePlan == null) {
+                    val plan = activePlan
+                    if (plan == null) {
                         Text(
                             text = "No active plan yet — pick a template below or build a custom plan.",
                             fontSize = 14.sp,
@@ -262,155 +387,44 @@ fun PlannerScreenDesktop(
                             fontFamily = fontBody
                         )
                     } else {
-                        val plan = activePlan
-                        val overview = remember(plan, refresh) {
-                            PlannerEngine.getPlannerOverview(plan)
-                        }
-                        val todayAssignment = remember(plan, todayStr) {
-                            plan.assignments.find { it.date == todayStr }
-                                ?: plan.assignments.getOrNull(
-                                    (overview?.currentDayNumber ?: 1) - 1
+                        TodayTab(
+                            pal = pal,
+                            plan = plan,
+                            todayStr = todayStr,
+                            onOpenDay = { date -> onOpenDay(date) },
+                            onOpenSettings = { showPlannerSettings = true },
+                            onSlotDone = { dayDate, upTo -> setSlotProgress(plan, dayDate, upTo) },
+                            onSlotUndo = { dayDate, from -> setSlotProgress(plan, dayDate, from) }
+                        )
+                        // ── Reminders ──
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SectionTitle(pal = pal, text = "Reminders")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "System notifications: " +
+                                        if (java.awt.SystemTray.isSupported()) "on" else "off",
+                                    fontSize = 12.sp,
+                                    color = pal.inkMuted,
+                                    fontFamily = fontBody
                                 )
-                                ?: plan.assignments.firstOrNull()
-                        }
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            LaunchedEffect(plan) {
-                                if (todayAssignment != null) {
-                                    Notifier.notifyOncePerDay(
-                                        "plan-due",
-                                        "Today's reading"
-                                    ) {
-                                        listOfNotNull(
-                                            todayAssignment.title,
-                                            todayAssignment.subtitle
-                                        ).joinToString(" · ")
-                                    }
-                                }
-                            }
-                            PaceRing(
-                                pal = pal,
-                                progress = overview?.completionRatio ?: 0f,
-                                label = "${overview?.completedCount ?: 0} of ${plan.durationDays} days"
-                            )
-                            PlanTodayCard(
-                                pal = pal,
-                                title = todayAssignment?.title ?: plan.title,
-                                detail = listOfNotNull(
-                                    todayAssignment?.subtitle,
-                                    todayAssignment?.date
-                                ).joinToString(" · "),
-                                ctaLabel = "Open day",
-                                onOpen = {
-                                    onOpenDay(todayAssignment?.date ?: plan.startDate)
-                                }
-                            )
-
-                            // ── Reminders ──
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SectionTitle(pal = pal, text = "Reminders")
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "System notifications: " +
-                                            if (java.awt.SystemTray.isSupported()) "on" else "off",
-                                        fontSize = 12.sp,
-                                        color = pal.inkMuted,
-                                        fontFamily = fontBody
-                                    )
-                                    TextButton(
-                                        onClick = {
-                                            Notifier.notify(
-                                                "Quran Nur",
-                                                "Reminders work — today's reading is ready."
-                                            )
-                                        }
-                                    ) {
-                                        Text("Test notification", color = pal.teal, fontSize = 12.sp)
-                                    }
-                                }
-                            }
-
-                            // ── Prayer slots (shared buildPrayerSlots) ──
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SectionTitle(pal = pal, text = "Prayer slots")
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedTextField(
-                                        value = prayerCity,
-                                        onValueChange = { prayerCity = it },
-                                        label = { Text("City") },
-                                        singleLine = true,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    OutlinedTextField(
-                                        value = prayerCountry,
-                                        onValueChange = { prayerCountry = it },
-                                        label = { Text("Country") },
-                                        singleLine = true,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    TextButton(
-                                        onClick = { fetchPrayerTimings(prayerCity.trim(), prayerCountry.trim()) },
-                                        enabled = !prayerLoading
-                                    ) {
-                                        Text(if (prayerLoading) "…" else "Refresh")
-                                    }
-                                }
-                                val planNonNull = activePlan
-                                val timingsNonNull = prayerTimings
-                                val slots: List<com.nur.quran.shared.PrayerSlot> =
-                                    remember(planNonNull, todayAssignment, timingsNonNull) {
-                                        if (planNonNull == null || timingsNonNull == null) emptyList()
-                                        else buildPrayerSlots(
-                                            planNonNull,
-                                            todayAssignment,
-                                            timingsNonNull
+                                TextButton(
+                                    onClick = {
+                                        Notifier.notify(
+                                            "Quran Nur",
+                                            "Reminders work — today's reading is ready."
                                         )
                                     }
-                                if (slots.isEmpty()) {
-                                    Text(
-                                        text = if (prayerLoading) "Loading prayer times…"
-                                        else "Prayer slots appear once prayer times load and a plan is active.",
-                                        fontSize = 12.sp,
-                                        color = pal.inkMuted,
-                                        fontFamily = fontBody
-                                    )
-                                } else {
-                                    slots.forEach { slot ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = slot.name + (slot.time?.let { " · $it" } ?: ""),
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = pal.ink,
-                                                fontFamily = fontBody
-                                            )
-                                            Text(
-                                                text = when (slot.status) {
-                                                    "completed" -> "Done ✓"
-                                                    "current" -> "${slot.doneInSlot}/${slot.count} now"
-                                                    "empty" -> "No reading"
-                                                    else -> "${slot.count} items"
-                                                },
-                                                fontSize = 12.sp,
-                                                color = if (slot.status == "completed") pal.green else pal.inkMuted,
-                                                fontFamily = fontBody
-                                            )
-                                        }
-                                    }
+                                ) {
+                                    Text("Test notification", color = pal.teal, fontSize = 12.sp)
                                 }
                             }
                         }
+                        // ── Focus timer ──
+                        com.nur.quran.desktop.ui.pomodoro.PomodoroWidget(pal = pal)
                     }
                 }
             }
@@ -456,6 +470,26 @@ fun PlannerScreenDesktop(
                             }
                         }
                     }
+                        item(key = "plan-extras") {
+                            val xp = activePlan
+                            if (xp != null) {
+                                com.nur.quran.desktop.ui.planner.SuccessMetricsRow(pal = pal, plan = xp)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                val xov = PlannerEngine.getPlannerOverview(xp)
+                                com.nur.quran.desktop.ui.planner.ShareProgressRow(
+                                    pal = pal,
+                                    plan = xp,
+                                    completedCount = xov?.completedCount ?: 0
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                com.nur.quran.desktop.ui.planner.RevisionCtaCard(
+                                    pal = pal,
+                                    plan = xp,
+                                    chapters = planChapters(),
+                                    onAdoptRevision = { adoptPlan(it) }
+                                )
+                            }
+                        }
                         item(key = "weekly") {
                             val summaries = remember(plan, refresh) {
                                 PlannerEngine.getWeeklySummary(plan)
@@ -562,6 +596,16 @@ fun PlannerScreenDesktop(
                         }
                     }
                 }
+                item(key = "plan-notes") {
+                    val np = activePlan
+                    if (np != null) {
+                        com.nur.quran.desktop.ui.planner.PlanNotesSection(
+                            pal = pal,
+                            plan = np,
+                            onOpenSurah = onOpenSurah
+                        )
+                    }
+                }
             }
         }
 
@@ -637,34 +681,64 @@ fun PlannerScreenDesktop(
             )
         }
 
-        // ── Custom plan form ──
+        // ── Custom plan (full builder: unit, range, pace, days off) ──
         item(key = "custom") {
-            CustomPlanForm(
-                pal = pal,
-                fontUi = rememberUiFontFamily(),
-                error = customError,
-                onCreate = { selected, startDate, endDate, title ->
-                    try {
-                        val duration = (
-                            PlannerEngine.diffDays(startDate, endDate) + 1
-                            ).coerceAtLeast(1)
-                        val built = PlannerEngine.buildReadingPlanner(
-                            unitType = "surah",
-                            durationDays = duration,
-                            startDate = startDate,
-                            startUnit = selected.minOrNull() ?: 1,
-                            endUnit = selected.maxOrNull() ?: 114,
-                            customTitle = title.ifBlank { null },
-                            excludeDays = emptyList(),
-                            chapters = planChapters()
-                        )
-                        adoptPlan(built)
-                    } catch (e: Exception) {
-                        customError = e.message ?: "Could not create plan"
-                    }
-                }
-            )
+            Button(
+                onClick = { showCustomModal = true },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = pal.tealSoft,
+                    contentColor = pal.teal
+                ),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Text(
+                    text = "+ Build a custom plan",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = fontUi
+                )
+            }
+            if (customError != null) {
+                Text(
+                    text = customError ?: "",
+                    fontSize = 12.sp,
+                    color = OverdueRed,
+                    fontFamily = fontBody,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
         }
+    }
+
+    if (showCustomModal) {
+        CustomPlanModal(
+            pal = pal,
+            chapters = planChapters(),
+            onDismiss = { showCustomModal = false },
+            onCreate = { createCustomPlan(it) }
+        )
+    }
+    previewTemplate?.let { tmpl ->
+        TemplatePreviewModal(
+            pal = pal,
+            template = tmpl,
+            startDate = todayStr,
+            onDismiss = { previewTemplate = null },
+            onConfirm = { confirmTemplate(tmpl) }
+        )
+    }
+    if (showPlannerSettings) {
+        PlannerSettingsDialog(
+            pal = pal,
+            city = prayerCity,
+            country = prayerCountry,
+            loading = prayerLoading,
+            onCityChange = { prayerCity = it },
+            onCountryChange = { prayerCountry = it },
+            onRefresh = { fetchPrayerTimings(prayerCity.trim(), prayerCountry.trim()) },
+            onDismiss = { showPlannerSettings = false }
+        )
     }
 }
 
@@ -852,6 +926,79 @@ private fun CustomPlanForm(
             modifier = Modifier.fillMaxWidth().height(48.dp)
         ) {
             Text("Create custom plan", fontWeight = FontWeight.Bold, fontFamily = fontUi)
+        }
+    }
+}
+
+/** Prayer-times location for the planner (gear on the Today tab). */
+@Composable
+private fun PlannerSettingsDialog(
+    pal: NurPalette,
+    city: String,
+    country: String,
+    loading: Boolean,
+    onCityChange: (String) -> Unit,
+    onCountryChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val fontUi = rememberUiFontFamily()
+    val fontBody = rememberBodyFontFamily()
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = pal.cream,
+            border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
+            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = "Prayer times",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = pal.ink,
+                    fontFamily = fontUi
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Used to split the day's reading across prayers.",
+                    fontSize = 12.sp,
+                    color = pal.inkMuted,
+                    fontFamily = fontBody
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = onCityChange,
+                    label = { Text("City") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = country,
+                    onValueChange = onCountryChange,
+                    label = { Text("Country") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onRefresh,
+                    enabled = !loading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = pal.teal,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (loading) "Loading…" else "Refresh times", fontFamily = fontUi)
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                    Text("Done", color = pal.inkMid)
+                }
+            }
         }
     }
 }

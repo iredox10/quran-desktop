@@ -300,6 +300,12 @@ class ScreenshotTest {
     @Test
     fun `surah sad closeups render with gold marker and no waqf blobs`() {
         val font = DesktopFonts.KFGQPC_HAFS
+        // Pin the prefs this test depends on: VerseRow reads PrefsCache directly,
+        // so without this the assertion silently tracks the developer machine's
+        // saved mushaf/tajweed state (tajweed ON renders COLORED text, which the
+        // dark-ink counter below must recognize).
+        PrefsCache.putMushaf("Uthmani")
+        PrefsCache.putTajweedEnabled(true)
         var goldSeen = 0
         for ((key, name) in listOf("38:6" to "verse38_6", "38:8" to "verse38_8")) {
             val verse = QuranStore.versesOfChapter(38).first { it.verseKey == key }
@@ -328,7 +334,12 @@ class ScreenshotTest {
                         val r = (argb shr 16) and 0xFF
                         val g = (argb shr 8) and 0xFF
                         val b = argb and 0xFF
-                        if (r < 90 && g < 90 && b < 90) ink++
+                        // Text ink = dark glyphs OR tajweed-colored glyphs
+                        // (chromatic pixels, e.g. #537FFF/#169200/#DD0008 —
+                        // antialiasing slack via the saturation window).
+                        val dark = r < 90 && g < 90 && b < 90
+                        val chromatic = maxOf(r, g, b) - minOf(r, g, b) > 30
+                        if (dark || chromatic) ink++
                         // hGold #B8924A (light theme) with antialiasing slack.
                         if (abs(r - 184) <= 30 && abs(g - 146) <= 30 && abs(b - 74) <= 40) markerGold++
                     }
@@ -429,6 +440,18 @@ class ScreenshotTest {
         } finally {
             scene.close()
         }
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun `sauka index renders`() {
+        rule.setContent {
+            NurTheme {
+                com.nur.quran.desktop.ui.screens.SaukaIndexDesktop(pal = pal, onOpenGroup = {})
+            }
+        }
+        rule.waitForIdle()
+        save(rule.onRoot().captureToImage(), "sauka.png")
     }
 
     private fun save(image: ImageBitmap, name: String) {

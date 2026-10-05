@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,18 +21,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +50,7 @@ import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.shared.PlannerEngine
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Desktop planner day reader mirroring Android `PlannerReaderScreen`
@@ -164,6 +169,47 @@ fun PlannerReaderScreenDesktop(
         if (target > 0) listState.scrollToItem(target)
     }
 
+    val scope = rememberCoroutineScope()
+    // In-day page pager state, clamped to the assignment range.
+    var currentPage by remember(assignment) {
+        mutableStateOf(resumePage.coerceIn(assignment.pageStart, assignment.pageEnd))
+    }
+    LaunchedEffect(resumePage) {
+        currentPage = resumePage.coerceIn(assignment.pageStart, assignment.pageEnd)
+    }
+    fun scrollToPage(page: Int) {
+        scope.launch {
+            val target = verses.indexOfFirst { it.pageNumber >= page }
+            if (target >= 0) listState.scrollToItem(target)
+        }
+    }
+
+    // Page-read tracking: union composed verse pages into
+    // assignmentReadPages[dayNumber] via plan copy + save.
+    val composedPages = remember(assignment.dayNumber) { mutableSetOf<Int>() }
+    LaunchedEffect(verses) {
+        if (verses.isEmpty()) return@LaunchedEffect
+        composedPages.addAll(verses.map { it.pageNumber })
+        val dayNumber = assignment.dayNumber
+        val existing = currentPlan.assignmentReadPages[dayNumber].orEmpty().toSet()
+        val union = (existing + composedPages).sorted()
+        if (union.size != existing.size) {
+            val readMap = currentPlan.assignmentReadPages.toMutableMap()
+            readMap[dayNumber] = union
+            val updated = currentPlan.copy(assignmentReadPages = readMap)
+            PlannerStore.saveActivePlan(updated)
+            plan = updated
+        }
+    }
+
+    // Reflection journal, keyed per plan + day (web parity).
+    val journalKey = remember(currentPlan.id, dayDate) { "plan:${currentPlan.id}:$dayDate" }
+    var reflection by remember(journalKey) { mutableStateOf(PlannerStore.getJournal(journalKey)) }
+    var journalSaved by remember(journalKey) { mutableStateOf(false) }
+
+    val isDayComplete = progress.isComplete ||
+        currentPlan.completedDays.contains(assignment.dayNumber)
+
     Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
         // ── Header ───────────────────────────────────────────────────
         Row(
@@ -220,6 +266,154 @@ fun PlannerReaderScreenDesktop(
             )
         }
 
+        // ── Day items with per-item completion ───────────────────────
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
+            assignment.items.forEach { item ->
+                val done = progress.completedRangeValues.contains(item.rangeValue)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (done) pal.tealSoft else pal.cream)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (done) Icons.Filled.CheckCircle else Icons.Filled.Check,
+                        contentDescription = if (done) "Done" else "Not done",
+                        tint = if (done) pal.green else pal.inkMuted.copy(alpha = 0.5f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)
+                        Text(
+                            "Pages ${item.pageStart}–${item.pageEnd}",
+                            fontSize = 12.sp,
+                            color = pal.inkMuted
+                        )
+                    }
+                    if (done) {
+                        Text("Done ✓", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = pal.green)
+                    } else {
+                        Button(
+                            onClick = {
+                                // Mirror the whole-day mutation shapes, scoped to one item:
+                                // union rangeValue into assignmentCompletedItems, bump
+                                // assignmentProgress, stamp assignmentCompletedAt when the
+                                // day becomes complete, recompute completedDays.
+                                val dayNumber = assignment.dayNumber
+                                val completedItemsMap = currentPlan.assignmentCompletedItems.toMutableMap()
+                                val cur = completedItemsMap[dayNumber].orEmpty().toMutableSet()
+                                cur.add(item.rangeValue)
+                                completedItemsMap[dayNumber] = cur.toList()
+                                val progressMap = currentPlan.assignmentProgress.toMutableMap()
+                                progressMap[dayNumber] =
+                                    assignment.items.count { cur.contains(it.rangeValue) }
+                                val completedAtMap = currentPlan.assignmentCompletedAt.toMutableMap()
+                                val nowComplete = assignment.items.all { cur.contains(it.rangeValue) }
+                                if (nowComplete && !completedAtMap.containsKey(dayNumber)) {
+                                    completedAtMap[dayNumber] = PlannerEngine.formatPlannerDate()
+                                }
+                                val completedDays = currentPlan.assignments
+                                    .filter { (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size && it.items.isNotEmpty() }
+                                    .map { it.dayNumber }
+                                    .sorted()
+                                val updated = currentPlan.copy(
+                                    assignmentProgress = progressMap,
+                                    assignmentCompletedItems = completedItemsMap,
+                                    assignmentCompletedAt = completedAtMap,
+                                    completedDays = completedDays
+                                )
+                                PlannerStore.saveActivePlan(updated)
+                                plan = updated
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = pal.teal)
+                        ) {
+                            Text("Mark Done", color = pal.white, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── In-day page pager (clamped to [pageStart, pageEnd]) ─────────
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Button(
+                onClick = {
+                    val target = (currentPage - 1).coerceAtLeast(assignment.pageStart)
+                    currentPage = target
+                    scrollToPage(target)
+                },
+                enabled = currentPage > assignment.pageStart,
+                colors = ButtonDefaults.buttonColors(containerColor = pal.teal)
+            ) {
+                Text("‹ Prev page", color = pal.white, fontSize = 12.sp)
+            }
+            Text(
+                "Page $currentPage of ${assignment.pageEnd}",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = pal.inkMuted
+            )
+            Button(
+                onClick = {
+                    val target = (currentPage + 1).coerceAtMost(assignment.pageEnd)
+                    currentPage = target
+                    scrollToPage(target)
+                },
+                enabled = currentPage < assignment.pageEnd,
+                colors = ButtonDefaults.buttonColors(containerColor = pal.teal)
+            ) {
+                Text("Next page ›", color = pal.white, fontSize = 12.sp)
+            }
+        }
+
+        // ── Completion card with reflection ────────────────────────
+        if (isDayComplete) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(pal.cream)
+                    .padding(12.dp)
+            ) {
+                Text(
+                    "Day complete — Takeaway of the Day",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = pal.teal
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = reflection,
+                    onValueChange = { reflection = it; journalSaved = false },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
+                    placeholder = { Text("Takeaway of the Day…") },
+                    singleLine = false
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = {
+                            PlannerStore.saveJournal(journalKey, reflection)
+                            journalSaved = true
+                            onBackToPlanner()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = pal.green)
+                    ) {
+                        Text("Save & Return", color = pal.white, fontWeight = FontWeight.Bold)
+                    }
+                    if (journalSaved) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Saved ✓", fontSize = 12.sp, color = pal.green)
+                    }
+                }
+            }
+        }
+
         // ── Verse list ───────────────────────────────────────────────
         var lastChapter = -1
         LazyColumn(modifier = Modifier.weight(1f), state = listState) {
@@ -272,8 +466,7 @@ fun PlannerReaderScreenDesktop(
                     )
                 }
             }
-            val complete = progress.isComplete ||
-                currentPlan.completedDays.contains(assignment.dayNumber)
+            val complete = isDayComplete
             Button(
                 onClick = {
                     // Mirror Android `markAssignmentCompleted(dayNumber)` →

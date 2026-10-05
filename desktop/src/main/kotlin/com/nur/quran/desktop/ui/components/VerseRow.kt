@@ -53,6 +53,7 @@ import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.library.AddToCollectionDialog
+import com.nur.quran.shared.Mushaf
 
 /**
  * Flat verse item mirroring Android `VerseItem`: verse-key header with action
@@ -219,7 +220,13 @@ fun VerseRow(
             androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl
         ) {
             val tajweedHtml = verse.tajweedHtml
-            if (tajweedHtml != null && PrefsCache.getTajweedEnabled()) {
+            // Web parity (Mushaf.isTajweedEffective): the tajweed markup is
+            // Uthmani-script text, so scripts without a tajweed source
+            // (Indopak) must never color — the alignment would garble glyphs.
+            val tajweedEffective = Mushaf.fromId(mushafId).let { mushaf ->
+                mushaf.hasTajweedSource && (mushaf.forcesTajweed || PrefsCache.getTajweedEnabled())
+            }
+            if (tajweedHtml != null && tajweedEffective) {
                 TajweedWordText(
                     plainText = arabic,
                     tajweedHtml = tajweedHtml,

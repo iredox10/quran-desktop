@@ -52,7 +52,13 @@ import com.nur.quran.shared.PlanTemplate
 
 /** Circular progress ring: bone-dark track, gold sweep, centered [label]. */
 @Composable
-fun PaceRing(pal: NurPalette, progress: Float, label: String, modifier: Modifier = Modifier) {
+fun PaceRing(
+    pal: NurPalette,
+    progress: Float,
+    label: String,
+    modifier: Modifier = Modifier,
+    subLabel: String? = null
+) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
     val p = progress.coerceIn(0f, 1f)
@@ -92,7 +98,7 @@ fun PaceRing(pal: NurPalette, progress: Float, label: String, modifier: Modifier
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "${(p * 100).toInt()}% COMPLETE",
+                text = subLabel ?: "${(p * 100).toInt()}% COMPLETE",
                 fontFamily = fontBody,
                 fontSize = 8.sp,
                 letterSpacing = 0.8.sp,

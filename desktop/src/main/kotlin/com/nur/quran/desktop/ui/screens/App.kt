@@ -221,6 +221,20 @@ fun App() {
                             onBack = { route = DesktopRoutes.HOME },
                             onOpenSurah = ::openSurah
                         )
+                        route == DesktopRoutes.SAUKA -> SaukaIndexDesktop(
+                            pal = pal,
+                            onOpenGroup = { id -> route = "sauka/$id" }
+                        )
+                        route.startsWith("sauka/") -> {
+                            val groupId = route.removePrefix("sauka/")
+                            SaukaGroupDesktop(
+                                pal = pal,
+                                groupId = groupId,
+                                onBack = { route = DesktopRoutes.SAUKA },
+                                onOpenSurah = ::openSurah,
+                                onOpenPage = ::openPage
+                            )
+                        }
                         route == DesktopRoutes.DOWNLOADS -> DownloadsScreenDesktop(
                             pal = pal,
                             onBack = { route = DesktopRoutes.HOME }
