@@ -56,9 +56,13 @@ import kotlinx.coroutines.withContext
 
 /**
  * TODAY tab of the planner, mirroring web `Planner.jsx` ActiveView TODAY tab
- * (lines 669-1063): big ring + "Daily Ritual" column (session pill, share,
- * settings gear) + sequential prayer-slot rows with
- * current/completed/locked/upcoming/empty statuses.
+ * (lines 669-1063): 200dp RingProgress hero with "% + day count"
+ * + "Daily Ritual" column (session-time pill, share-progress, settings gear
+ * opening PlannerSettingsDialog via [onOpenSettings]) + sequential
+ * prayer-slot rows exactly like web buildPrayerSlots
+ * (completed/current/locked/upcoming/empty with Start/Resume deep-link
+ * route to the day reader, undo, mark-done circle) + resumeRoute from the
+ * last position (first incomplete = today when unfinished).
  *
  * Sequential display only — no lock-enforcement logic beyond status display;
  * progress writes are delegated to [onSlotDone]/[onSlotUndo] (coordinator).
@@ -72,13 +76,12 @@ fun TodayTab(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     onSlotDone: (dayDate: String, upTo: Int) -> Unit = { _, _ -> },
-    onSlotUndo: (dayDate: String, fromCount: Int) -> Unit = { _, _ -> }
+    onSlotUndo: (dayDate: String, fromCount: Int) -> Unit = { _, _ -> },
+    onShareProgress: (() -> Unit)? = null
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
 
-    // PlannerOverview has no todayAssignment field (verified) — resolve here,
-    // same fallback as web: date match, else currentDayNumber - 1.
     val overview = remember(plan, todayStr) {
         PlannerEngine.getPlannerOverview(plan, todayStr)
     }
@@ -89,22 +92,36 @@ fun TodayTab(
     val progress = remember(plan, todayAssignment) {
         todayAssignment?.let { PlannerEngine.getAssignmentProgress(plan, it) }
     }
-    val todayDone = progress?.readPagesCount ?: 0
-    val todayTotal = progress?.totalPagesCount ?: 0
+    // Web parity (Planner.jsx lines 764-766): page-unit counts.
+    val todayDone = progress?.readPages ?: 0
+    val todayTotal = progress?.totalPages ?: 0
     val todayPct = if (todayTotal > 0) ((todayDone * 100) / todayTotal).coerceIn(0, 100) else 0
-    val hasStarted = todayDone > 0
+    // Web parity (line 769): hasStartedReading = todayDone > 0 || lastReadPage.
+    val hasStarted = todayDone > 0 || plan.lastReadPage != null
     val dayDate = todayAssignment?.date ?: todayStr
 
-    // Unit label uppercase from plan.unitType, web-style ("PAGE" -> "PAGES").
+    // Web parity (line 821): "N OF M <UNIT>S TODAY".
     val unitUpper = (PLANNER_UNITS[plan.unitType]?.label ?: plan.unitType).uppercase()
     val unitPlural = PLANNER_UNITS[plan.unitType]?.plural ?: "Pages"
     val ringLabel = "$todayDone OF $todayTotal ${unitUpper}S TODAY"
+    // Current day count under the ring (web header "Day X of N").
+    val currentDay = overview?.currentDayNumber ?: todayAssignment?.dayNumber ?: 1
 
-    // Session minutes pill: PlannerStore shape is Map<String(date), Int(minutes)>.
-    val sessionMinutes = remember(plan.id, todayStr) {
-        PlannerStore.getStudySessions()[todayStr] ?: 0
+    // Session-time pill, web parity (lines 802-810): plannerSessionTimers
+    // totalSeconds formatted "1h 5m" / "5m 3s" / "12s". Desktop
+    // PlannerStore keeps minutes per date; convert to seconds for the same
+    // format function.
+    val sessionSeconds = remember(plan.id, todayStr) {
+        (PlannerStore.getStudySessions()[todayStr] ?: 0) * 60
     }
+    val sessionLabel = remember(sessionSeconds) { formatSessionTime(sessionSeconds) }
     val completedDays = overview?.completedCount ?: 0
+    // Web parity (line 768): resumeRoute = first-incomplete day reader.
+    val resumeDayDate = overview?.firstIncomplete?.date
+    // Full web share text (lines 791-794); coordinator override wins.
+    val shareText =
+        "I've completed $completedDays days of my ${plan.durationDays}-day Quran reading plan " +
+            "on Quran Nur! I'm currently on Day $currentDay."
 
     // Prayer timings load async (blocking IO); slots render with null-safe
     // time pills while loading (buildPrayerSlots accepts null timings).
@@ -124,20 +141,24 @@ fun TodayTab(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Web parity (line 946): RingProgress size=240 hero at
+                // desktop density -> 200.dp.
                 PaceRing(
                     pal = pal,
                     progress = todayPct / 100f,
                     label = "$todayPct%",
-                    modifier = Modifier.size(160.dp)
+                    subLabel = ringLabel,
+                    diameter = 200.dp,
+                    labelFontSize = 44.sp,
+                    subLabelFontSize = 8.sp
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = ringLabel,
-                    fontFamily = fontBody,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = pal.inkMuted
+                    text = "Day $currentDay of ${plan.durationDays}",
+                    fontFamily = fontUi,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = pal.gold
                 )
             }
             Spacer(modifier = Modifier.width(20.dp))
@@ -155,13 +176,13 @@ fun TodayTab(
                         color = pal.ink
                     )
                 }
-                if (sessionMinutes > 0) {
+                if (sessionSeconds > 0) {
                     Surface(
                         shape = RoundedCornerShape(100.dp),
                         color = pal.tealSoft
                     ) {
                         Text(
-                            text = "$sessionMinutes min today",
+                            text = sessionLabel,
                             fontFamily = fontBody,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -176,9 +197,11 @@ fun TodayTab(
                 ) {
                     IconButton(
                         onClick = {
-                            copied = copyToClipboard(
-                                "I've completed $completedDays days of my ${plan.durationDays}-day plan"
-                            )
+                            // Coordinator override wins; desktop fallback copies
+                            // the full web share text to the clipboard.
+                            onShareProgress?.invoke() ?: run {
+                                copied = copyToClipboard(shareText)
+                            }
                         },
                         modifier = Modifier
                             .size(40.dp)
