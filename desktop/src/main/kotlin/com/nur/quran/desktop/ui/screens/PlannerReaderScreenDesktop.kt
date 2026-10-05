@@ -50,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.desktop.data.AudioEngine
 import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
@@ -366,6 +367,30 @@ fun PlannerReaderScreenDesktop(
                 fontWeight = FontWeight.Bold,
                 color = pal.teal
             )
+            Spacer(modifier = Modifier.width(6.dp))
+            // Page-audio play pill (web handlePlayClick parity): plays the
+            // current page's assigned verses; tap again to pause/resume.
+            val pageVerses = remember(currentPage) { verses.filter { it.pageNumber == currentPage } }
+            val pageAudioActive = AudioEngine.current != null &&
+                pageVerses.any { it.verseKey == AudioEngine.current?.verseKey }
+            IconButton(
+                onClick = {
+                    if (pageAudioActive) {
+                        AudioEngine.togglePlayPause()
+                    } else if (pageVerses.isNotEmpty()) {
+                        AudioEngine.playTracks(
+                            pageVerses.map { AudioEngine.Track(it.verseKey, it.chapterId, it.verseNumber) }
+                        )
+                    }
+                },
+                enabled = pageVerses.isNotEmpty()
+            ) {
+                Icon(
+                    if (pageAudioActive && AudioEngine.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = "Play page audio",
+                    tint = pal.teal
+                )
+            }
         }
 
         // Progress bar.
@@ -538,8 +563,10 @@ fun PlannerReaderScreenDesktop(
                 VerseRow(
                     verse = verse,
                     pal = pal,
-                    highlighted = verse.pageNumber == resumePage &&
-                        verse.verseKey == verses.firstOrNull { it.pageNumber == resumePage }?.verseKey
+                    highlighted = (verse.pageNumber == resumePage &&
+                        verse.verseKey == verses.firstOrNull { it.pageNumber == resumePage }?.verseKey) ||
+                        AudioEngine.current?.verseKey == verse.verseKey,
+                    onPlayVerse = { vk -> AudioEngine.playVerse(vk) }
                 )
             }
         }
