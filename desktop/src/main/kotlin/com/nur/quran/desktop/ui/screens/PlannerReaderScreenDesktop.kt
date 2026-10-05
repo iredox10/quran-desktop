@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -51,14 +54,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.AudioEngine
+import com.nur.quran.desktop.data.PageWord
 import com.nur.quran.desktop.data.PlannerStore
+import com.nur.quran.desktop.data.WordStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
+import com.nur.quran.desktop.ui.components.MushafPageLines
 import com.nur.quran.desktop.ui.components.VerseRow
+import com.nur.quran.desktop.ui.components.WordRef
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.shared.PlannerEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Desktop planner day reader mirroring Android `PlannerReaderScreen`
@@ -231,6 +240,9 @@ fun PlannerReaderScreenDesktop(
             if (target >= 0) listState.scrollToItem(target)
         }
     }
+    // Reading mode: page-accurate 15-line mushaf vs verse list
+    // (web `readingMode` toggle parity).
+    var showMushaf by remember(dayDate) { mutableStateOf(false) }
 
     // Page-read tracking: mark ONLY the page the reader is currently on (web
     // parity — markPlannerPageRead(currentDay, pageNumber) on page change) and
@@ -391,6 +403,14 @@ fun PlannerReaderScreenDesktop(
                     tint = pal.teal
                 )
             }
+            // Reading-mode toggle: page-accurate mushaf lines vs verse list.
+            IconButton(onClick = { showMushaf = !showMushaf }) {
+                Icon(
+                    Icons.Filled.MenuBook,
+                    contentDescription = if (showMushaf) "Verse list view" else "Mushaf page view",
+                    tint = if (showMushaf) pal.gold else pal.teal
+                )
+            }
         }
 
         // Progress bar.
@@ -539,6 +559,7 @@ fun PlannerReaderScreenDesktop(
             }
         }
 
+        if (!showMushaf) {
         // ── Verse list ───────────────────────────────────────────────
         var lastChapter = -1
         LazyColumn(modifier = Modifier.weight(1f), state = listState) {
@@ -568,6 +589,41 @@ fun PlannerReaderScreenDesktop(
                         AudioEngine.current?.verseKey == verse.verseKey,
                     onPlayVerse = { vk -> AudioEngine.playVerse(vk) }
                 )
+            }
+        }
+        } else {
+            // ── Page-accurate 15-line mushaf view (web readingMode parity) ──
+            var pageWords by remember { mutableStateOf<List<PageWord>?>(null) }
+            LaunchedEffect(currentPage) {
+                pageWords = null
+                pageWords = withContext(Dispatchers.IO) { WordStore.getPageWords(currentPage) }
+            }
+            val loaded = pageWords
+            when {
+                loaded == null -> Text(
+                    text = "Loading…",
+                    fontSize = 14.sp,
+                    color = pal.inkMuted,
+                    modifier = Modifier.weight(1f).padding(16.dp)
+                )
+                loaded.isEmpty() -> Text(
+                    text = "Offline — page words unavailable",
+                    fontSize = 14.sp,
+                    color = pal.inkMuted,
+                    modifier = Modifier.weight(1f).padding(16.dp)
+                )
+                else -> {
+                    val wordsByLine = remember(loaded) {
+                        loaded.filter { it.lineNumber > 0 }
+                            .groupBy({ it.lineNumber }, { WordRef(it.text) })
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        MushafPageLines(wordsByLine = wordsByLine)
+                    }
+                }
             }
         }
 
