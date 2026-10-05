@@ -53,6 +53,7 @@ import com.nur.quran.desktop.ui.planner.CustomPlanModal
 import com.nur.quran.desktop.ui.planner.CustomPlanParams
 import com.nur.quran.desktop.ui.planner.IntentionView
 import com.nur.quran.desktop.ui.planner.JournalEditor
+import com.nur.quran.desktop.ui.planner.JournalTab
 import com.nur.quran.desktop.ui.planner.PaceRing
 import com.nur.quran.desktop.ui.planner.PlanTodayCard
 import com.nur.quran.desktop.ui.planner.SectionTitle
@@ -454,36 +455,40 @@ fun PlannerScreenDesktop(
                 }
             }
             2 -> {
-                item(key = "journal") {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = journalDate,
-                            onValueChange = { journalDate = it },
-                            label = { Text("Date (yyyy-MM-dd)") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        key(journalDate) {
-                            JournalEditor(
-                                pal = pal,
-                                dateStr = journalDate,
-                                initial = PlannerStore.getJournal(journalDate),
-                                onSave = { text ->
-                                    PlannerStore.saveJournal(journalDate, text)
-                                    refresh++
-                                }
-                            )
-                        }
-                    }
-                }
-                item(key = "plan-notes") {
-                    val np = activePlan
-                    if (np != null) {
-                        com.nur.quran.desktop.ui.planner.PlanNotesSection(
+                val jp = activePlan
+                if (jp != null) {
+                    item(key = "journal") {
+                        JournalTab(
                             pal = pal,
-                            plan = np,
-                            onOpenSurah = onOpenSurah
+                            plan = jp,
+                            journalDate = journalDate,
+                            onJournalDateChange = { journalDate = it; refresh++ },
+                            onOpenSurah = onOpenSurah,
+                            onSaved = { refresh++ }
                         )
+                    }
+                } else {
+                    item(key = "journal") {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = journalDate,
+                                onValueChange = { journalDate = it },
+                                label = { Text("Date (yyyy-MM-dd)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            key(journalDate) {
+                                JournalEditor(
+                                    pal = pal,
+                                    dateStr = journalDate,
+                                    initial = PlannerStore.getJournal(journalDate),
+                                    onSave = { text ->
+                                        PlannerStore.saveJournal(journalDate, text)
+                                        refresh++
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
