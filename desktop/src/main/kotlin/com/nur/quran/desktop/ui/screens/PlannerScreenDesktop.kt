@@ -441,135 +441,15 @@ fun PlannerScreenDesktop(
                 } else {
                     val plan = activePlan
                     if (plan != null) {
-                    item(key = "plan-analytics") {
-                        val analytics = remember(plan, refresh) {
-                            PlannerEngine.getPlannerAnalytics(plan)
+                        item(key = "progress-tab") {
+                            com.nur.quran.desktop.ui.planner.ProgressTab(
+                                pal = pal,
+                                plan = plan,
+                                todayStr = todayStr,
+                                chapters = planChapters(),
+                                onAdoptPlan = { adoptPlan(it) }
+                            )
                         }
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = pal.cream,
-                            border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                SectionTitle(pal = pal, text = "Plan analytics")
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    AnalyticsStat(pal, "${analytics.onTimeRate}%", "On time")
-                                    AnalyticsStat(pal, "${analytics.catchUpDays}", "Catch-up days")
-                                    AnalyticsStat(
-                                        pal,
-                                        String.format(java.util.Locale.US, "%.1f", analytics.avgPagesPerDay),
-                                        "Pages/day"
-                                    )
-                                    AnalyticsStat(pal, "${analytics.totalReadPages}", "Pages read")
-                                }
-                            }
-                        }
-                    }
-                        item(key = "plan-extras") {
-                            val xp = activePlan
-                            if (xp != null) {
-                                com.nur.quran.desktop.ui.planner.SuccessMetricsRow(pal = pal, plan = xp)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                val xov = PlannerEngine.getPlannerOverview(xp)
-                                com.nur.quran.desktop.ui.planner.ShareProgressRow(
-                                    pal = pal,
-                                    plan = xp,
-                                    completedCount = xov?.completedCount ?: 0
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                com.nur.quran.desktop.ui.planner.RevisionCtaCard(
-                                    pal = pal,
-                                    plan = xp,
-                                    chapters = planChapters(),
-                                    onAdoptRevision = { adoptPlan(it) }
-                                )
-                            }
-                        }
-                        item(key = "weekly") {
-                            val summaries = remember(plan, refresh) {
-                                PlannerEngine.getWeeklySummary(plan)
-                            }
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SectionTitle(pal = pal, text = "Weekly summary")
-                            summaries.forEach { week ->
-                                val pct = if (week.totalUnits > 0) {
-                                    (week.completedUnits * 100) / week.totalUnits
-                                } else 0
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = week.label,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = pal.ink,
-                                        fontFamily = fontBody
-                                    )
-                                    Text(
-                                        text = "${week.completedUnits}/${week.totalUnits} pages · $pct%",
-                                        fontSize = 13.sp,
-                                        color = pal.inkMuted,
-                                        fontFamily = fontBody
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    items(plan.assignments, key = { "assign-${it.dayNumber}" }) { assignment ->
-                        val status = PlannerEngine.getAssignmentStatus(plan, assignment)
-                        Surface(
-                            onClick = {
-                                if (assignment.unitType == "surah") {
-                                    val surahId = assignment.items.firstOrNull()
-                                        ?.rangeValue?.toIntOrNull()
-                                    if (surahId != null) onOpenSurah(surahId, null)
-                                    else onOpenPage(assignment.pageStart)
-                                } else {
-                                    onOpenPage(assignment.pageStart)
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            color = pal.cream,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Day ${assignment.dayNumber}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = pal.teal,
-                                    fontFamily = fontBody,
-                                    modifier = Modifier.width(56.dp)
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = assignment.title,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = pal.ink,
-                                        fontFamily = fontBody
-                                    )
-                                    Text(
-                                        text = assignment.date,
-                                        fontSize = 12.sp,
-                                        color = pal.inkMuted,
-                                        fontFamily = fontBody
-                                    )
-                                }
-                                StatusPill(pal = pal, status = status)
-                            }
-                        }
-                    }
                     }
                 }
             }
