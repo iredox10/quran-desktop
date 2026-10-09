@@ -150,6 +150,11 @@ fun App() {
                 onDismiss = {
                     showSettings = false
                     settingsTick++
+                },
+                onOpenDownloads = {
+                    showSettings = false
+                    settingsTick++
+                    route = DesktopRoutes.DOWNLOADS
                 }
             )
         }

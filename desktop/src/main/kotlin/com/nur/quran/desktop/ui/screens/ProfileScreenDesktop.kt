@@ -83,7 +83,7 @@ import javax.swing.JFileChooser
 
 private val RECITER_OPTIONS = listOf("Mishary Alafasy", "Abdul Basit", "Saad Al-Ghamdi")
 private val TRANSLATION_OPTIONS = listOf("Saheeh International", "Haleem", "Hausa Gumi")
-private val MUSHAF_OPTIONS = listOf("Uthmani", "Indopak")
+private val MUSHAF_OPTIONS = com.nur.quran.shared.Mushaf.ALL.map { it.id }
 
 private const val PROFILE_PREFS_NODE = "profile_prefs"
 private const val KEY_WEEKLY_GOAL_MIN = "weekly_goal_min"
@@ -749,7 +749,8 @@ private fun ProfileSettingsGroupsDesktop(
                 HorizontalDivider(color = pal.boneDark.copy(alpha = 0.6f), thickness = 1.dp)
                 CyclingSettingRow(
                     pal = pal, fontBody = fontBody,
-                    icon = Icons.Filled.MenuBook, label = "Mushaf", detail = mushaf,
+                    icon = Icons.Filled.MenuBook, label = "Mushaf",
+                    detail = com.nur.quran.shared.Mushaf.fromId(mushaf).name,
                     onClick = {
                         mushaf = nextOption(mushaf, MUSHAF_OPTIONS)
                         PrefsCache.putMushaf(mushaf)

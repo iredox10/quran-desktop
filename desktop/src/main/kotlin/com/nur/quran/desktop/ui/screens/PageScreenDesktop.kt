@@ -137,14 +137,20 @@ fun PageScreenDesktop(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // List/Mushaf toggle (pills mirror the browse mode pills in App.kt).
-                var showMushaf by remember { mutableStateOf(false) }
+                var showMushaf by remember { mutableStateOf(com.nur.quran.desktop.PrefsCache.getMushafMode()) }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    ViewPill(label = "Verses", selected = !showMushaf, pal = pal) { showMushaf = false }
-                    ViewPill(label = "Mushaf page", selected = showMushaf, pal = pal) { showMushaf = true }
+                    ViewPill(label = "Verses", selected = !showMushaf, pal = pal) {
+                        showMushaf = false
+                        com.nur.quran.desktop.PrefsCache.putMushafMode(false)
+                    }
+                    ViewPill(label = "Mushaf page", selected = showMushaf, pal = pal) {
+                        showMushaf = true
+                        com.nur.quran.desktop.PrefsCache.putMushafMode(true)
+                    }
                 }
 
                 if (!showMushaf) {

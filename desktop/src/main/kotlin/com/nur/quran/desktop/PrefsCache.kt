@@ -12,6 +12,7 @@ object PrefsCache {
     private const val KEY_RECITER = "reciter"
     private const val KEY_TRANSLATION = "translation"
     private const val KEY_MUSHAF = "mushaf"
+    private const val KEY_MUSHAF_MODE = "mushaf_mode"
     private const val KEY_FONT = "font"
     private const val KEY_TAJWEED_ENABLED = "tajweed_enabled"
     private const val KEY_LAST_CHAPTER_ID = "last_chapter_id"
@@ -87,6 +88,13 @@ object PrefsCache {
     fun putLineHeightMult(value: Float) = prefs.putFloat(KEY_LINE_HEIGHT_MULT, value)
     fun getReaderTranslationEnabled(): Boolean = prefs.getBoolean(KEY_TRANSLATION_ENABLED, true)
     fun putReaderTranslationEnabled(value: Boolean) = prefs.putBoolean(KEY_TRANSLATION_ENABLED, value)
+
+    /**
+     * "3D Mushaf Mode" (web parity): page-by-page reading like a physical
+     * mushaf — drives the Page reader's Verses / Mushaf-page view toggle.
+     */
+    fun getMushafMode(): Boolean = prefs.getBoolean(KEY_MUSHAF_MODE, false)
+    fun putMushafMode(value: Boolean) = prefs.putBoolean(KEY_MUSHAF_MODE, value)
 
     /** Clears all cached desktop prefs (used by tests / reset-to-defaults). */
     fun clear() = prefs.clear()
