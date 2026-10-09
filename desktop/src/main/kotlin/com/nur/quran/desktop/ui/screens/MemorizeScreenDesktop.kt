@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Info
@@ -49,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,6 +65,8 @@ import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.shared.HifdhGoal
+import com.nur.quran.shared.HifdhQueue
+import com.nur.quran.shared.HifdhQueues
 import com.nur.quran.shared.HifdhStore
 import java.time.Instant
 import java.time.LocalDate
@@ -91,6 +96,8 @@ fun MemorizeScreenDesktop(
     var showGoalDialog by remember { mutableStateOf(false) }
     var breakdownFor by remember { mutableStateOf<Int?>(null) }
     var testFor by remember { mutableStateOf<Int?>(null) }
+    var showSurahsDialog by remember { mutableStateOf(false) }
+    var showAyahsDialog by remember { mutableStateOf(false) }
     val nowMs = remember(tick) { System.currentTimeMillis() }
     val history = remember(tick) { HifdhStore.loadHifdhHistory() }
     val goals = remember(tick) { HifdhStore.loadHifdhGoals() }
@@ -153,6 +160,19 @@ fun MemorizeScreenDesktop(
             if (days <= 0) "0m ago" else "${days}d ago"
         }
     }
+    // CHUNK D — Sabaq/Sabqi/Manzil queues (web section 5 parity). Requires
+    // lastSession (declared above) for the Sabqi classification.
+    val queueSplit = remember(history, lastSession) {
+        HifdhQueues.splitQueue(history, lastSession?.chapterId)
+    }
+    val dueByQueue = remember(queueSplit, history, nowMs) {
+        HifdhQueue.entries.associateWith { q ->
+            HifdhQueues.dueInQueue(queueSplit[q].orEmpty(), history, nowMs)
+        }
+    }
+    fun mostDueIn(keys: List<String>): Int? =
+        keys.groupingBy { it.substringBefore(":").toIntOrNull() }
+            .eachCount().maxByOrNull { it.value }?.key
     // Web stat strip: fully-memorized surahs / 114, ayahs / 6236, goal %.
     val memorizedSurahCount = remember(memBySurah) {
         memBySurah.count { (surahId, mem) ->
@@ -161,6 +181,24 @@ fun MemorizeScreenDesktop(
         }
     }
     val goalPct = ((totalMemorized * 100f) / 6236f).toInt().coerceIn(0, 100)
+    // CHUNK D — Global list sources for the SURAH / AYAH stat modals.
+    val fullyMemorized = remember(memBySurah) {
+        memBySurah.mapNotNull { (surahId, mem) ->
+            val id = surahId ?: return@mapNotNull null
+            val ch = QuranStore.chapter(id) ?: return@mapNotNull null
+            if (ch.versesCount > 0 && mem >= ch.versesCount) ch else null
+        }.sortedBy { it.id }
+    }
+    val ayahsBySurah = remember(history) {
+        history.keys.mapNotNull { key ->
+            val parts = key.split(":")
+            val s = parts.getOrNull(0)?.toIntOrNull()
+            val v = parts.getOrNull(1)?.toIntOrNull()
+            if (s == null || v == null) null else s to v
+        }.groupBy({ it.first }, { it.second })
+            .mapValues { (_, verses) -> verses.distinct().sorted() }
+            .toSortedMap()
+    }
     val filteredChapters = remember(chapters, searchQuery) {
         val q = searchQuery.trim()
         if (q.isEmpty()) chapters
@@ -381,7 +419,8 @@ fun MemorizeScreenDesktop(
                             label = "SURAH",
                             fontUi = fontUi,
                             fontBody = fontBody,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            onClick = { showSurahsDialog = true }
                         )
                         Box(
                             modifier = Modifier.width(1.dp).height(32.dp)
@@ -393,7 +432,8 @@ fun MemorizeScreenDesktop(
                             label = "AYAH",
                             fontUi = fontUi,
                             fontBody = fontBody,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            onClick = { showAyahsDialog = true }
                         )
                         Box(
                             modifier = Modifier.width(1.dp).height(32.dp)
@@ -411,62 +451,121 @@ fun MemorizeScreenDesktop(
                 }
             }
 
-            // ── Primary actions: review dues + test ──
+            // ── CHUNK D — Sabaq/Sabqi/Manzil review cards + Test/Set Goal ──
             item(key = "actions") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            mostDueSurahId?.let { onOpenHifdhReader(it) }
-                        },
-                        enabled = dueCount > 0,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = pal.teal,
-                            contentColor = Color.White,
-                            disabledContainerColor = pal.bone,
-                            disabledContentColor = pal.inkMuted
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f).height(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.School,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (dueCount > 0) "Review due ($dueCount)" else "Nothing due",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontUi
-                        )
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    HifdhQueue.entries.forEach { queue ->
+                        val total = queueSplit[queue].orEmpty()
+                        val due = dueByQueue[queue].orEmpty()
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = pal.cream,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = HifdhQueues.queueLabel(queue),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = pal.ink,
+                                        fontFamily = fontUi
+                                    )
+                                    Text(
+                                        text = "${due.size} due",
+                                        fontSize = 12.sp,
+                                        color = pal.gold,
+                                        fontFamily = fontBody
+                                    )
+                                    Text(
+                                        text = "${total.size} total",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp,
+                                        color = pal.inkMuted,
+                                        fontFamily = fontBody
+                                    )
+                                }
+                                Button(
+                                    onClick = {
+                                        testFor = mostDueIn(due.ifEmpty { total })
+                                            ?: mostDueSurahId
+                                            ?: goals.firstOrNull()?.targetId ?: 114
+                                    },
+                                    enabled = total.isNotEmpty(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = pal.teal,
+                                        contentColor = Color.White,
+                                        disabledContainerColor = pal.bone,
+                                        disabledContentColor = pal.inkMuted
+                                    ),
+                                    shape = RoundedCornerShape(14.dp),
+                                    modifier = Modifier.height(40.dp)
+                                ) {
+                                    Text(
+                                        text = "Review",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = fontUi
+                                    )
+                                }
+                            }
+                        }
                     }
-                    Button(
-                        onClick = {
-                            testFor = mostDueSurahId ?: goals.firstOrNull()?.targetId ?: 114
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = pal.tealSoft,
-                            contentColor = pal.teal
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f).height(48.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Quiz,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Test me",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontUi
-                        )
+                        Button(
+                            onClick = {
+                                testFor = mostDueSurahId ?: 114
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = pal.tealSoft,
+                                contentColor = pal.teal
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.weight(1f).height(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Quiz,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Test me",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = fontUi
+                            )
+                        }
+                        Button(
+                            onClick = { showGoalDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = pal.gold,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier.weight(1f).height(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.EmojiEvents,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Set Goal",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = fontUi
+                            )
+                        }
                     }
                 }
                 if (testFor != null) {
@@ -718,6 +817,93 @@ fun MemorizeScreenDesktop(
         )
     }
 
+    // ── CHUNK D — Memorized Surahs global list (web section 8) ──
+    if (showSurahsDialog) {
+        Dialog(onCloseRequest = { showSurahsDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = pal.white,
+                modifier = Modifier.heightIn(max = 520.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Memorized Surahs",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = pal.ink,
+                            fontFamily = fontUi,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { showSurahsDialog = false },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Close",
+                                tint = pal.inkMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (fullyMemorized.isEmpty()) {
+                        Text(
+                            text = "No surahs memorized completely yet.",
+                            fontSize = 13.sp,
+                            color = pal.inkMuted,
+                            fontFamily = fontBody
+                        )
+                    } else {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(fullyMemorized, key = { it.id }) { ch ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(pal.green.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = ch.id.toString(),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = pal.green,
+                                            fontFamily = fontBody
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = ch.nameSimple,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = pal.ink,
+                                        fontFamily = fontUi,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Filled.CheckCircle,
+                                        contentDescription = null,
+                                        tint = pal.green,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // ── Per-surah breakdown dialog (hosted at screen level) ──
     breakdownFor?.let { bChapter ->
         val bMem = memBySurah[bChapter] ?: 0
@@ -739,6 +925,120 @@ fun MemorizeScreenDesktop(
             }
         )
     }
+
+    // ── CHUNK D — Memorized Ayahs global list (web section 9) ──
+    if (showAyahsDialog) {
+        Dialog(onCloseRequest = { showAyahsDialog = false }) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = pal.white,
+                modifier = Modifier.heightIn(max = 520.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Memorized Ayahs",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = pal.ink,
+                            fontFamily = fontUi,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { showAyahsDialog = false },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Close",
+                                tint = pal.inkMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (ayahsBySurah.isEmpty()) {
+                        Text(
+                            text = "No ayahs memorized yet.",
+                            fontSize = 13.sp,
+                            color = pal.inkMuted,
+                            fontFamily = fontBody
+                        )
+                    } else {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            ayahsBySurah.forEach { (surahId, verses) ->
+                                item(key = "ayahs-$surahId") {
+                                    Column {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = QuranStore.chapter(surahId)?.nameSimple
+                                                    ?: "Surah $surahId",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = pal.ink,
+                                                fontFamily = fontUi,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .background(pal.bone),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "${verses.size} ayahs",
+                                                    fontSize = 11.sp,
+                                                    color = pal.inkMid,
+                                                    fontFamily = fontBody,
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 8.dp,
+                                                        vertical = 4.dp
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Verses: ${collapseRanges(verses)}",
+                                            fontSize = 12.sp,
+                                            color = pal.inkMid,
+                                            fontFamily = fontBody
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun collapseRanges(verses: List<Int>): String {
+    if (verses.isEmpty()) return ""
+    val sorted = verses.distinct().sorted()
+    val parts = mutableListOf<String>()
+    var start = sorted[0]
+    var prev = sorted[0]
+    for (i in 1 until sorted.size) {
+        val v = sorted[i]
+        if (v == prev + 1) {
+            prev = v
+        } else {
+            parts.add(if (start == prev) "$start" else "$start-$prev")
+            start = v
+            prev = v
+        }
+    }
+    parts.add(if (start == prev) "$start" else "$start-$prev")
+    return parts.joinToString(", ")
 }
 
 @Composable
@@ -749,10 +1049,11 @@ private fun StatCell(
     fontUi: FontFamily,
     fontBody: FontFamily,
     accent: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
