@@ -59,7 +59,32 @@ object HifdhStore {
         runCatching { prefs.flush() }
     }
 
+    /**
+     * Whole-surah memorized flags (web `memorizedSurahs`): the reader's Award
+     * button toggles these independently of the per-ayah FSRS history.
+     */
+    fun loadMemorizedSurahs(): Set<Int> {
+        val raw = prefs.get(KEY_MEMORIZED_SURAHS, null) ?: return emptySet()
+        return runCatching {
+            json.decodeFromString(SetSerializer(Int.serializer()), raw)
+        }.getOrNull() ?: emptySet()
+    }
+
+    fun saveMemorizedSurahs(ids: Set<Int>) {
+        prefs.put(KEY_MEMORIZED_SURAHS, json.encodeToString(SetSerializer(Int.serializer()), ids))
+        runCatching { prefs.flush() }
+    }
+
+    fun toggleMemorizedSurah(chapterId: Int): Boolean {
+        val ids = loadMemorizedSurahs().toMutableSet()
+        val nowOn = !ids.contains(chapterId)
+        if (nowOn) ids.add(chapterId) else ids.remove(chapterId)
+        saveMemorizedSurahs(ids)
+        return nowOn
+    }
+
     private const val KEY_HISTORY = "hifdh_history"
     private const val KEY_TRANSITION_LINKS = "transition_links"
     private const val KEY_GOALS = "hifdh_goals"
+    private const val KEY_MEMORIZED_SURAHS = "memorized_surahs"
 }
