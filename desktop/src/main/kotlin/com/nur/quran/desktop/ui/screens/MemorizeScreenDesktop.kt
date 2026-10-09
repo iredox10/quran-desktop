@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.QuranStore
+import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.hifdh.HifdhBreakdownDialog
 import com.nur.quran.desktop.ui.hifdh.HifdhGoalDialog
 import com.nur.quran.desktop.ui.hifdh.HifdhTestDialog
@@ -129,6 +130,37 @@ fun MemorizeScreenDesktop(
             .eachCount()
             .maxByOrNull { it.value }?.key
     }
+    // CHUNK C — Continue card source: most recent memorizing session that has a
+    // valid chapter (Session has date only, so the last logged entry wins).
+    val lastSession = remember(tick) {
+        SessionStore.all()
+            .filter { s ->
+                s.type == "memorizing" && s.chapterId != null &&
+                    QuranStore.chapter(s.chapterId) != null
+            }
+            .lastOrNull()
+    }
+    val lastSessionChapter = remember(lastSession) {
+        lastSession?.chapterId?.let { QuranStore.chapter(it) }
+    }
+    // Web-exact relative label adapted to date granularity: same-day shows
+    // "0m ago" (web shows "0m ago" when mins == 0, no 'just now' edge).
+    val lastSessionAgo = remember(lastSession) {
+        if (lastSession == null) "" else {
+            val day = runCatching { LocalDate.parse(lastSession.date) }.getOrNull()
+            val today = LocalDate.now()
+            val days = if (day == null) 0 else ChronoUnit.DAYS.between(day, today).coerceAtLeast(0)
+            if (days <= 0) "0m ago" else "${days}d ago"
+        }
+    }
+    // Web stat strip: fully-memorized surahs / 114, ayahs / 6236, goal %.
+    val memorizedSurahCount = remember(memBySurah) {
+        memBySurah.count { (surahId, mem) ->
+            val total = surahId?.let { QuranStore.chapter(it)?.versesCount } ?: 0
+            total > 0 && mem >= total
+        }
+    }
+    val goalPct = ((totalMemorized * 100f) / 6236f).toInt().coerceIn(0, 100)
     val filteredChapters = remember(chapters, searchQuery) {
         val q = searchQuery.trim()
         if (q.isEmpty()) chapters
@@ -193,117 +225,50 @@ fun MemorizeScreenDesktop(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // ── Goal card: first goal, or "Set a goal" zero state ──
-            item(key = "goal") {
-                val goal = goals.firstOrNull()
-                if (goal == null) {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = pal.cream),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark),
-                        modifier = Modifier.fillMaxWidth().clickable { showGoalDialog = true }
+            // ── CHUNK C — Continue card (web §1): last memorizing session only ──
+            val continueId = lastSession?.chapterId
+            if (continueId != null) {
+                item(key = "continue") {
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = pal.cream,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
+                        modifier = Modifier.fillMaxWidth()
+                            .clickable { onOpenHifdhReader(continueId) }
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(18.dp),
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(pal.bone),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.EmojiEvents,
-                                    contentDescription = null,
-                                    tint = pal.inkMid,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Set a goal",
+                                    text = "Continue: ${lastSessionChapter?.nameSimple ?: "Surah $continueId"}",
                                     fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = pal.ink,
                                     fontFamily = fontUi
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Plan your memorization journey",
-                                    fontSize = 12.sp,
+                                    text = "Last practiced $lastSessionAgo",
+                                    fontSize = 11.sp,
                                     color = pal.inkMuted,
                                     fontFamily = fontBody
                                 )
                             }
-                            Button(
-                                onClick = { showGoalDialog = true },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = pal.gold,
-                                    contentColor = Color.White
-                                )
-                            ) {
-                                Text("Set goal", fontWeight = FontWeight.Bold, fontFamily = fontUi)
-                            }
-                        }
-                    }
-                } else {
-                    val target = remember(goal.targetId) { QuranStore.chapter(goal.targetId) }
-                    val memCount = memBySurah[goal.targetId] ?: 0
-                    val totalVerses = target?.versesCount ?: 1
-                    val pct = (memCount * 100 / totalVerses).coerceIn(0, 100)
-                    val daysLeft = goal.daysLeft
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = pal.cream),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.5.dp, pal.gold.copy(alpha = 0.4f)
-                        ),
-                        modifier = Modifier.fillMaxWidth().clickable { showGoalDialog = true }
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(18.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                            Spacer(modifier = Modifier.width(12.dp))
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
+                                    .size(44.dp)
                                     .clip(CircleShape)
-                                    .background(pal.goldSoft),
+                                    .background(pal.gold),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "$pct%",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = pal.gold,
-                                    fontFamily = fontBody
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Memorize ${target?.nameSimple ?: "Surah ${goal.targetId}"}",
+                                    text = "▶",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = pal.ink,
-                                    fontFamily = fontUi
-                                )
-                                Text(
-                                    text = if (daysLeft > 0) "$daysLeft days left • $memCount / $totalVerses ayahs"
-                                    else if (pct >= 100) "Completed ✓ • $memCount / $totalVerses ayahs"
-                                    else "Due now! • $memCount / $totalVerses ayahs",
-                                    fontSize = 12.sp,
-                                    color = if (daysLeft <= 0 && pct < 100) Color(0xFFEF4444) else pal.inkMuted,
-                                    fontFamily = fontBody
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                LinearProgressIndicator(
-                                    progress = { pct / 100f },
-                                    modifier = Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(3.dp)),
-                                    color = pal.gold,
-                                    trackColor = pal.bone
+                                    color = Color.White
                                 )
                             }
                         }
@@ -311,7 +276,94 @@ fun MemorizeScreenDesktop(
                 }
             }
 
-            // ── Breakdown strip: memorized / due now / strong ──
+            // ── Active Goals list (web MemorizeIndex section 6) ──
+            if (goals.isNotEmpty()) {
+                item(key = "active_goals_header") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier.size(8.dp).clip(RoundedCornerShape(2.dp))
+                                .background(pal.gold)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Active Goals",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = pal.ink,
+                            fontFamily = fontUi
+                        )
+                    }
+                }
+                items(goals, key = { it.id }) { goal ->
+                    val chapter = QuranStore.chapter(goal.targetId)
+                    val curMem = memBySurah[goal.targetId] ?: 0
+                    val total = chapter?.versesCount ?: 0
+                    val denom = if (total > 0) total else 1
+                    val pct = (curMem * 100 / denom).coerceIn(0, 100)
+                    val daysLeft = goal.daysLeft
+                    val resumeAyah = (1..total).firstOrNull { ayah ->
+                        !history.containsKey("${goal.targetId}:$ayah")
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = pal.cream,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
+                        modifier = Modifier.fillMaxWidth().clickable { showGoalDialog = true }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Memorize ${chapter?.nameSimple ?: "Target"}",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = pal.ink,
+                                    fontFamily = fontUi
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (daysLeft > 0) "$daysLeft days left • $curMem / $denom ayahs"
+                                    else if (pct >= 100) "Completed ✓ • $curMem / $denom ayahs"
+                                    else "Due now! • $curMem / $denom ayahs",
+                                    fontSize = 11.sp,
+                                    color = if (daysLeft <= 0 && pct < 100) Color(0xFFEF4444) else pal.inkMid,
+                                    fontFamily = fontBody
+                                )
+                                if (resumeAyah != null && pct < 100) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Continue from Ayah $resumeAyah",
+                                        fontSize = 11.sp,
+                                        color = pal.gold,
+                                        fontFamily = fontBody
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "$curMem / $denom",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = pal.ink,
+                                    fontFamily = fontUi
+                                )
+                                Text(
+                                    text = "Ayahs",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = pal.inkMuted,
+                                    fontFamily = fontBody
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── CHUNK C — Web stat strip: SURAH / AYAH / GOAL (3 cells) ──
             item(key = "breakdown") {
                 Surface(
                     shape = RoundedCornerShape(18.dp),
@@ -325,8 +377,8 @@ fun MemorizeScreenDesktop(
                     ) {
                         StatCell(
                             pal = pal,
-                            countText = "$totalMemorized",
-                            label = "MEMORIZED",
+                            countText = "$memorizedSurahCount / 114",
+                            label = "SURAH",
                             fontUi = fontUi,
                             fontBody = fontBody,
                             modifier = Modifier.weight(1f)
@@ -337,9 +389,8 @@ fun MemorizeScreenDesktop(
                         )
                         StatCell(
                             pal = pal,
-                            countText = "$dueCount",
-                            label = "DUE NOW",
-                            accent = dueCount > 0,
+                            countText = "$totalMemorized / 6236",
+                            label = "AYAH",
                             fontUi = fontUi,
                             fontBody = fontBody,
                             modifier = Modifier.weight(1f)
@@ -350,8 +401,8 @@ fun MemorizeScreenDesktop(
                         )
                         StatCell(
                             pal = pal,
-                            countText = "$strongCount",
-                            label = "STRONG",
+                            countText = "$goalPct%",
+                            label = "GOAL",
                             fontUi = fontUi,
                             fontBody = fontBody,
                             modifier = Modifier.weight(1f)
