@@ -3,6 +3,7 @@ package com.nur.quran.desktop.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,14 +17,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -47,7 +57,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,6 +82,7 @@ import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.desktop.ui.hifdh.HifdhBreakdownDialog
+import com.nur.quran.desktop.ui.library.AddToCollectionDialog
 import com.nur.quran.shared.FsrsRating
 import com.nur.quran.shared.FsrsScheduler
 import com.nur.quran.shared.HifdhHistoryEntry
@@ -121,6 +139,23 @@ fun HifdhReaderScreenDesktop(
     // of the persisted bookmark set so icons refresh right after a toggle.
     var bookmarkTick by remember(chapterId) { mutableStateOf(0) }
     val bookmarkedKeys = remember(bookmarkTick) { BookmarkStore.all() }
+
+    // ── Bottom control bar state (web Memorization parity) ──
+    // Batch step size: 1,3,5,10 verses, or -1 meaning "Page" (all verses that
+    // share the current verse's pageNumber).
+    var batch by remember(chapterId) { mutableStateOf(1) }
+    var surahMemTick by remember(chapterId) { mutableStateOf(0) }
+    var showCollections by remember { mutableStateOf(false) }
+    var showAudioSettings by remember { mutableStateOf(false) }
+
+    // Count consecutive verses from `index` that share the current page (min 1).
+    fun pageStep(): Int {
+        val page = queue.getOrNull(index)?.pageNumber ?: return 1
+        var n = 1
+        while (index + n < queue.size && queue[index + n].pageNumber == page) n++
+        return n
+    }
+    fun step(): Int = if (batch == -1) pageStep() else batch
 
     // ── Session timing: log "memorizing" minutes exactly once ──────────────
     val sessionStart = remember(chapterId) { System.currentTimeMillis() }
@@ -190,6 +225,12 @@ fun HifdhReaderScreenDesktop(
         }
     }
 
+    // ── Keyboard navigation (web Memorization parity) ──
+    // Focus the root so arrow keys drive prev/next. Disabled while any
+    // dialog/popover is open (they take over focus).
+    val focusRequester = remember(chapterId) { FocusRequester() }
+    LaunchedEffect(chapterId) { focusRequester.requestFocus() }
+
     if (showBreakdown) {
         val memCount = history.values.count { it.card != null }
         HifdhBreakdownDialog(
@@ -203,7 +244,40 @@ fun HifdhReaderScreenDesktop(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(pal.cream)) {
+    if (showCollections) {
+        val cur = queue.getOrNull(index)
+        if (cur != null) AddToCollectionDialog(
+            pal = pal,
+            verseKey = cur.verseKey,
+            onDismiss = { showCollections = false }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(pal.cream)
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { ev ->
+                if (ev.type != KeyEventType.KeyDown) return@onKeyEvent false
+                if (showBreakdown || showCollections || showAudioSettings) return@onKeyEvent false
+                when (ev.key) {
+                    // RTL layout: ArrowLeft advances (next), ArrowRight goes back.
+                    Key.DirectionLeft -> {
+                        val s = step()
+                        if (index + s < queue.size) index += s
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        val s = step()
+                        if (index > 0) index = (index - s).coerceAtLeast(0)
+                        true
+                    }
+                    else -> false
+                }
+            }
+    ) {
         // ── Top bar ──
         Surface(modifier = Modifier.fillMaxWidth(), color = pal.white, shadowElevation = 1.dp) {
             Row(
@@ -611,6 +685,154 @@ fun HifdhReaderScreenDesktop(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
+
+            // ── Bottom control bar (web Memorization parity) ──
+            val curVerse = queue.getOrNull(index)
+            if (curVerse != null) {
+                // Info row: Surah name + mark-surah-memorized award + page number.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Surah ${chapter?.nameSimple ?: "Surah $chapterId"}",
+                        fontFamily = fontUi,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = pal.teal
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    val surahOn = remember(surahMemTick) { HifdhStore.loadMemorizedSurahs().contains(chapterId) }
+                    IconButton(
+                        onClick = { HifdhStore.toggleMemorizedSurah(chapterId); surahMemTick++ },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.MilitaryTech,
+                            contentDescription = "Mark surah memorized",
+                            tint = if (surahOn) pal.green else pal.inkMuted,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Page ${curVerse.pageNumber}",
+                        fontFamily = fontBody,
+                        fontSize = 11.sp,
+                        color = pal.inkMuted
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                // Controls row: play/pause, batch cycle, add-to-collection,
+                // audio-settings popover, prev/next.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isPlayingThis = AudioEngine.current?.verseKey == curVerse.verseKey && AudioEngine.playing
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(if (isPlayingThis) pal.gold else pal.teal)
+                            .clickable {
+                                if (isPlayingThis) AudioEngine.stop()
+                                else AudioEngine.playVerse(curVerse.verseKey)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isPlayingThis) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (isPlayingThis) "Pause" else "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // Batch size cycle: 1 → 3 → 5 → 10 → Page → 1.
+                    val batchLabels = listOf("1", "3", "5", "10", "Page")
+                    val batchLabel = if (batch == -1) "Page"
+                    else batchLabels[batchLabels.indexOfFirst { it == batch.toString() }.takeIf { it >= 0 } ?: 0]
+                    Button(
+                        onClick = { batch = when (batch) { 1 -> 3; 3 -> 5; 5 -> 10; 10 -> -1; else -> 1 } },
+                        colors = ButtonDefaults.buttonColors(containerColor = pal.cream, contentColor = pal.inkMid),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.height(42.dp)
+                    ) {
+                        Icon(Icons.Filled.Layers, null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(batchLabel, fontFamily = fontUi, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = { showCollections = true }, modifier = Modifier.size(42.dp)) {
+                        Icon(Icons.Filled.PlaylistAdd, "Add to collection", tint = pal.inkMid, modifier = Modifier.size(18.dp))
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    // Audio settings popover: repeat mode + sleep timer.
+                    Box {
+                        IconButton(
+                            onClick = { showAudioSettings = !showAudioSettings },
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Icon(Icons.Filled.Tune, "Audio settings", tint = pal.inkMid, modifier = Modifier.size(18.dp))
+                        }
+                        if (showAudioSettings) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = pal.white,
+                                border = BorderStroke(1.dp, pal.boneDark),
+                                shadowElevation = 8.dp,
+                                modifier = Modifier.padding(top = 44.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Text("Repeat", fontFamily = fontUi, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)
+                                    val repLabels = mapOf("off" to "Off", "ayah" to "Ayah", "chapter" to "Chapter")
+                                    Button(
+                                        onClick = {
+                                            AudioEngine.repeatMode = when (AudioEngine.repeatMode) {
+                                                "off" -> "ayah"; "ayah" -> "chapter"; else -> "off"
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = pal.cream, contentColor = pal.ink),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(repLabels[AudioEngine.repeatMode] ?: "Off", fontFamily = fontUi, fontSize = 12.sp)
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("Sleep timer", fontFamily = fontUi, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)
+                                    val sleepOpts = listOf(0, 15, 30, 60)
+                                    Button(
+                                        onClick = {
+                                            val i = sleepOpts.indexOf(AudioEngine.sleepMinutes)
+                                            AudioEngine.sleepMinutes = sleepOpts[(i + 1) % sleepOpts.size]
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = pal.cream, contentColor = pal.ink),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(if (AudioEngine.sleepMinutes == 0) "Off" else "${AudioEngine.sleepMinutes}m", fontFamily = fontUi, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = { if (index > 0) index-- }, enabled = index > 0, modifier = Modifier.size(42.dp)) {
+                        Icon(Icons.Filled.ChevronLeft, "Previous", tint = pal.inkMid, modifier = Modifier.size(20.dp))
+                    }
+                    IconButton(
+                        onClick = { val s = step(); if (index + s < queue.size) index += s },
+                        enabled = index < queue.size - 1,
+                        modifier = Modifier.size(42.dp)
+                    ) {
+                        Icon(Icons.Filled.ChevronRight, "Next", tint = pal.inkMid, modifier = Modifier.size(20.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 }
