@@ -1,6 +1,7 @@
 package com.nur.quran.desktop.ui.hifdh
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,17 +39,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.nur.quran.desktop.PrefsCache
+import com.nur.quran.desktop.data.DeskVerse
 import com.nur.quran.desktop.data.QuranStore
+import com.nur.quran.desktop.ui.components.verseDisplayArabic
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
+import com.nur.quran.shared.FsrsRating
+import com.nur.quran.shared.FsrsScheduler
 import com.nur.quran.shared.HifdhGoal
+import com.nur.quran.shared.HifdhHistoryEntry
+import com.nur.quran.shared.HifdhQueues
 import com.nur.quran.shared.HifdhStore
 import java.time.LocalDate
 import java.time.ZoneId
@@ -419,13 +430,66 @@ fun HifdhTestDialog(
     pal: NurPalette,
     chapterId: Int,
     onDismiss: () -> Unit,
-    onOpenSurah: (Int, String?) -> Unit
+    onOpenSurah: (Int, String?) -> Unit,
+    queue: List<String>? = null,
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
     val fontArabic = rememberArabicFontFamily()
     val chapter = remember(chapterId) { QuranStore.chapter(chapterId) }
+    // Queue mode: explicit verse keys ("chapter:verse") tested in random
+    // order; null keeps the chapter-handoff behavior below.
+    // effectiveKeys = queue ?: derivedList.
+    val derivedKeys = remember(chapterId) {
+        QuranStore.versesOfChapter(chapterId).map { it.verseKey }
+    }
     val verseCount = chapter?.versesCount ?: QuranStore.versesOfChapter(chapterId).size
+    val queueMode = queue != null
+    val effectiveKeys = queue ?: derivedKeys
+    var testedKeys by remember(chapterId, queue) { mutableStateOf(setOf<String>()) }
+    var testKey by remember(chapterId, queue) { mutableStateOf(HifdhQueues.randomQueuePick(effectiveKeys)) }
+    var revealed by remember(chapterId, queue, testKey) { mutableStateOf(false) }
+    var resultRating by remember(chapterId, queue) { mutableStateOf<Int?>(null) }
+    val scheduler = remember { FsrsScheduler() }
+    fun currentVerse(): DeskVerse? = testKey?.let { k ->
+        val parts = k.split(":")
+        val verseChapter = parts.getOrNull(0)?.toIntOrNull() ?: chapterId
+        QuranStore.versesOfChapter(verseChapter).firstOrNull { v -> v.verseKey == k }
+    }
+    fun pickNext() {
+        val current = testKey
+        if (current != null) testedKeys = testedKeys + current
+        val remaining = effectiveKeys.filter { it !in testedKeys }
+        val next = HifdhQueues.randomQueuePick(remaining)
+        testKey = next
+        revealed = false
+        resultRating = null
+    }
+    fun grade(rating: Int) {
+        val key = testKey ?: return
+        val history = HifdhStore.loadHifdhHistory().toMutableMap()
+        val nowMs = System.currentTimeMillis()
+        val prevCard = history[key]?.card
+        val card = if (prevCard != null) {
+            scheduler.next(prevCard, nowMs, rating)
+        } else {
+            scheduler.next(scheduler.createEmptyCard(nowMs), nowMs, rating)
+        }
+        val strength = when (rating) {
+            FsrsRating.AGAIN -> "weak"
+            FsrsRating.EASY -> "strong"
+            else -> "medium"
+        }
+        history[key] = HifdhHistoryEntry(card = card, lastReviewed = nowMs, strength = strength)
+        HifdhStore.saveHifdhHistory(history)
+        val links = HifdhStore.loadTransitionLinks().toMutableSet()
+        when (rating) {
+            FsrsRating.AGAIN -> links.add(key)
+            FsrsRating.GOOD, FsrsRating.EASY -> links.remove(key)
+        }
+        HifdhStore.saveTransitionLinks(links)
+        resultRating = rating
+    }
 
     Dialog(onCloseRequest = onDismiss) {
         Surface(
@@ -458,7 +522,7 @@ fun HifdhTestDialog(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Self-Test",
+                                text = "Hifdh Test",
                                 fontSize = 17.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = pal.ink,
@@ -483,40 +547,143 @@ fun HifdhTestDialog(
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = pal.cream),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
-                    modifier = Modifier.fillMaxWidth()
+                val doneTitle = "Queue Completed!"
+                val doneBody = "You have no more ayahs to review in this queue right now."
+                if ((queueMode && effectiveKeys.isEmpty()) ||
+                    (queue == null && effectiveKeys.isEmpty()) ||
+                    (effectiveKeys.isNotEmpty() && testKey == null)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = pal.cream),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        if (chapter != null) {
-                            Text(
-                                text = chapter.nameArabic,
-                                fontSize = 28.sp,
-                                color = pal.gold,
-                                fontFamily = fontArabic
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (queue == null && effectiveKeys.isEmpty()) {
+                                Text(
+                                    text = "You haven't memorized any ayahs yet!",
+                                    fontSize = 13.sp,
+                                    fontStyle = FontStyle.Italic,
+                                    color = pal.inkMuted,
+                                    fontFamily = fontBody,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            } else {
+                                Text(
+                                    text = doneTitle,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = pal.ink,
+                                    fontFamily = fontUi,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = doneBody,
+                                    fontSize = 12.sp,
+                                    color = pal.inkMuted,
+                                    fontFamily = fontBody,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
                         }
-                        Text(
-                            text = "$verseCount verses",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = pal.inkMid,
-                            fontFamily = fontBody
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Recite from memory, then check each verse in the Surah reader.",
-                            fontSize = 12.sp,
-                            color = pal.inkMuted,
-                            fontFamily = fontBody,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
+                    }
+                } else {
+                    val verse = currentVerse()
+                    val pill = testKey?.split(":")?.let { parts ->
+                        "Surah ${parts.getOrNull(0) ?: chapterId}, Ayah ${parts.getOrNull(1) ?: ""}"
+                    } ?: "Surah $chapterId"
+                    val displayArabic = verse?.let { verseDisplayArabic(it, PrefsCache.getFont()) } ?: ""
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = pal.cream),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Surface(shape = RoundedCornerShape(100), color = pal.goldSoft) {
+                                Text(
+                                    text = pill,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = pal.gold,
+                                    fontFamily = fontUi,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Box(
+                                modifier = Modifier.fillMaxWidth()
+                                    .clickable { revealed = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = displayArabic,
+                                    fontSize = 22.sp,
+                                    color = pal.ink,
+                                    fontFamily = fontArabic,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth().alpha(if (revealed) 1f else 0.05f)
+                                )
+                                if (!revealed) {
+                                    Text(
+                                        text = "Tap to Reveal",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = pal.gold,
+                                        fontFamily = fontUi,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                }
+                            }
+                            if (revealed && resultRating == null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "How well did you remember this?",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = pal.ink,
+                                    fontFamily = fontUi,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                GradeButton("Complete Blank / Again", Color(0xFFDC2626), fontUi) { grade(FsrsRating.AGAIN) }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                GradeButton("Needed Prompt / Hard", Color(0xFFEA580C), fontUi) { grade(FsrsRating.HARD) }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                GradeButton("Hesitated / Good", Color(0xFF2563EB), fontUi) { grade(FsrsRating.GOOD) }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                GradeButton("Perfect / Easy", Color(0xFF16A34A), fontUi) { grade(FsrsRating.EASY) }
+                            }
+                            if (revealed && resultRating != null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                val passed = (resultRating ?: FsrsRating.AGAIN) >= FsrsRating.GOOD
+                                Text(
+                                    text = if (passed) "Mashallah! Keep it up." else "Keep practicing!",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (passed) pal.gold else Color(0xFFDC2626),
+                                    fontFamily = fontUi,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Button(
+                                    onClick = { pickNext() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = pal.gold),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                                ) {
+                                    Text("Test Another Ayah", color = Color.White, fontWeight = FontWeight.Bold, fontFamily = fontUi)
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -538,5 +705,25 @@ fun HifdhTestDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun GradeButton(
+    label: String,
+    color: Color,
+    fontUi: FontFamily,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = color.copy(alpha = 0.14f),
+            contentColor = color
+        ),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth().height(44.dp)
+    ) {
+        Text(label, fontWeight = FontWeight.SemiBold, fontFamily = fontUi)
     }
 }
