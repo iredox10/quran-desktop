@@ -1,5 +1,6 @@
 package com.nur.quran.desktop.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,11 +19,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -50,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.AudioEngine
+import com.nur.quran.desktop.data.BookmarkStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
@@ -62,6 +69,7 @@ import com.nur.quran.shared.FsrsRating
 import com.nur.quran.shared.FsrsScheduler
 import com.nur.quran.shared.HifdhHistoryEntry
 import com.nur.quran.shared.HifdhStore
+import com.nur.quran.shared.HtmlStripper
 
 /**
  * Desktop hifdh (memorization) review flow mirroring Android `HifdhReaderScreen`:
@@ -108,6 +116,11 @@ fun HifdhReaderScreenDesktop(
     var showBreakdown by remember(chapterId) { mutableStateOf(false) }
     var audioEnabled by remember(chapterId) { mutableStateOf(false) }
     val ratingCounts = remember(chapterId) { mutableStateMapOf<Int, Int>() }
+
+    // Per-verse action icons (bookmark / mark-memorized): a tick forces a recompute
+    // of the persisted bookmark set so icons refresh right after a toggle.
+    var bookmarkTick by remember(chapterId) { mutableStateOf(0) }
+    val bookmarkedKeys = remember(bookmarkTick) { BookmarkStore.all() }
 
     // ── Session timing: log "memorizing" minutes exactly once ──────────────
     val sessionStart = remember(chapterId) { System.currentTimeMillis() }
@@ -359,6 +372,42 @@ fun HifdhReaderScreenDesktop(
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
+            // ── Per-verse actions: bookmark + mark-memorized (mirrors web reader) ──
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val isBookmarked = verse.verseKey in bookmarkedKeys
+                val isMemorized = history.containsKey(verse.verseKey)
+                IconButton(onClick = { BookmarkStore.toggle(verse.verseKey); bookmarkTick++ }) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                        contentDescription = "Bookmark",
+                        tint = if (isBookmarked) pal.teal else pal.inkMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(onClick = {
+                    val nowMs = System.currentTimeMillis()
+                    val updated = history.toMutableMap()
+                    if (isMemorized) updated.remove(verse.verseKey)
+                    else updated[verse.verseKey] = HifdhHistoryEntry(
+                        card = scheduler.next(scheduler.createEmptyCard(nowMs), nowMs, FsrsRating.GOOD),
+                        lastReviewed = nowMs, strength = "strong")
+                    history = updated
+                    HifdhStore.saveHifdhHistory(updated)
+                    bookmarkTick++
+                }) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = "Mark memorized",
+                        tint = if (isMemorized) pal.green else pal.inkMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             // ── Test mode state (resets per verse index) ──
             // Display text routes through the shared mushaf pipeline (floating
             // marks stripped, single end marker) — same as the reader.
@@ -490,6 +539,25 @@ fun HifdhReaderScreenDesktop(
                     }
                 }
             }
+            }
+            // ── Translation card (bordered cream) — shown when reader translation pref on ──
+            if (PrefsCache.getReaderTranslationEnabled() && verse.translation.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = pal.cream),
+                    border = BorderStroke(1.dp, pal.boneDark),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = HtmlStripper.strip(verse.translation),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        fontSize = (13 * PrefsCache.getTranslationScale()).sp,
+                        lineHeight = (20 * PrefsCache.getTranslationScale()).sp,
+                        color = pal.inkMid,
+                        fontFamily = fontBody
+                    )
+                }
             }
             Spacer(modifier = Modifier.weight(1f))
             if (testMode) {
