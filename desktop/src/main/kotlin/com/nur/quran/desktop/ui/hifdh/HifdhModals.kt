@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Quiz
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -32,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,9 +44,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -451,6 +456,9 @@ fun HifdhTestDialog(
     var revealed by remember(chapterId, queue, testKey) { mutableStateOf(false) }
     var resultRating by remember(chapterId, queue) { mutableStateOf<Int?>(null) }
     val scheduler = remember { FsrsScheduler() }
+    // Weak-transition links (web parity): flagged on "Again" grades, cleared on
+    // Good/Easy — the same rules grade() persists below.
+    val transitionLinks = remember(chapterId, queue) { HifdhStore.loadTransitionLinks() }
     fun currentVerse(): DeskVerse? = testKey?.let { k ->
         val parts = k.split(":")
         val verseChapter = parts.getOrNull(0)?.toIntOrNull() ?: chapterId
@@ -573,6 +581,13 @@ fun HifdhTestDialog(
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                 )
                             } else {
+                                Icon(
+                                    imageVector = Icons.Filled.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF22C55E).copy(alpha = 0.8f),
+                                    modifier = Modifier.size(44.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = doneTitle,
                                     fontSize = 16.sp,
@@ -594,10 +609,29 @@ fun HifdhTestDialog(
                     }
                 } else {
                     val verse = currentVerse()
-                    val pill = testKey?.split(":")?.let { parts ->
-                        "Surah ${parts.getOrNull(0) ?: chapterId}, Ayah ${parts.getOrNull(1) ?: ""}"
+                    val pill = testKey?.let { k ->
+                        val parts = k.split(":")
+                        val cId = parts.getOrNull(0)?.toIntOrNull() ?: chapterId
+                        val name = QuranStore.chapter(cId)?.nameSimple ?: "Surah $cId"
+                        "$name, Ayah ${parts.getOrNull(1) ?: ""}"
                     } ?: "Surah $chapterId"
                     val displayArabic = verse?.let { verseDisplayArabic(it, PrefsCache.getFont()) } ?: ""
+                    // Weak transition: last 4 words of the previous ayah, shown
+                    // before reveal (web: "Start reciting from the end of the
+                    // previous Ayah").
+                    val weakTail = testKey?.let { k ->
+                        val parts = k.split(":")
+                        val cId = parts.getOrNull(0)?.toIntOrNull() ?: chapterId
+                        val ayahNum = parts.getOrNull(1)?.toIntOrNull() ?: 1
+                        if (k in transitionLinks && ayahNum > 1 && !revealed) {
+                            QuranStore.versesOfChapter(cId)
+                                .firstOrNull { it.verseNumber == ayahNum - 1 }
+                                ?.arabic
+                                ?.split(" ")
+                                ?.takeLast(4)
+                                ?.joinToString(" ")
+                        } else null
+                    }
                     Card(
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = pal.cream),
@@ -618,6 +652,73 @@ fun HifdhTestDialog(
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
                             }
+                            if (weakTail != null) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color(0xFFF97316).copy(alpha = 0.10f)
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp, Color(0xFFF97316).copy(alpha = 0.30f)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Refresh,
+                                                contentDescription = null,
+                                                tint = Color(0xFFF97316),
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "WEAK TRANSITION DETECTED",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                letterSpacing = 1.sp,
+                                                color = Color(0xFFF97316),
+                                                fontFamily = fontUi
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "Start reciting from the end of the previous Ayah:",
+                                            fontSize = 11.sp,
+                                            color = pal.inkMuted,
+                                            fontFamily = fontBody,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        CompositionLocalProvider(
+                                            LocalLayoutDirection provides LayoutDirection.Rtl
+                                        ) {
+                                            Text(
+                                                text = "...$weakTail",
+                                                fontSize = 20.sp,
+                                                color = pal.ink,
+                                                fontFamily = fontArabic,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Right
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Recite this ayah from memory, then tap to verify.",
+                                fontSize = 12.sp,
+                                color = pal.inkMuted,
+                                fontFamily = fontBody,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                             Spacer(modifier = Modifier.height(12.dp))
                             Box(
                                 modifier = Modifier.fillMaxWidth()
@@ -633,14 +734,33 @@ fun HifdhTestDialog(
                                     modifier = Modifier.fillMaxWidth().alpha(if (revealed) 1f else 0.05f)
                                 )
                                 if (!revealed) {
-                                    Text(
-                                        text = "Tap to Reveal",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
+                                    Surface(
+                                        shape = RoundedCornerShape(100),
                                         color = pal.gold,
-                                        fontFamily = fontUi,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                    )
+                                        shadowElevation = 4.dp
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(
+                                                horizontal = 14.dp, vertical = 6.dp
+                                            ),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Visibility,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(15.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Tap to Reveal",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                fontFamily = fontUi
+                                            )
+                                        }
+                                    }
                                 }
                             }
                             if (revealed && resultRating == null) {
@@ -654,17 +774,38 @@ fun HifdhTestDialog(
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                 )
                                 Spacer(modifier = Modifier.height(10.dp))
-                                GradeButton("Complete Blank / Again", Color(0xFFDC2626), fontUi) { grade(FsrsRating.AGAIN) }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                GradeButton("Needed Prompt / Hard", Color(0xFFEA580C), fontUi) { grade(FsrsRating.HARD) }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                GradeButton("Hesitated / Good", Color(0xFF2563EB), fontUi) { grade(FsrsRating.GOOD) }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                GradeButton("Perfect / Easy", Color(0xFF16A34A), fontUi) { grade(FsrsRating.EASY) }
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    GradeButton("Complete Blank / Again", Color(0xFFDC2626), fontUi, Modifier.weight(1f)) { grade(FsrsRating.AGAIN) }
+                                    GradeButton("Needed Prompt / Hard", Color(0xFFEA580C), fontUi, Modifier.weight(1f)) { grade(FsrsRating.HARD) }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    GradeButton("Hesitated / Good", Color(0xFF2563EB), fontUi, Modifier.weight(1f)) { grade(FsrsRating.GOOD) }
+                                    GradeButton("Perfect / Easy", Color(0xFF16A34A), fontUi, Modifier.weight(1f)) { grade(FsrsRating.EASY) }
+                                }
                             }
                             if (revealed && resultRating != null) {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 val passed = (resultRating ?: FsrsRating.AGAIN) >= FsrsRating.GOOD
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (passed) Color(0xFF22C55E).copy(alpha = 0.14f)
+                                            else Color(0xFFDC2626).copy(alpha = 0.14f)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (passed) Icons.Filled.CheckCircle
+                                        else Icons.Filled.Refresh,
+                                        contentDescription = null,
+                                        tint = if (passed) Color(0xFF22C55E) else Color(0xFFDC2626),
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = if (passed) "Mashallah! Keep it up." else "Keep practicing!",
                                     fontSize = 14.sp,
@@ -713,6 +854,7 @@ private fun GradeButton(
     label: String,
     color: Color,
     fontUi: FontFamily,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Button(
@@ -722,8 +864,8 @@ private fun GradeButton(
             contentColor = color
         ),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth().height(44.dp)
+        modifier = modifier.height(52.dp)
     ) {
-        Text(label, fontWeight = FontWeight.SemiBold, fontFamily = fontUi)
+        Text(label, fontWeight = FontWeight.SemiBold, fontFamily = fontUi, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
