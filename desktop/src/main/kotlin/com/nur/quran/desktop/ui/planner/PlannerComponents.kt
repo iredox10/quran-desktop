@@ -12,15 +12,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -32,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -45,7 +50,10 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
+import com.nur.quran.shared.PLAN_TEMPLATES
+import com.nur.quran.shared.PLANNER_UNITS
 import com.nur.quran.shared.PlanTemplate
+import kotlin.math.ceil
 
 /**
  * Desktop planner building blocks, styled after the Android planner components
@@ -201,83 +209,152 @@ fun PlanTodayCard(
     }
 }
 
-/** Two-column grid of template cards (label + description + duration pill). */
+/**
+ * Template card grid — web parity (quran-app Planner.jsx 357-396):
+ * watermark book at 3% opacity, title, description, footer row of
+ * [first-tag pill] … [unitsPerDay units/day pace]. Surah-unit cards are
+ * dimmed + non-clickable until [chaptersReady] (web shows "Loading surahs…").
+ *
+ * Units-per-day matches web: ceil((endUnit - startUnit + 1) / durationDays).
+ */
 @Composable
 fun TemplatesGrid(
     pal: NurPalette,
     templates: List<PlanTemplate>,
-    onPick: (PlanTemplate) -> Unit
+    onPick: (PlanTemplate) -> Unit,
+    chaptersReady: Boolean = true
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
+    val mono = androidx.compose.ui.text.font.FontFamily.Monospace
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         templates.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { tmpl ->
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = pal.cream),
-                        border = BorderStroke(1.5.dp, pal.boneDark),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onPick(tmpl) }
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(30.dp)
-                                        .clip(CircleShape)
-                                        .background(pal.goldSoft),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = tmpl.title.firstOrNull()?.uppercase() ?: "•",
-                                        fontFamily = fontUi,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = pal.gold
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = tmpl.title,
-                                    fontFamily = fontUi,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = pal.ink
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = tmpl.description,
-                                fontFamily = fontBody,
-                                fontSize = 12.5.sp,
-                                lineHeight = 18.sp,
-                                color = pal.inkMid,
-                                maxLines = 3
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = pal.tealSoft
-                            ) {
-                                Text(
-                                    text = "${tmpl.durationDays} days",
-                                    fontFamily = fontBody,
-                                    fontSize = 10.5.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    letterSpacing = 0.5.sp,
-                                    color = pal.teal,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-                    }
+                    TemplateCard(pal, fontUi, fontBody, mono, tmpl, chaptersReady, onPick)
                 }
                 if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
         }
+    }
+}
+
+/** Single template card: watermark book, title, description, tag + pace footer. */
+@Composable
+private fun TemplateCard(
+    pal: NurPalette,
+    fontUi: androidx.compose.ui.text.font.FontFamily,
+    fontBody: androidx.compose.ui.text.font.FontFamily,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    tmpl: PlanTemplate,
+    chaptersReady: Boolean,
+    onPick: (PlanTemplate) -> Unit
+) {
+    // Keep PLAN_TEMPLATES import referenced.
+    @Suppress("UNUSED_EXPRESSION") PLAN_TEMPLATES
+    val needsChapters = tmpl.unitType == "surah" && !chaptersReady
+    val unitCount = (tmpl.endUnit - tmpl.startUnit + 1).coerceAtLeast(1)
+    val unitsPerDay = ceil(unitCount.toDouble() / tmpl.durationDays.coerceAtLeast(1))
+        .toInt().coerceAtLeast(1)
+    val unitPlural = try { PLANNER_UNITS[tmpl.unitType]?.plural } catch (_: Exception) { null }
+    val paceLabel = "$unitsPerDay ${unitPlural ?: "units"}/day"
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = pal.cream),
+        border = BorderStroke(1.5.dp, pal.boneDark),
+        modifier = Modifier
+            .weight(1f)
+            .alpha(if (needsChapters) 0.5f else 1f)
+            .clickable(enabled = !needsChapters) { onPick(tmpl) }
+    ) {
+        Box {
+            // Watermark book — web: absolute -right-4 -top-4, 3% opacity.
+            Icon(
+                imageVector = Icons.Filled.MenuBook,
+                contentDescription = null,
+                tint = pal.ink.copy(alpha = 0.06f),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 12.dp, y = (-12).dp)
+                    .size(80.dp)
+            )
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = tmpl.title,
+                    fontFamily = fontUi,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = pal.ink
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = tmpl.description,
+                    fontFamily = fontBody,
+                    fontSize = 12.5.sp,
+                    lineHeight = 19.sp,
+                    color = pal.inkMid,
+                    maxLines = 3
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                TemplateCardFooter(pal, fontBody, mono, tmpl, needsChapters, paceLabel)
+            }
+        }
+    }
+}
+
+/** Footer row: [first-tag pill] … [units/day pace], or "Loading surahs…". */
+@Composable
+private fun TemplateCardFooter(
+    pal: NurPalette,
+    fontBody: androidx.compose.ui.text.font.FontFamily,
+    mono: androidx.compose.ui.text.font.FontFamily,
+    tmpl: PlanTemplate,
+    needsChapters: Boolean,
+    paceLabel: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            val firstTag = tmpl.tags.firstOrNull()
+            if (firstTag != null) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = pal.teal.copy(alpha = 0.08f)
+                ) {
+                    Text(
+                        text = firstTag,
+                        fontFamily = mono,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.5.sp,
+                        color = pal.teal,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            if (needsChapters) {
+                Text(
+                    text = "Loading surahs…",
+                    fontFamily = mono,
+                    fontSize = 10.sp,
+                    color = pal.inkMuted
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = paceLabel,
+            fontFamily = mono,
+            fontSize = 10.sp,
+            color = pal.inkMuted
+        )
     }
 }
 
