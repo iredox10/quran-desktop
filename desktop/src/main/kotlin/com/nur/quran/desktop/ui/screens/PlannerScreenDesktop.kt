@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +20,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -26,8 +30,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.Notifier
+import com.nur.quran.desktop.data.PrayerPrefs
 import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.planner.ArchivesModal
@@ -71,8 +78,11 @@ import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.shared.PLAN_TEMPLATES
 import com.nur.quran.shared.PlanChapter
 import com.nur.quran.shared.PlanTemplate
+import com.nur.quran.shared.PRAYER_NAMES
 import com.nur.quran.shared.PlannerEngine
 import com.nur.quran.shared.ReadingPlan
+import java.io.File
+import javax.swing.JFileChooser
 
 private val OverdueRed = Color(0xFFDC2626)
 
@@ -815,7 +825,8 @@ private fun CustomPlanForm(
     }
 }
 
-/** Prayer-times location for the planner (gear on the Today tab). */
+/** Planner Settings dialog (web `Planner.jsx` modal parity): prayers, reading preference, intention, location, export. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlannerSettingsDialog(
     pal: NurPalette,
@@ -829,6 +840,63 @@ private fun PlannerSettingsDialog(
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
+    val savedPrefs = remember { PlannerStore.getPrayerPrefs() }
+    var activePrayers by remember { mutableStateOf(savedPrefs.activePrayers) }
+    var readPref by remember { mutableStateOf(savedPrefs.readPreference) }
+    var intentionOn by remember { mutableStateOf(savedPrefs.intentionPromptEnabled) }
+    var exportStatus by remember { mutableStateOf("") }
+
+    fun persist() {
+        PlannerStore.savePrayerPrefs(PrayerPrefs(activePrayers, readPref, intentionOn))
+    }
+
+    @Composable
+    fun SectionHeader(label: String) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+            color = pal.teal,
+            fontFamily = fontUi
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+    }
+
+    fun esc(text: String): String = text
+        .replace("\n", "\\n")
+        .replace(",", "\\,")
+        .replace(";", "\\;")
+
+    fun exportPlanIcs(): String {
+        val plan = PlannerStore.getActivePlan() ?: return "No active plan"
+        return try {
+            val stampFormat = java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", java.util.Locale.US)
+            stampFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            val dtStamp = stampFormat.format(java.util.Date())
+            val sb = StringBuilder()
+            sb.append("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Quran Nur//Planner//EN\r\n")
+            plan.assignments.forEach { a ->
+                sb.append("BEGIN:VEVENT\r\n")
+                sb.append("UID:planner-${plan.id}-${a.dayNumber}@quran-nur\r\n")
+                sb.append("DTSTAMP:$dtStamp\r\n")
+                sb.append("DTSTART;VALUE=DATE:${a.date.replace("-", "")}\r\n")
+                sb.append("SUMMARY:${esc(a.title)} (Day ${a.dayNumber})\r\n")
+                sb.append("DESCRIPTION:${esc(a.subtitle)}\r\n")
+                sb.append("END:VEVENT\r\n")
+            }
+            sb.append("END:VCALENDAR\r\n")
+            val chooser = JFileChooser()
+            chooser.selectedFile = File("quran-nur-planner.ics")
+            if (chooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) return "Export cancelled"
+            val out = chooser.selectedFile
+            out.writeText(sb.toString(), Charsets.UTF_8)
+            "Saved to ${out.absolutePath}"
+        } catch (_: Exception) {
+            "Export failed"
+        }
+    }
+
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(18.dp),
@@ -836,9 +904,9 @@ private fun PlannerSettingsDialog(
             border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
             modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState())) {
                 Text(
-                    text = "Prayer times",
+                    text = "Planner Settings",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = pal.ink,
@@ -852,6 +920,120 @@ private fun PlannerSettingsDialog(
                     fontFamily = fontBody
                 )
                 Spacer(modifier = Modifier.height(12.dp))
+                SectionHeader("DAILY PRAYERS")
+                Text(
+                    text = "Select which prayers you want to distribute reading across.",
+                    fontSize = 12.sp,
+                    color = pal.inkMuted,
+                    fontFamily = fontBody
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    PRAYER_NAMES.forEach { prayer ->
+                        val active = prayer in activePrayers
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (active) pal.teal else pal.white)
+                                .border(
+                                    1.5.dp,
+                                    if (active) pal.teal else pal.boneDark,
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable {
+                                    if (active && activePrayers.size == 1) return@clickable
+                                    activePrayers = if (active) {
+                                        activePrayers - prayer
+                                    } else {
+                                        (activePrayers + prayer).sortedBy { PRAYER_NAMES.indexOf(it) }
+                                    }
+                                    persist()
+                                }
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = prayer,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (active) Color.White else pal.inkMuted,
+                                fontFamily = fontBody
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                SectionHeader("READING PREFERENCE")
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        "after" to "Read After Prayer",
+                        "before" to "Read Before Prayer",
+                        "split" to "Split Before & After"
+                    ).forEach { (value, label) ->
+                        val selected = readPref == value
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (selected) pal.teal else pal.white)
+                                .border(
+                                    1.5.dp,
+                                    if (selected) pal.teal else pal.boneDark,
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable {
+                                    readPref = value
+                                    persist()
+                                }
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selected) Color.White else pal.inkMuted,
+                                fontFamily = fontBody,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (selected) {
+                                Text(
+                                    text = "\u2713",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontFamily = fontUi
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                SectionHeader("INTENTION PROMPTS")
+                Text(
+                    text = "Show a mindfulness prompt before reading.",
+                    fontSize = 12.sp,
+                    color = pal.inkMuted,
+                    fontFamily = fontBody
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Switch(
+                        checked = intentionOn,
+                        onCheckedChange = {
+                            intentionOn = it
+                            persist()
+                        }
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                SectionHeader("PRAYER TIMES LOCATION")
                 OutlinedTextField(
                     value = city,
                     onValueChange = onCityChange,
@@ -878,6 +1060,29 @@ private fun PlannerSettingsDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(if (loading) "Loading…" else "Refresh times", fontFamily = fontUi)
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = { exportStatus = exportPlanIcs() },
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.teal),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = pal.teal),
+                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                ) {
+                    Text(
+                        text = "Export to Calendar (.ics)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontUi
+                    )
+                }
+                if (exportStatus.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = exportStatus,
+                        fontSize = 12.sp,
+                        color = if (exportStatus.startsWith("Saved")) pal.teal else OverdueRed,
+                        fontFamily = fontBody
+                    )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
