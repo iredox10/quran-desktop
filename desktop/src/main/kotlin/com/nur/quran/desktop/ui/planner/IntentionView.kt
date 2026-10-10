@@ -442,5 +442,30 @@ fun IntentionView(
                 }
             }
         }
+
+        // (5) Prophetic Wisdom footer (web parity: italic hadith + mono label)
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "\u201CThe best of deeds are those that are consistent, even if they are few.\u201D",
+                fontFamily = fontBody,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                fontSize = 14.sp,
+                lineHeight = 22.sp,
+                color = pal.inkMid,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "PROPHETIC WISDOM",
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontSize = 10.sp,
+                letterSpacing = 1.2.sp,
+                color = pal.inkMuted,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
