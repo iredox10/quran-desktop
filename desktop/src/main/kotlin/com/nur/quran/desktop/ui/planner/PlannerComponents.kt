@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
-import com.nur.quran.shared.PLAN_TEMPLATES
 import com.nur.quran.shared.PLANNER_UNITS
 import com.nur.quran.shared.PlanTemplate
 import kotlin.math.ceil
@@ -260,8 +259,6 @@ private fun TemplateCard(
     onPick: (PlanTemplate) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Keep PLAN_TEMPLATES import referenced.
-    @Suppress("UNUSED_EXPRESSION") PLAN_TEMPLATES
     val needsChapters = tmpl.unitType == "surah" && !chaptersReady
     val unitCount = (tmpl.endUnit - tmpl.startUnit + 1).coerceAtLeast(1)
     val unitsPerDay = ceil(unitCount.toDouble() / tmpl.durationDays.coerceAtLeast(1))
