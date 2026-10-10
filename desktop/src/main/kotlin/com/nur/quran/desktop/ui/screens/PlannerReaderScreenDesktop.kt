@@ -1,5 +1,6 @@
 package com.nur.quran.desktop.ui.screens
 
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -207,10 +208,20 @@ fun PlannerReaderScreenDesktop(
     // ── Session timer (mm:ss ticking) ────────────────────────────────
     var elapsedSec by remember(dayDate) { mutableStateOf(0) }
     var isTimerRunning by remember(dayDate) { mutableStateOf(true) }
+    // Test-clock-safe ticking: an infinite `delay(1000)` loop never lets the
+    // compose test clock go idle (it hangs any waitForIdle / captureToImage
+    // on this screen); withInfiniteAnimationFrameNanos is the documented
+    // replacement and still accrues one second per second in production.
     LaunchedEffect(dayDate, isTimerRunning) {
+        if (!isTimerRunning) return@LaunchedEffect
+        var lastTick = withInfiniteAnimationFrameNanos { it }
         while (isTimerRunning) {
-            delay(1000)
-            elapsedSec++
+            withInfiniteAnimationFrameNanos { now ->
+                if (now - lastTick >= 1_000_000_000L) {
+                    lastTick = now
+                    elapsedSec++
+                }
+            }
         }
     }
     val timerLabel = remember(elapsedSec) {

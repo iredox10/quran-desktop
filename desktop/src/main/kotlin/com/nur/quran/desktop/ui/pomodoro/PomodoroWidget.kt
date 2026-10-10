@@ -1,5 +1,6 @@
 package com.nur.quran.desktop.ui.pomodoro
 
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,13 +100,21 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
         logVersion++
     }
 
+    // Test-clock-safe ticking (same pattern as the planner reader timer): an
+    // infinite delay loop hangs compose tests with autoAdvance clocks.
     LaunchedEffect(running, mode, activeId) {
+        if (!running) return@LaunchedEffect
+        var lastTick = withInfiniteAnimationFrameNanos { it }
         while (running) {
-            delay(1000L)
-            if (secondsLeft <= 1) {
-                handlePhaseEnd(mode)
-            } else {
-                secondsLeft--
+            withInfiniteAnimationFrameNanos { now ->
+                if (now - lastTick >= 1_000_000_000L) {
+                    lastTick = now
+                    if (secondsLeft <= 1) {
+                        handlePhaseEnd(mode)
+                    } else {
+                        secondsLeft--
+                    }
+                }
             }
         }
     }
