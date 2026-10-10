@@ -8,6 +8,25 @@ import com.nur.quran.shared.ReadingPlan
 import java.util.prefs.Preferences
 
 /**
+ * Web `prayerSettings` parity: which prayers reading is distributed across,
+ * when to read relative to prayer, and the pre-reading intention prompt flag.
+ */
+data class PrayerPrefs(
+    val activePrayers: List<String>,
+    /** "after" | "before" | "split" */
+    val readPreference: String,
+    val intentionPromptEnabled: Boolean
+) {
+    companion object {
+        val DEFAULT = PrayerPrefs(
+            activePrayers = listOf("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"),
+            readPreference = "after",
+            intentionPromptEnabled = true
+        )
+    }
+}
+
+/**
  * Desktop planner persistence, mirroring the Android `PlannerViewModel`
  * SharedPreferences keys. Backed by [Preferences] node `"planner_prefs"`.
  */
@@ -19,6 +38,7 @@ object PlannerStore {
     private const val KEY_ARCHIVED_PLANS = "archived_plans"
     private const val KEY_REFLECTIONS = "reflections_json"
     private const val KEY_MARKS = "marks_json"
+    private const val KEY_PRAYER_PREFS = "prayer_prefs"
 
     private val prefs: Preferences = Preferences.userRoot().node("planner_prefs")
     private val gson = Gson()
@@ -30,6 +50,24 @@ object PlannerStore {
     private val archivedPlansType = object : TypeToken<List<ArchivedPlan>>() {}.type
     private val reflectionsType = object : TypeToken<Map<String, String>>() {}.type
     private val marksType = object : TypeToken<Map<String, List<PlanVerseMark>>>() {}.type
+    private val prayerPrefsType = object : TypeToken<PrayerPrefs>() {}.type
+
+    /** Web `prayerSettings` (activePrayers / readPreference / intentionPrompt). */
+    @Synchronized
+    fun getPrayerPrefs(): PrayerPrefs {
+        val raw = prefs.get(KEY_PRAYER_PREFS, null) ?: return PrayerPrefs.DEFAULT
+        return try {
+            gson.fromJson<PrayerPrefs>(raw, prayerPrefsType) ?: PrayerPrefs.DEFAULT
+        } catch (_: Exception) {
+            PrayerPrefs.DEFAULT
+        }
+    }
+
+    @Synchronized
+    fun savePrayerPrefs(p: PrayerPrefs) {
+        prefs.put(KEY_PRAYER_PREFS, gson.toJson(p, prayerPrefsType))
+        runCatching { prefs.flush() }
+    }
 
     @Synchronized
     fun getActivePlan(): ReadingPlan? {

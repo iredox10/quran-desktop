@@ -141,8 +141,17 @@ fun TodayTab(
     LaunchedEffect(plan.id) {
         timings = withContext(Dispatchers.IO) { PrayerStore.getToday() }
     }
-    val slots = remember(plan, todayAssignment, timings) {
-        buildPrayerSlots(plan, todayAssignment, timings)
+    // Web parity: slots honor the saved prayerSettings (activePrayers subset
+    // + before/after/split read preference) from the Planner Settings dialog.
+    val prayerPrefs = remember { PlannerStore.getPrayerPrefs() }
+    val slots = remember(plan, todayAssignment, timings, prayerPrefs) {
+        buildPrayerSlots(
+            plan = plan,
+            todayAssignment = todayAssignment,
+            prayerTimings = timings,
+            readPreference = prayerPrefs.readPreference,
+            activePrayers = prayerPrefs.activePrayers
+        )
     }
 
     var copied by remember { mutableStateOf(false) }
