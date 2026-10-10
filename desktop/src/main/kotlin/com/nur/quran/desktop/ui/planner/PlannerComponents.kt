@@ -231,7 +231,16 @@ fun TemplatesGrid(
         templates.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { tmpl ->
-                    TemplateCard(pal, fontUi, fontBody, mono, tmpl, chaptersReady, onPick)
+                    TemplateCard(
+                        pal = pal,
+                        fontUi = fontUi,
+                        fontBody = fontBody,
+                        mono = mono,
+                        tmpl = tmpl,
+                        chaptersReady = chaptersReady,
+                        onPick = onPick,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
@@ -248,7 +257,8 @@ private fun TemplateCard(
     mono: androidx.compose.ui.text.font.FontFamily,
     tmpl: PlanTemplate,
     chaptersReady: Boolean,
-    onPick: (PlanTemplate) -> Unit
+    onPick: (PlanTemplate) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     // Keep PLAN_TEMPLATES import referenced.
     @Suppress("UNUSED_EXPRESSION") PLAN_TEMPLATES
@@ -262,8 +272,7 @@ private fun TemplateCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = pal.cream),
         border = BorderStroke(1.5.dp, pal.boneDark),
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
             .alpha(if (needsChapters) 0.5f else 1f)
             .clickable(enabled = !needsChapters) { onPick(tmpl) }
     ) {
