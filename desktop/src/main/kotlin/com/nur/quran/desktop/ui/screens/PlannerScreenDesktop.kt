@@ -1,5 +1,6 @@
 package com.nur.quran.desktop.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,13 +22,17 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -68,6 +73,7 @@ import com.nur.quran.desktop.ui.planner.TemplatePreviewModal
 import com.nur.quran.desktop.ui.planner.TodayTab
 import com.nur.quran.desktop.data.PrayerStore
 import com.nur.quran.desktop.ui.planner.TemplatesGrid
+import com.nur.quran.shared.PLANNER_UNITS
 import com.nur.quran.shared.buildPrayerSlots
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -263,6 +269,8 @@ fun PlannerScreenDesktop(
                 },
                 onNewCustom = { showCustomModal = true },
                 onOpenArchives = { showArchivesModal = true },
+                templates = PLAN_TEMPLATES,
+                onPickTemplate = ::startFromTemplate,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -305,48 +313,210 @@ fun PlannerScreenDesktop(
     ) {
         // ── Dashboard header ──
         item(key = "header") {
+            val plan = activePlan ?: return@item
+            val overview = remember(plan) { PlannerEngine.getPlannerOverview(plan) } ?: return@item
+            val metrics = remember(plan) {
+                runCatching { PlannerEngine.getPlannerSuccessMetrics(plan) }.getOrNull()
+            }
+            val todayAssignment = remember(plan) {
+                plan.assignments.firstOrNull { it.date == todayStr }
+                    ?: plan.assignments.getOrNull(overview.currentDayNumber - 1)
+            }
+            val todayProgress = todayAssignment?.let { PlannerEngine.getAssignmentProgress(plan, it) }
+            val todayComplete = todayProgress?.isComplete ?: false
+            val nextAssignment = if (todayComplete) {
+                plan.assignments.firstOrNull { a ->
+                    (todayAssignment == null || a.dayNumber > todayAssignment.dayNumber) &&
+                        !PlannerEngine.getAssignmentProgress(plan, a).isComplete
+                }
+            } else null
+            val planDone = overview.isFinishedWindow && nextAssignment == null
+            val currentDay = overview.currentDayNumber
+            val overallPct = (overview.completionRatio * 100).toInt()
+            val completionDate = try {
+                PlannerEngine.formatPlannerDateLabel(
+                    PlannerEngine.addDays(plan.startDate, plan.durationDays - 1)
+                )
+            } catch (_: Exception) {
+                plan.startDate
+            }
+            val streak = metrics?.consistencyStreak ?: 0
+            val unitsLabel = PLANNER_UNITS[plan.unitType]?.plural ?: "Pages"
+            val todayDone = todayProgress?.readPagesCount ?: 0
+            val todayTotal = (todayProgress?.totalPagesCount ?: 1).coerceAtLeast(1)
+            val hasStartedReading = todayDone > 0
+            val daySubtitle = when {
+                planDone -> "Plan complete! \uD83C\uDF89"
+                todayAssignment == null -> "Starting soon\u2026"
+                todayComplete && nextAssignment != null ->
+                    "Day $currentDay complete! \uD83C\uDF89 \u00B7 Day ${nextAssignment.dayNumber} ready"
+                todayComplete -> "Day $currentDay complete! \uD83C\uDF89"
+                todayDone > 0 -> "$todayDone of $todayTotal $unitsLabel read"
+                else -> "$todayTotal $unitsLabel today"
+            }
+            val ctaLabel = when {
+                todayComplete && nextAssignment != null -> "Continue to Day ${nextAssignment.dayNumber}"
+                todayComplete -> "All Caught Up"
+                hasStartedReading -> "Resume Reading"
+                else -> "Open Al-Quran"
+            }
+            val ctaDay = (nextAssignment ?: overview.firstIncomplete).date
+            var switcherOpen by remember { mutableStateOf(false) }
+
             Column(modifier = Modifier.fillMaxWidth()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(pal.white)
+                            .border(1.dp, pal.boneDark, CircleShape)
+                            .clickable { onBack() },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = pal.ink,
+                            tint = pal.teal,
                             modifier = Modifier.size(20.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
+                        if (allPlans.size > 1) {
+                            Box {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { switcherOpen = true }
+                                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = plan.title.ifBlank { "Quran Plan" },
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = pal.ink,
+                                        fontFamily = fontUi
+                                    )
+                                    Icon(
+                                        Icons.Filled.ArrowDropDown,
+                                        contentDescription = "Switch plan",
+                                        tint = pal.inkMid,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = switcherOpen,
+                                    onDismissRequest = { switcherOpen = false }
+                                ) {
+                                    allPlans.forEach { p ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = p.title.ifBlank { "${p.durationDays} Day Plan" },
+                                                    fontFamily = fontBody,
+                                                    fontSize = 13.sp
+                                                )
+                                            },
+                                            onClick = {
+                                                switcherOpen = false
+                                                activatePlan(p)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = plan.title.ifBlank { "Quran Plan" },
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = pal.ink,
+                                fontFamily = fontUi
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Quran Nur",
+                            text = "Day $currentDay of ${plan.durationDays}",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = pal.teal,
+                            fontFamily = fontUi
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = daySubtitle,
                             fontSize = 13.sp,
-                            color = pal.inkMuted,
+                            color = pal.inkMid,
                             fontFamily = fontBody
                         )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Button(
+                        onClick = {
+                            if (planDone) {
+                                val rev = runCatching {
+                                    PlannerEngine.buildRevisionPlanner(plan, planChapters())
+                                }.getOrNull()
+                                if (rev != null) adoptPlan(rev)
+                            } else {
+                                onOpenDay(ctaDay)
+                            }
+                        },
+                        shape = RoundedCornerShape(100.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
                         Text(
-                            text = activePlan?.title ?: "Planner",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = pal.ink,
-                            fontFamily = fontUi
+                            text = if (planDone) "Start Revision Plan" else ctaLabel,
+                            fontFamily = fontUi,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            color = pal.white
                         )
                     }
                 }
-                if (activePlan != null) {
-                    val overview = remember(activePlan) {
-                        PlannerEngine.getPlannerOverview(activePlan)
+                Spacer(modifier = Modifier.height(16.dp))
+                // Stats header cards \u2014 web parity (Overall / Finish by / Streak)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    listOf(
+                        "Overall" to "$overallPct%",
+                        "Finish by" to completionDate,
+                        "Streak" to "${streak} Day${if (streak != 1) "s" else ""}"
+                    ).forEach { (label, value) ->
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = pal.cream,
+                            border = BorderStroke(1.dp, pal.boneDark),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(
+                                    text = label.uppercase(),
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    letterSpacing = 0.8.sp,
+                                    color = pal.inkMuted
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = value,
+                                    fontFamily = fontUi,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = pal.ink
+                                )
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (overview != null) {
-                            "Day ${overview.currentDayNumber} of ${activePlan.durationDays} · " +
-                                "${overview.completedCount} days complete"
-                        } else {
-                            "Starts ${activePlan.startDate}"
-                        },
-                        fontSize = 13.sp,
-                        color = pal.inkMid,
-                        fontFamily = fontBody
-                    )
                 }
             }
         }
@@ -367,17 +537,21 @@ fun PlannerScreenDesktop(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) pal.teal else Color.Transparent)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (selected) pal.white else Color.Transparent)
+                            .then(
+                                if (selected) Modifier.border(1.dp, pal.boneDark, RoundedCornerShape(14.dp))
+                                else Modifier
+                            )
                             .clickable { tab = index }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = label,
-                            fontSize = 14.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selected) Color.White else pal.inkMid,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (selected) pal.teal else pal.inkMuted,
                             fontFamily = fontUi
                         )
                     }
@@ -564,37 +738,10 @@ fun PlannerScreenDesktop(
             }
         }
 
-        // ── Templates section ──
-        item(key = "templates-title") {
-            SectionTitle(pal = pal, text = "Plan templates")
-        }
-        item(key = "templates-grid") {
-            TemplatesGrid(
-                pal = pal,
-                templates = PLAN_TEMPLATES,
-                onPick = ::startFromTemplate
-            )
-        }
-
-        // ── Custom plan (full builder: unit, range, pace, days off) ──
-        item(key = "custom") {
-            Button(
-                onClick = { showCustomModal = true },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = pal.tealSoft,
-                    contentColor = pal.teal
-                ),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().height(48.dp)
-            ) {
-                Text(
-                    text = "+ Build a custom plan",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = fontUi
-                )
-            }
-            if (customError != null) {
+        // ── Plan creation lives on the Intention (no-plan) screen; the active
+        // view only manages the current plan via its tabs and settings ──
+        if (customError != null) {
+            item(key = "custom-error") {
                 Text(
                     text = customError ?: "",
                     fontSize = 12.sp,

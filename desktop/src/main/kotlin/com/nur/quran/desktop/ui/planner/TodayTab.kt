@@ -19,7 +19,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
@@ -173,14 +175,6 @@ fun TodayTab(
                     labelFontSize = 44.sp,
                     subLabelFontSize = 8.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Day $currentDay of ${plan.durationDays}",
-                    fontFamily = fontUi,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = pal.gold
-                )
             }
             Spacer(modifier = Modifier.width(20.dp))
             Column(
@@ -274,11 +268,12 @@ fun TodayTab(
                     isCompleted -> BorderStroke(1.dp, pal.green.copy(alpha = 0.4f))
                     else -> BorderStroke(1.dp, pal.boneDark)
                 }
-                // Icons verified by grep: Check, MenuBook, Info, Settings, Share.
-                // Lock / Schedule / Clock are NOT in the codebase -> Info fallback.
+                // Web parity (1004-1011): check / book / clock / lock icons.
                 val statusIcon = when {
                     isCompleted -> Icons.Filled.Check
                     isCurrent -> Icons.Filled.MenuBook
+                    isUpcoming -> Icons.Filled.Schedule
+                    isLocked -> Icons.Filled.Lock
                     else -> Icons.Filled.Info
                 }
                 val iconBg = when {
