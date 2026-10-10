@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -119,6 +120,7 @@ fun IntentionView(
     onDeletePlan: (String) -> Unit,
     onNewCustom: () -> Unit,
     onOpenArchives: () -> Unit,
+    archivedCount: Int = 0,
     templates: List<PlanTemplate> = emptyList(),
     onPickTemplate: (PlanTemplate) -> Unit = {},
     chaptersReady: Boolean = true,
@@ -162,6 +164,8 @@ fun IntentionView(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            IntentionLogoMark(pal)
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "THE FIRST STEP",
                 fontFamily = fontBody,
@@ -205,6 +209,7 @@ fun IntentionView(
         // (3) Pace cards — web parity (Planner.jsx 242-299): horizontal 3-up row,
         // badge on the top edge, gold border when selected.
         var selectedPace by remember { mutableStateOf("steady") }
+        var beginError by remember { mutableStateOf<String?>(null) }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -243,7 +248,7 @@ fun IntentionView(
                                 pal = pal,
                                 progress = paceProgress(pace.durationDays),
                                 label = dailyPages.toString(),
-                                subLabel = "${pace.durationDays} DAYS",
+                                subLabel = "PAGES / DAY",
                                 modifier = Modifier.size(110.dp)
                             )
                         Spacer(modifier = Modifier.height(6.dp))
@@ -263,13 +268,24 @@ fun IntentionView(
                             color = pal.inkMid
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "≈ $perPrayer pages per prayer",
-                            fontFamily = fontBody,
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                            fontSize = 13.sp,
-                            color = pal.inkMid
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = paceUi.icon,
+                                contentDescription = null,
+                                tint = pal.inkMid,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Text(
+                                text = "$perPrayer pages per prayer",
+                                fontFamily = fontBody,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                fontSize = 13.sp,
+                                color = pal.inkMid
+                            )
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Done by $endLabel",
@@ -293,7 +309,9 @@ fun IntentionView(
                                             chapters = chapters
                                         )
                                         onBegin(built)
-                                    } catch (_: Exception) {
+                                        beginError = null
+                                    } catch (e: Exception) {
+                                        beginError = e.message ?: "Could not build plan"
                                     }
                                 },
                                 shape = RoundedCornerShape(10.dp),
@@ -352,6 +370,20 @@ fun IntentionView(
             }
         }
 
+        // (3b) Plan-creation errors — web parity (Planner.jsx handleBegin alert()).
+        if (beginError != null) {
+            Text(
+                text = beginError!!,
+                fontFamily = fontBody,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                fontSize = 12.5.sp,
+                lineHeight = 19.sp,
+                color = Color(0xFFC0392B),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            )
+        }
+
         // (4) My Plans list
         Column {
             Row(
@@ -373,17 +405,19 @@ fun IntentionView(
                     color = pal.inkMuted
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Archives",
-                    fontFamily = fontBody,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = pal.teal,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onOpenArchives() }
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
-                )
+                if (archivedCount > 0) {
+                    Text(
+                        text = "Archives ($archivedCount)",
+                        fontFamily = fontBody,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = pal.teal,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onOpenArchives() }
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
                 IconButton(onClick = onNewCustom, modifier = Modifier.size(34.dp)) {
                     Icon(
                         imageVector = Icons.Filled.Add,
