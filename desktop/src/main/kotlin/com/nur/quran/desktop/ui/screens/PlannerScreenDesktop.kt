@@ -277,6 +277,7 @@ fun PlannerScreenDesktop(
                 },
                 onNewCustom = { showCustomModal = true },
                 onOpenArchives = { showArchivesModal = true },
+                archivedCount = PlannerStore.getArchived().size,
                 templates = PLAN_TEMPLATES,
                 onPickTemplate = ::startFromTemplate,
                 chaptersReady = planChapters().isNotEmpty(),
