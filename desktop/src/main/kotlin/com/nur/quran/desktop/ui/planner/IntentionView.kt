@@ -1,6 +1,7 @@
 package com.nur.quran.desktop.ui.planner
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.Nightlight
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -63,6 +67,39 @@ private val PACES_UI = listOf(
     PaceUi(PaceChoice("devotional", "Devotional Path", 365))
 )
 
+/** Web parity (Planner.jsx PACES icons): moon for Ramadan, sun for Steady, gem for Devotional. */
+private val PaceUi.icon
+    get() = when (choice.id) {
+        "ramadan" -> Icons.Filled.Nightlight
+        "devotional" -> Icons.Filled.Diamond
+        else -> Icons.Filled.WbSunny
+    }
+
+/** Web parity (Planner.jsx hero logo mark above THE FIRST STEP, shown at low opacity). */
+@Composable
+private fun IntentionLogoMark(pal: NurPalette) {
+    Box(
+        modifier = Modifier.size(72.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(64.dp)) {
+            drawArc(
+                color = pal.teal.copy(alpha = 0.22f),
+                startAngle = 40f,
+                sweepAngle = 280f,
+                useCenter = false,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 7.dp.toPx())
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(pal.teal.copy(alpha = 0.22f))
+        )
+    }
+}
+
 private fun paceProgress(durationDays: Int): Float = when {
     durationDays <= 30 -> 0.88f
     durationDays <= 60 -> 0.72f
@@ -84,6 +121,7 @@ fun IntentionView(
     onOpenArchives: () -> Unit,
     templates: List<PlanTemplate> = emptyList(),
     onPickTemplate: (PlanTemplate) -> Unit = {},
+    chaptersReady: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val fontUi = rememberUiFontFamily()
@@ -513,7 +551,8 @@ fun IntentionView(
                 TemplatesGrid(
                     pal = pal,
                     templates = templates,
-                    onPick = onPickTemplate
+                    onPick = onPickTemplate,
+                    chaptersReady = chaptersReady
                 )
             }
         }

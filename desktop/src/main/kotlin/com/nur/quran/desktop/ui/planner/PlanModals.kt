@@ -50,7 +50,6 @@ import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.shared.PLANNER_UNITS
 import com.nur.quran.shared.PlanChapter
-import com.nur.quran.shared.PlanTemplate
 import com.nur.quran.shared.PlannerEngine
 import com.nur.quran.shared.ReadingPlan
 import kotlin.math.ceil
@@ -508,36 +507,46 @@ fun ArchivesModal(
     }
 }
 
-/** Template start-confirmation mirroring the web TemplatePreview modal. */
+/**
+ * Template start-confirmation mirroring the web TemplatePreview modal
+ * (quran-app Planner.jsx 561-612): title header, description, 2×2 stat grid
+ * (Duration / Pace / Starts / Done by) derived from the already-built plan,
+ * Cancel + Create Plan footer. [plan] is the built ReadingPlan produced by
+ * handleTemplateSelect-equivalent at tap time; [onConfirm] adopts it directly
+ * (web: onBegin(previewPlan)) instead of rebuilding.
+ */
 @Composable
 fun TemplatePreviewModal(
     pal: NurPalette,
-    template: PlanTemplate,
-    startDate: String,
+    plan: ReadingPlan,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
-    // Pace math mirrors web: unitsPerDay = ceil(unitCount / durationDays).
-    // PlannerEngine.buildReadingPlanner derives duration from chunk count, not
-    // per-day pace, so local math is used (no pace helper exists to verify).
-    val unitMeta = PLANNER_UNITS[template.unitType]
-    val unitCount = (template.endUnit - template.startUnit + 1).coerceAtLeast(1)
-    val perDay = ceil(unitCount.toDouble() / template.durationDays.coerceAtLeast(1)).toInt().coerceAtLeast(1)
-    val endLabel = remember(template, startDate) {
-        PlannerEngine.formatPlannerDateLabel(
-            PlannerEngine.getReadingDate(startDate, template.durationDays.coerceAtLeast(1) - 1, emptyList())
-        )
+    // Web parity: pace from built assignments, not the template range —
+    // sum(items) / durationDays, so surah/juz chunking is reflected.
+    val planUnits = remember(plan) { plan.assignments.sumOf { it.items.size } }
+    val perDay = remember(planUnits, plan) {
+        maxOf(ceil(planUnits.toDouble() / plan.durationDays.coerceAtLeast(1)).toInt(), 1)
+    }
+    val unitMeta = PLANNER_UNITS[plan.unitType]
+    val endLabel = remember(plan) {
+        PlannerEngine.getPaceStats(
+            plan.durationDays,
+            plan.excludeDays,
+            plan.startDate,
+            planUnits
+        ).endLabel
     }
     val stats = listOf(
-        "Duration" to "${template.durationDays} days",
+        "Duration" to "${plan.durationDays} days",
         "Pace" to "$perDay ${unitMeta?.plural ?: "units"}/day",
-        "Starts" to PlannerEngine.formatPlannerDateLabel(startDate),
+        "Starts" to PlannerEngine.formatPlannerDateLabel(plan.startDate),
         "Done by" to endLabel
     )
 
-    ModalShell(pal = pal, onDismiss = onDismiss, title = "Start \"${template.title}\"?") {
+    ModalShell(pal = pal, onDismiss = onDismiss, title = "Start \"${plan.title}\"?") {
         Column(
             modifier = Modifier.fillMaxWidth()
                 .verticalScroll(rememberScrollState())
@@ -545,7 +554,7 @@ fun TemplatePreviewModal(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = template.description,
+                text = plan.title,
                 fontFamily = fontBody,
                 fontSize = 13.sp,
                 lineHeight = 20.sp,

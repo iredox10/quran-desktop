@@ -125,7 +125,7 @@ fun PlannerScreenDesktop(
     var customError by remember { mutableStateOf<String?>(null) }
     var showCustomModal by remember { mutableStateOf(false) }
     var showArchivesModal by remember { mutableStateOf(false) }
-    var previewTemplate by remember { mutableStateOf<PlanTemplate?>(null) }
+    var previewPlan by remember { mutableStateOf<ReadingPlan?>(null) }
     var showPlannerSettings by remember { mutableStateOf(false) }
 
     // ── Prayer slots state (Aladhan, cache-first via PrayerStore) ──
@@ -206,10 +206,13 @@ fun PlannerScreenDesktop(
     }
 
     fun startFromTemplate(template: PlanTemplate) {
-        previewTemplate = template
-    }
-
-    fun confirmTemplate(template: PlanTemplate) {
+        // Web parity (quran-app Planner.jsx handleTemplateSelect): build the
+        // full plan at tap time so the preview modal shows real assignments,
+        // and surface build failures immediately instead of at confirm.
+        if (template.unitType == "surah" && planChapters().isEmpty()) {
+            customError = "Surah data is still loading — please try again in a moment."
+            return
+        }
         try {
             val built = PlannerEngine.buildReadingPlanner(
                 unitType = template.unitType,
@@ -221,12 +224,17 @@ fun PlannerScreenDesktop(
                 excludeDays = emptyList(),
                 chapters = planChapters()
             )
-            previewTemplate = null
-            adoptPlan(built)
+            customError = null
+            previewPlan = built
         } catch (e: Exception) {
-            previewTemplate = null
-            customError = e.message ?: "Could not start plan"
+            previewPlan = null
+            customError = "Could not build template plan: ${e.message}"
         }
+    }
+
+    fun confirmTemplate(plan: ReadingPlan) {
+        previewPlan = null
+        adoptPlan(plan)
     }
 
     fun createCustomPlan(params: CustomPlanParams) {
@@ -271,7 +279,16 @@ fun PlannerScreenDesktop(
                 onOpenArchives = { showArchivesModal = true },
                 templates = PLAN_TEMPLATES,
                 onPickTemplate = ::startFromTemplate,
+                chaptersReady = planChapters().isNotEmpty(),
                 modifier = Modifier.weight(1f)
+            )
+        }
+        previewPlan?.let { built ->
+            TemplatePreviewModal(
+                pal = pal,
+                plan = built,
+                onDismiss = { previewPlan = null },
+                onConfirm = { confirmTemplate(built) }
             )
         }
         if (showCustomModal) {
@@ -292,15 +309,6 @@ fun PlannerScreenDesktop(
                     showArchivesModal = false
                     refresh++
                 }
-            )
-        }
-        previewTemplate?.let { tmpl ->
-            TemplatePreviewModal(
-                pal = pal,
-                template = tmpl,
-                startDate = todayStr,
-                onDismiss = { previewTemplate = null },
-                onConfirm = { confirmTemplate(tmpl) }
             )
         }
         return
@@ -761,13 +769,12 @@ fun PlannerScreenDesktop(
             onCreate = { createCustomPlan(it) }
         )
     }
-    previewTemplate?.let { tmpl ->
+    previewPlan?.let { built ->
         TemplatePreviewModal(
             pal = pal,
-            template = tmpl,
-            startDate = todayStr,
-            onDismiss = { previewTemplate = null },
-            onConfirm = { confirmTemplate(tmpl) }
+            plan = built,
+            onDismiss = { previewPlan = null },
+            onConfirm = { confirmTemplate(built) }
         )
     }
     if (showPlannerSettings) {
