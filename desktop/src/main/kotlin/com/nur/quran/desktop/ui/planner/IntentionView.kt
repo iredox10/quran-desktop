@@ -6,10 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,6 +26,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +45,7 @@ import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.shared.PlanChapter
+import com.nur.quran.shared.PlanTemplate
 import com.nur.quran.shared.PlannerEngine
 import com.nur.quran.shared.ReadingPlan
 import kotlin.math.ceil
@@ -78,6 +82,8 @@ fun IntentionView(
     onDeletePlan: (String) -> Unit,
     onNewCustom: () -> Unit,
     onOpenArchives: () -> Unit,
+    templates: List<PlanTemplate> = emptyList(),
+    onPickTemplate: (PlanTemplate) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val fontUi = rememberUiFontFamily()
@@ -158,10 +164,16 @@ fun IntentionView(
             )
         }
 
-        // (3) Pace cards
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // (3) Pace cards — web parity (Planner.jsx 242-299): horizontal 3-up row,
+        // badge on the top edge, gold border when selected.
+        var selectedPace by remember { mutableStateOf("steady") }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             PACES_UI.forEach { paceUi ->
                 val pace = paceUi.choice
+                val isSelected = selectedPace == pace.id
                 val dailyPages = ceil(604.0 / pace.durationDays).toInt()
                 val perPrayer = ceil(dailyPages / 5.0).toInt()
                 val endLabel = try {
@@ -171,39 +183,31 @@ fun IntentionView(
                 } catch (_: Exception) {
                     ""
                 }
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = pal.cream),
-                    border = BorderStroke(1.5.dp, pal.boneDark),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                Box(modifier = Modifier.weight(1f)) {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = pal.cream),
+                        border = BorderStroke(
+                            1.5.dp,
+                            if (isSelected) pal.gold else pal.boneDark
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        if (paceUi.badge != null) {
-                            Surface(
-                                shape = RoundedCornerShape(20.dp),
-                                color = pal.teal
-                            ) {
-                                Text(
-                                    text = paceUi.badge,
-                                    fontFamily = fontBody,
-                                    fontSize = 9.5.sp,
-                                    letterSpacing = 1.2.sp,
-                                    color = pal.white,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(10.dp))
-                        }
-                        PaceRing(
-                            pal = pal,
-                            progress = paceProgress(pace.durationDays),
-                            label = dailyPages.toString(),
-                            subLabel = "${pace.durationDays} DAYS",
-                            modifier = Modifier.size(120.dp)
-                        )
+                        Column(
+                            modifier = Modifier
+                                .clickable { selectedPace = pace.id }
+                                .padding(horizontal = 14.dp, vertical = 18.dp)
+                                .padding(top = if (paceUi.badge != null) 8.dp else 0.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            PaceRing(
+                                pal = pal,
+                                progress = paceProgress(pace.durationDays),
+                                label = dailyPages.toString(),
+                                subLabel = "${pace.durationDays} DAYS",
+                                modifier = Modifier.size(110.dp)
+                            )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = pace.title,
@@ -235,35 +239,74 @@ fun IntentionView(
                             fontSize = 11.sp,
                             color = pal.inkMuted
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                try {
-                                    val built = PlannerEngine.buildReadingPlanner(
-                                        unitType = "page",
-                                        durationDays = pace.durationDays,
-                                        startDate = today,
-                                        startUnit = 1,
-                                        endUnit = 604,
-                                        customTitle = pace.title,
-                                        excludeDays = emptyList(),
-                                        chapters = chapters
-                                    )
-                                    onBegin(built)
-                                } catch (_: Exception) {
-                                }
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
-                            modifier = Modifier.fillMaxWidth()
+                        Spacer(modifier = Modifier.height(6.dp))
+                        if (isSelected) {
+                            Button(
+                                onClick = {
+                                    try {
+                                        val built = PlannerEngine.buildReadingPlanner(
+                                            unitType = "page",
+                                            durationDays = pace.durationDays,
+                                            startDate = today,
+                                            startUnit = 1,
+                                            endUnit = 604,
+                                            customTitle = pace.title,
+                                            excludeDays = emptyList(),
+                                            chapters = chapters
+                                        )
+                                        onBegin(built)
+                                    } catch (_: Exception) {
+                                    }
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "BEGIN JOURNEY",
+                                    fontFamily = fontBody,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.5.sp,
+                                    letterSpacing = 1.sp,
+                                    color = pal.white
+                                )
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { selectedPace = pace.id },
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.5.dp, pal.boneDark),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "SELECT PATH",
+                                    fontFamily = fontBody,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.5.sp,
+                                    letterSpacing = 1.sp,
+                                    color = pal.inkMid
+                                )
+                            }
+                        }
+                    }
+                    }
+                    if (paceUi.badge != null) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = pal.teal,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .offset(y = (-11).dp)
                         ) {
                             Text(
-                                text = "Begin",
+                                text = paceUi.badge,
                                 fontFamily = fontBody,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
+                                fontSize = 9.sp,
                                 letterSpacing = 1.2.sp,
-                                color = pal.white
+                                color = pal.white,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                             )
                         }
                     }
@@ -440,6 +483,38 @@ fun IntentionView(
                         }
                     }
                 }
+            }
+        }
+
+        // (4) Plan Templates — web parity (Planner.jsx 357-392): heading +
+        // "Curated paths" mono label + template grid opening the preview modal.
+        if (templates.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Plan Templates",
+                        fontFamily = fontUi,
+                        fontSize = 19.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = pal.ink
+                    )
+                    Text(
+                        text = "CURATED PATHS",
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontSize = 10.sp,
+                        letterSpacing = 1.sp,
+                        color = pal.inkMuted
+                    )
+                }
+                TemplatesGrid(
+                    pal = pal,
+                    templates = templates,
+                    onPick = onPickTemplate
+                )
             }
         }
 
