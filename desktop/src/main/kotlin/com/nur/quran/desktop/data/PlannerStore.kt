@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken
 import com.nur.quran.desktop.ui.planner.ArchivedPlan
 import com.nur.quran.shared.PlannerEngine
 import com.nur.quran.shared.ReadingPlan
+import java.io.File
 import java.util.prefs.Preferences
 
 /**
@@ -43,6 +44,31 @@ object PlannerStore {
     private val prefs: Preferences = Preferences.userRoot().node("planner_prefs")
     private val gson = Gson()
 
+    /**
+     * Plan JSON routinely exceeds the 8192-char limit of `java.util.prefs`
+     * values (a page plan serializes ~50 KB with every item embedded), which
+     * made `Preferences.put` throw and silently killed plan persistence. All
+     * JSON blobs therefore live in `~/.quran-nur/planner_<key>.json`; the
+     * legacy prefs value is still read as a migration fallback.
+     */
+    private val storeDir: File = File(System.getProperty("user.home"), ".quran-nur").apply { mkdirs() }
+
+    private fun putJson(key: String, value: String?) {
+        val file = File(storeDir, "planner_$key.json")
+        if (value.isNullOrBlank()) {
+            file.delete()
+            runCatching { prefs.remove(key) }
+        } else {
+            file.writeText(value, Charsets.UTF_8)
+        }
+    }
+
+    private fun getJson(key: String): String? {
+        val file = File(storeDir, "planner_$key.json")
+        if (file.isFile) return file.readText(Charsets.UTF_8)
+        return prefs.get(key, null)
+    }
+
     private val planType = object : TypeToken<ReadingPlan>() {}.type
     private val planListType = object : TypeToken<List<ReadingPlan>>() {}.type
     private val sessionsType = object : TypeToken<Map<String, Int>>() {}.type
@@ -55,7 +81,7 @@ object PlannerStore {
     /** Web `prayerSettings` (activePrayers / readPreference / intentionPrompt). */
     @Synchronized
     fun getPrayerPrefs(): PrayerPrefs {
-        val raw = prefs.get(KEY_PRAYER_PREFS, null) ?: return PrayerPrefs.DEFAULT
+        val raw = getJson(KEY_PRAYER_PREFS) ?: return PrayerPrefs.DEFAULT
         return try {
             gson.fromJson<PrayerPrefs>(raw, prayerPrefsType) ?: PrayerPrefs.DEFAULT
         } catch (_: Exception) {
@@ -65,13 +91,13 @@ object PlannerStore {
 
     @Synchronized
     fun savePrayerPrefs(p: PrayerPrefs) {
-        prefs.put(KEY_PRAYER_PREFS, gson.toJson(p, prayerPrefsType))
+        putJson(KEY_PRAYER_PREFS, gson.toJson(p, prayerPrefsType))
         runCatching { prefs.flush() }
     }
 
     @Synchronized
     fun getActivePlan(): ReadingPlan? {
-        val raw = prefs.get(KEY_ACTIVE_PLAN, null) ?: return null
+        val raw = getJson(KEY_ACTIVE_PLAN) ?: return null
         if (raw.isBlank()) return null
         return try {
             gson.fromJson<ReadingPlan>(raw, planType)
@@ -83,15 +109,15 @@ object PlannerStore {
     @Synchronized
     fun saveActivePlan(plan: ReadingPlan?) {
         if (plan == null) {
-            prefs.remove(KEY_ACTIVE_PLAN)
+            putJson(KEY_ACTIVE_PLAN, null)
         } else {
-            prefs.put(KEY_ACTIVE_PLAN, gson.toJson(plan))
+            putJson(KEY_ACTIVE_PLAN, gson.toJson(plan))
         }
     }
 
     @Synchronized
     fun getAllPlans(): List<ReadingPlan> {
-        val raw = prefs.get(KEY_ALL_PLANS, null) ?: return emptyList()
+        val raw = getJson(KEY_ALL_PLANS) ?: return emptyList()
         if (raw.isBlank()) return emptyList()
         return try {
             gson.fromJson<List<ReadingPlan>>(raw, planListType) ?: emptyList()
@@ -102,19 +128,19 @@ object PlannerStore {
 
     @Synchronized
     fun saveAllPlans(plans: List<ReadingPlan>) {
-        prefs.put(KEY_ALL_PLANS, gson.toJson(plans))
+        putJson(KEY_ALL_PLANS, gson.toJson(plans))
     }
 
     @Synchronized
     fun logStudySession(dateStr: String, minutes: Int) {
         val current = getStudySessions().toMutableMap()
         current[dateStr] = (current[dateStr] ?: 0) + minutes
-        prefs.put(KEY_SESSIONS, gson.toJson(current))
+        putJson(KEY_SESSIONS, gson.toJson(current))
     }
 
     @Synchronized
     fun getStudySessions(): Map<String, Int> {
-        val raw = prefs.get(KEY_SESSIONS, null) ?: return emptyMap()
+        val raw = getJson(KEY_SESSIONS) ?: return emptyMap()
         if (raw.isBlank()) return emptyMap()
         return try {
             gson.fromJson<Map<String, Int>>(raw, sessionsType) ?: emptyMap()
@@ -136,11 +162,11 @@ object PlannerStore {
         } else {
             current[dateStr] = text
         }
-        prefs.put(KEY_JOURNALS, gson.toJson(current))
+        putJson(KEY_JOURNALS, gson.toJson(current))
     }
 
     private fun getAllJournals(): Map<String, String> {
-        val raw = prefs.get(KEY_JOURNALS, null) ?: return emptyMap()
+        val raw = getJson(KEY_JOURNALS) ?: return emptyMap()
         if (raw.isBlank()) return emptyMap()
         return try {
             gson.fromJson<Map<String, String>>(raw, journalsType) ?: emptyMap()
@@ -153,7 +179,7 @@ object PlannerStore {
 
     @Synchronized
     fun getArchived(): List<ArchivedPlan> {
-        val raw = prefs.get(KEY_ARCHIVED_PLANS, null) ?: return emptyList()
+        val raw = getJson(KEY_ARCHIVED_PLANS) ?: return emptyList()
         if (raw.isBlank()) return emptyList()
         return try {
             gson.fromJson<List<ArchivedPlan>>(raw, archivedPlansType) ?: emptyList()
@@ -172,7 +198,7 @@ object PlannerStore {
         val archived = getArchived().toMutableList()
         archived.removeAll { it.plan.id == planId }
         archived.add(ArchivedPlan(plan = plan, archivedAt = PlannerEngine.formatPlannerDate()))
-        prefs.put(KEY_ARCHIVED_PLANS, gson.toJson(archived))
+        putJson(KEY_ARCHIVED_PLANS, gson.toJson(archived))
     }
 
     @Synchronized
@@ -181,7 +207,7 @@ object PlannerStore {
         val idx = archived.indexOfFirst { it.plan.id == planId }
         if (idx == -1) return
         val entry = archived.removeAt(idx)
-        prefs.put(KEY_ARCHIVED_PLANS, gson.toJson(archived))
+        putJson(KEY_ARCHIVED_PLANS, gson.toJson(archived))
         val plans = getAllPlans().toMutableList()
         if (plans.none { it.id == planId }) {
             plans.add(entry.plan)
@@ -193,14 +219,14 @@ object PlannerStore {
     fun deleteArchived(planId: String) {
         val archived = getArchived().toMutableList()
         if (archived.removeAll { it.plan.id == planId }) {
-            prefs.put(KEY_ARCHIVED_PLANS, gson.toJson(archived))
+            putJson(KEY_ARCHIVED_PLANS, gson.toJson(archived))
         }
     }
 
     // ── Plan-keyed reflections ("planId|day" -> text) ────────────────
 
     private fun getAllReflections(): Map<String, String> {
-        val raw = prefs.get(KEY_REFLECTIONS, null) ?: return emptyMap()
+        val raw = getJson(KEY_REFLECTIONS) ?: return emptyMap()
         if (raw.isBlank()) return emptyMap()
         return try {
             gson.fromJson<Map<String, String>>(raw, reflectionsType) ?: emptyMap()
@@ -223,13 +249,13 @@ object PlannerStore {
         } else {
             current[key] = text
         }
-        prefs.put(KEY_REFLECTIONS, gson.toJson(current))
+        putJson(KEY_REFLECTIONS, gson.toJson(current))
     }
 
     // ── Plan bookmarks (planId -> verse marks) ───────────────────────
 
     private fun getAllMarks(): Map<String, List<PlanVerseMark>> {
-        val raw = prefs.get(KEY_MARKS, null) ?: return emptyMap()
+        val raw = getJson(KEY_MARKS) ?: return emptyMap()
         if (raw.isBlank()) return emptyMap()
         return try {
             gson.fromJson<Map<String, List<PlanVerseMark>>>(raw, marksType) ?: emptyMap()
@@ -265,7 +291,7 @@ object PlannerStore {
         } else {
             current[planId] = marks
         }
-        prefs.put(KEY_MARKS, gson.toJson(current))
+        putJson(KEY_MARKS, gson.toJson(current))
         return added
     }
 }
