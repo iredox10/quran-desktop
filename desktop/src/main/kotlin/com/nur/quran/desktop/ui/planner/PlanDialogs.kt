@@ -90,6 +90,76 @@ fun RebalanceDialog(pal: NurPalette, onDismiss: () -> Unit, onPick: (String) -> 
 }
 
 @Composable
+fun DeletePlanDialog(
+    pal: NurPalette,
+    planTitle: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val fontUi = rememberUiFontFamily()
+    val fontBody = rememberBodyFontFamily()
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(18.dp),
+            color = pal.cream,
+            border = BorderStroke(1.dp, pal.boneDark),
+            shadowElevation = 16.dp,
+            modifier = Modifier.widthIn(max = 360.dp).fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(28.dp)) {
+                Text(
+                    text = "Delete this plan?",
+                    fontFamily = fontUi,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = pal.ink
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "All progress for \"$planTitle\" will be permanently lost. This cannot be undone.",
+                    fontFamily = fontBody,
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp,
+                    color = pal.inkMid
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        shape = RoundedCornerShape(100.dp),
+                        border = BorderStroke(1.5.dp, pal.boneDark),
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            fontFamily = fontBody,
+                            fontSize = 14.sp,
+                            color = pal.inkMid
+                        )
+                    }
+                    Button(
+                        onClick = onConfirm,
+                        shape = RoundedCornerShape(100.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = androidx.compose.ui.graphics.Color(0xFFC0392B)
+                        ),
+                        modifier = Modifier.weight(1f).height(48.dp)
+                    ) {
+                        Text(
+                            text = "Delete",
+                            fontFamily = fontBody,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = androidx.compose.ui.graphics.Color.White
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun RebalanceOption(pal: NurPalette, title: String, body: String, onClick: () -> Unit) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()

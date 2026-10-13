@@ -485,7 +485,7 @@ fun IntentionView(
                             (overview.completionRatio * 100).toInt().coerceIn(0, 100)
                         } else 0
                         val isActive = plan.id == activePlanId
-                        var confirmDelete by remember(plan.id) { mutableStateOf(false) }
+                        var pendingDelete by remember(plan.id) { mutableStateOf(false) }
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = pal.cream),
@@ -562,36 +562,33 @@ fun IntentionView(
                                             )
                                         }
                                     }
-                                    if (confirmDelete) {
-                                        Text(
-                                            text = "Tap again",
-                                            fontFamily = fontBody,
-                                            fontSize = 10.5.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = pal.teal,
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .clickable {
-                                                    confirmDelete = false
-                                                    onDeletePlan(plan.id)
-                                                }
-                                                .padding(horizontal = 6.dp, vertical = 6.dp)
+                                    // Web parity (Planner.jsx 340-346 + 1601-1614):
+                                    // trash icon opens the "Delete this plan?" modal.
+                                    IconButton(
+                                        onClick = { pendingDelete = true },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "Delete plan",
+                                            tint = pal.inkMuted,
+                                            modifier = Modifier.size(14.dp)
                                         )
-                                    } else {
-                                        IconButton(
-                                            onClick = { confirmDelete = true },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Filled.Delete,
-                                                contentDescription = "Delete plan",
-                                                tint = pal.inkMuted,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
                                     }
                                 }
                             }
+                        }
+                        // Web parity: delete confirm lives outside the row card.
+                        if (pendingDelete) {
+                            DeletePlanDialog(
+                                pal = pal,
+                                planTitle = plan.title.ifBlank { "Unnamed Plan" },
+                                onDismiss = { pendingDelete = false },
+                                onConfirm = {
+                                    pendingDelete = false
+                                    onDeletePlan(plan.id)
+                                }
+                            )
                         }
                     }
                 }
