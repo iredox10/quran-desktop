@@ -199,7 +199,7 @@ object PlannerStore {
      */
     @Synchronized
     fun archivePlan(planId: String) {
-        val targetId = planId.ifBlank { getActivePlanId().orEmpty() }
+        val targetId = planId.ifBlank { getActivePlan()?.id.orEmpty() }
         val plans = getAllPlans().toMutableList()
         val idx = plans.indexOfFirst { it.id == targetId }
         val active = getActivePlan()
@@ -217,8 +217,8 @@ object PlannerStore {
         archived.removeAll { it.plan.id == plan.id }
         archived.add(0, ArchivedPlan(plan = plan, archivedAt = PlannerEngine.formatPlannerDate()))
         putJson(KEY_ARCHIVED_PLANS, gson.toJson(archived))
-        if (getActivePlanId() == plan.id) {
-            setActivePlanId(plans.firstOrNull()?.id)
+        if (getActivePlan()?.id == plan.id) {
+            saveActivePlan(plans.firstOrNull())
         }
     }
 
