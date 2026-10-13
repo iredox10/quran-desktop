@@ -101,12 +101,6 @@ private fun IntentionLogoMark(pal: NurPalette) {
     }
 }
 
-private fun paceProgress(durationDays: Int): Float = when {
-    durationDays <= 30 -> 0.88f
-    durationDays <= 60 -> 0.72f
-    else -> 0.45f
-}
-
 @Composable
 fun IntentionView(
     pal: NurPalette,
