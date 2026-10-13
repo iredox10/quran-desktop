@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +59,92 @@ import kotlin.math.ceil
  * Desktop planner building blocks, styled after the Android planner components
  * (teal/gold palette, cream cards with 14-18dp corners and bone-dark borders).
  */
+
+/**
+ * Pace-card ring — web parity (Planner.jsx PaceRing, lines 128-151):
+ * 104px ring, 135°-rotated dashed arc with ratio 0.88/0.72/0.45 by
+ * duration, bone track (--plr-ring-bg), gold sweep when selected else
+ * muted --plr-ring-stroke, centered daily-pages count + PAGES/DAY caption.
+ *
+ * Kept separate from the generic [PaceRing] progress ring (used by the
+ * Today hero) so neither caller regresses.
+ */
+@Composable
+fun PaceCardRing(
+    pal: NurPalette,
+    durationDays: Int,
+    dailyPages: Int,
+    selected: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val fontUi = rememberUiFontFamily()
+    val ratio = when {
+        durationDays <= 30 -> 0.88f
+        durationDays <= 60 -> 0.72f
+        else -> 0.45f
+    }
+    // Web: 104px box with the svg rotated 135° and margins 0.2rem/0.5rem.
+    Box(
+        modifier = modifier.size(104.dp).padding(top = 3.dp, bottom = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeWidth = 7.dp.toPx()
+            val sweep = 360f * ratio
+            // Track: full-circle bone ring (--plr-ring-bg #EAE5D4 light).
+            drawArc(
+                color = pal.bone,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = Offset(
+                    strokeWidth / 2f + 4.dp.toPx(),
+                    strokeWidth / 2f + 4.dp.toPx()
+                ),
+                size = Size(
+                    size.width - strokeWidth - 8.dp.toPx(),
+                    size.height - strokeWidth - 8.dp.toPx()
+                ),
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+            // Sweep: web dash pattern (filled arc + gap) starting at 135°.
+            // Unselected uses the muted --plr-ring-stroke (#C8B88A light).
+            val ringStroke = Color(0xFFC8B88A)
+            drawArc(
+                color = if (selected) pal.gold else ringStroke,
+                startAngle = 135f,
+                sweepAngle = sweep,
+                useCenter = false,
+                topLeft = Offset(
+                    strokeWidth / 2f + 4.dp.toPx(),
+                    strokeWidth / 2f + 4.dp.toPx()
+                ),
+                size = Size(
+                    size.width - strokeWidth - 8.dp.toPx(),
+                    size.height - strokeWidth - 8.dp.toPx()
+                ),
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = dailyPages.toString(),
+                fontFamily = fontUi,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 30.sp,
+                color = pal.ink
+            )
+            Text(
+                text = "PAGES / DAY",
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontSize = 7.5.sp,
+                letterSpacing = 0.8.sp,
+                color = pal.inkMuted
+            )
+        }
+    }
+}
 
 /** Circular progress ring: bone-dark track, gold sweep, centered [label]. Web parity (Planner.jsx TODAY hero RingProgress size=240): pass diameter=200.dp for the hero. */
 @Composable
