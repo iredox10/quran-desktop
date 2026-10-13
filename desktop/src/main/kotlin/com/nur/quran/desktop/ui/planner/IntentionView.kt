@@ -493,14 +493,17 @@ fun IntentionView(
                                 1.5.dp,
                                 if (isActive) pal.gold else pal.boneDark
                             ),
+                            // Web parity (Planner.jsx 329): row body tap switches
+                            // plan AND navigates to the active view.
                             modifier = Modifier.fillMaxWidth().clickable {
                                 onSwitchPlan(plan.id)
                                 onViewActive()
                             }
                         ) {
                             Row(
-                                modifier = Modifier.padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -508,7 +511,8 @@ fun IntentionView(
                                         fontFamily = fontBody,
                                         fontSize = 14.5.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = pal.ink
+                                        color = pal.ink,
+                                        maxLines = 1
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
@@ -540,19 +544,21 @@ fun IntentionView(
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column(horizontalAlignment = Alignment.End) {
+                                    // Web parity (Planner.jsx 339): mono uppercase
+                                    // ACTIVE pill on gold wash.
                                     if (isActive) {
                                         Surface(
                                             shape = RoundedCornerShape(10.dp),
                                             color = pal.goldSoft
                                         ) {
                                             Text(
-                                                text = "Active",
-                                                fontFamily = fontBody,
+                                                text = "ACTIVE",
+                                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                                 fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontWeight = FontWeight.Medium,
                                                 letterSpacing = 1.sp,
                                                 color = pal.gold,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                             )
                                         }
                                     }
