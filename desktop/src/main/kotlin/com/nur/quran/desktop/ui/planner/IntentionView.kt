@@ -3,6 +3,7 @@ package com.nur.quran.desktop.ui.planner
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -411,10 +413,11 @@ fun IntentionView(
             )
         }
 
-        // (4) My Plans list
+        // (4) My Plans list — web parity (Planner.jsx 302-317): header row with
+        // bottom divider, title left, Archives link + circular + action right.
         Column {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -425,36 +428,40 @@ fun IntentionView(
                     color = pal.ink,
                     modifier = Modifier.weight(1f)
                 )
-                Text(
-                    text = plans.size.toString(),
-                    fontFamily = fontBody,
-                    fontSize = 11.sp,
-                    color = pal.inkMuted
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 if (archivedCount > 0) {
                     Text(
                         text = "Archives ($archivedCount)",
                         fontFamily = fontBody,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.6.sp,
                         color = pal.teal,
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { onOpenArchives() }
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
-                IconButton(onClick = onNewCustom, modifier = Modifier.size(34.dp)) {
+                Box(
+                    modifier = Modifier.size(34.dp)
+                        .clip(CircleShape)
+                        .border(1.5.dp, pal.boneDark, CircleShape)
+                        .clickable { onNewCustom() },
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Filled.Add,
                         contentDescription = "Create custom plan",
                         tint = pal.teal,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth().height(1.dp).background(pal.boneDark)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             if (plans.isEmpty()) {
                 Text(
                     text = "No plans yet. Select a path above or tap + to create a custom plan.",
