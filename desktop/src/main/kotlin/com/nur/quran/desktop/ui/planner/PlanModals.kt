@@ -418,20 +418,24 @@ fun ArchivesModal(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (archived.isEmpty()) {
+                // Web parity (Planner.jsx 529-530): centered italic empty state.
                 Text(
                     text = "No archived plans yet.",
                     fontFamily = fontBody,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                     fontSize = 13.sp,
                     color = pal.inkMuted,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 )
             } else {
                 archived.forEach { entry ->
                     val plan = entry.plan
                     val finished = plan.completedDays.size
                     val isCompleted = finished == plan.durationDays
+                    // Web parity (Planner.jsx 547): split ISO on "T", then short label.
                     val archivedLabel = remember(entry.archivedAt) {
-                        PlannerEngine.formatPlannerDateLabel(entry.archivedAt.split("T")[0])
+                        PlannerEngine.formatPlannerDateLabel(entry.archivedAt.substringBefore("T"))
                     }
                     Card(
                         shape = RoundedCornerShape(14.dp),
@@ -458,29 +462,34 @@ fun ArchivesModal(
                                     shape = RoundedCornerShape(20.dp),
                                     color = if (isCompleted) pal.goldSoft else pal.cream
                                 ) {
+                                    // Web parity (Planner.jsx 539): mono uppercase
+                                    // COMPLETED / ENDED badge.
                                     Text(
-                                        text = if (isCompleted) "Completed" else "Ended",
-                                        fontFamily = fontBody,
+                                        text = if (isCompleted) "COMPLETED" else "ENDED",
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                         fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.Medium,
                                         letterSpacing = 0.6.sp,
                                         color = if (isCompleted) pal.gold else pal.inkMuted,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                     )
                                 }
                             }
                             Spacer(Modifier.height(4.dp))
+                            // Web parity (Planner.jsx 543-548): mono daily-progress
+                            // line + italic archived date line (short label).
                             Text(
-                                text = "${plan.durationDays} days · $finished finished",
-                                fontFamily = fontBody,
+                                text = "${plan.durationDays} days \u00B7 $finished days finished",
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                 fontSize = 10.sp,
-                                letterSpacing = 0.3.sp,
+                                letterSpacing = 0.4.sp,
                                 color = pal.inkMuted
                             )
                             Spacer(Modifier.height(6.dp))
                             Text(
                                 text = "Archived on $archivedLabel",
                                 fontFamily = fontBody,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                 fontSize = 12.sp,
                                 color = pal.inkMid
                             )

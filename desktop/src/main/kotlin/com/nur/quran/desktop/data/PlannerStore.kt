@@ -177,28 +177,49 @@ object PlannerStore {
 
     // ── Archived plans ──────────────────────────────────────────────
 
+    // Web parity (useAppStore archivePlanner): archived entries carry an ISO
+    // timestamp; blank stamps fall back to entry order. Newest first.
     @Synchronized
     fun getArchived(): List<ArchivedPlan> {
         val raw = getJson(KEY_ARCHIVED_PLANS) ?: return emptyList()
         if (raw.isBlank()) return emptyList()
         return try {
-            gson.fromJson<List<ArchivedPlan>>(raw, archivedPlansType) ?: emptyList()
+            val parsed: List<ArchivedPlan> =
+                gson.fromJson<List<ArchivedPlan>>(raw, archivedPlansType) ?: emptyList()
+            parsed.sortedByDescending { it.archivedAt }
         } catch (_: Exception) {
             emptyList()
         }
     }
 
+    /**
+     * Web parity (useAppStore archivePlanner): archive [planId], falling back
+     * to the saved active plan like web's `planId || activePlannerId`. Keeps
+     * the newest archived first and refreshes the saved active plan id.
+     */
     @Synchronized
     fun archivePlan(planId: String) {
+        val targetId = planId.ifBlank { getActivePlanId().orEmpty() }
         val plans = getAllPlans().toMutableList()
-        val idx = plans.indexOfFirst { it.id == planId }
-        if (idx == -1) return
-        val plan = plans.removeAt(idx)
+        val idx = plans.indexOfFirst { it.id == targetId }
+        val active = getActivePlan()
+        val plan = when {
+            idx != -1 -> plans.removeAt(idx)
+            active != null && active.id == targetId -> active
+            active != null && targetId.isBlank() -> {
+                plans.removeAll { it.id == active.id }
+                active
+            }
+            else -> return
+        }
         saveAllPlans(plans)
         val archived = getArchived().toMutableList()
-        archived.removeAll { it.plan.id == planId }
-        archived.add(ArchivedPlan(plan = plan, archivedAt = PlannerEngine.formatPlannerDate()))
+        archived.removeAll { it.plan.id == plan.id }
+        archived.add(0, ArchivedPlan(plan = plan, archivedAt = PlannerEngine.formatPlannerDate()))
         putJson(KEY_ARCHIVED_PLANS, gson.toJson(archived))
+        if (getActivePlanId() == plan.id) {
+            setActivePlanId(plans.firstOrNull()?.id)
+        }
     }
 
     @Synchronized
