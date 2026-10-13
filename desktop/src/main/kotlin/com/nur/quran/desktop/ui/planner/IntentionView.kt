@@ -234,24 +234,26 @@ fun IntentionView(
                             1.5.dp,
                             if (isSelected) pal.gold else pal.boneDark
                         ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = if (isSelected) 8.dp else 3.dp
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
                             modifier = Modifier
                                 .clickable { selectedPace = pace.id }
-                                .padding(horizontal = 14.dp, vertical = 18.dp)
+                                .padding(horizontal = 20.dp, vertical = 24.dp)
                                 .padding(top = if (paceUi.badge != null) 8.dp else 0.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            PaceRing(
+                            PaceCardRing(
                                 pal = pal,
-                                progress = paceProgress(pace.durationDays),
-                                label = dailyPages.toString(),
-                                subLabel = "PAGES / DAY",
-                                modifier = Modifier.size(110.dp)
+                                durationDays = pace.durationDays,
+                                dailyPages = dailyPages,
+                                selected = isSelected
                             )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = pace.title,
                             fontFamily = fontUi,
@@ -259,15 +261,14 @@ fun IntentionView(
                             fontWeight = FontWeight.SemiBold,
                             color = pal.ink
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "$dailyPages pages/day",
-                            fontFamily = fontBody,
+                            text = "$dailyPages pages per day",
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             fontSize = 11.sp,
-                            letterSpacing = 0.4.sp,
+                            letterSpacing = 0.3.sp,
                             color = pal.inkMid
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -276,7 +277,7 @@ fun IntentionView(
                                 imageVector = paceUi.icon,
                                 contentDescription = null,
                                 tint = pal.inkMid,
-                                modifier = Modifier.size(15.dp)
+                                modifier = Modifier.size(21.dp)
                             )
                             Text(
                                 text = "$perPrayer pages per prayer",
@@ -286,15 +287,46 @@ fun IntentionView(
                                 color = pal.inkMid
                             )
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Done by $endLabel",
-                            fontFamily = fontBody,
-                            fontSize = 11.sp,
-                            color = pal.inkMuted
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         if (isSelected) {
+                            // Web parity (Planner.jsx 281-296): selected card expands an
+                            // inline "pages/day · Done by <date>" summary row above a
+                            // full-width teal journey button.
+                            Column(
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(top = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(
+                                        5.dp,
+                                        Alignment.CenterHorizontally
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "$dailyPages pages/day",
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 0.3.sp,
+                                        color = pal.inkMid
+                                    )
+                                    Text(
+                                        text = "·",
+                                        fontFamily = fontBody,
+                                        fontSize = 11.sp,
+                                        color = pal.boneDark
+                                    )
+                                    Text(
+                                        text = "Done by $endLabel",
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 0.3.sp,
+                                        color = pal.inkMid
+                                    )
+                                }
                             Button(
                                 onClick = {
                                     try {
@@ -314,34 +346,35 @@ fun IntentionView(
                                         beginError = e.message ?: "Could not build plan"
                                     }
                                 },
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "BEGIN JOURNEY",
-                                    fontFamily = fontBody,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.5.sp,
-                                    letterSpacing = 1.sp,
+                                    text = "BEGIN MY JOURNEY",
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 11.5.sp,
+                                    letterSpacing = 1.6.sp,
                                     color = pal.white
                                 )
+                            }
                             }
                         } else {
                             OutlinedButton(
                                 onClick = { selectedPace = pace.id },
                                 shape = RoundedCornerShape(10.dp),
                                 border = BorderStroke(1.5.dp, pal.boneDark),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
                                     text = "SELECT PATH",
-                                    fontFamily = fontBody,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.5.sp,
-                                    letterSpacing = 1.sp,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 11.5.sp,
+                                    letterSpacing = 1.2.sp,
                                     color = pal.inkMid
                                 )
                             }
@@ -358,11 +391,11 @@ fun IntentionView(
                         ) {
                             Text(
                                 text = paceUi.badge,
-                                fontFamily = fontBody,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                 fontSize = 9.sp,
                                 letterSpacing = 1.2.sp,
                                 color = pal.white,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
                             )
                         }
                     }
