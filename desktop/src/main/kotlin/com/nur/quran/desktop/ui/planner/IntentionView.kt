@@ -59,7 +59,7 @@ import com.nur.quran.shared.PlannerEngine
 import com.nur.quran.shared.ReadingPlan
 import kotlin.math.ceil
 
-data class PaceChoice(val id: String, val title: String, val durationDays: Int)
+data class PaceChoice(val id: String, val title: String, val durationDays: Int, val durationLabel: String)
 
 private data class PaceUi(
     val choice: PaceChoice,
@@ -67,9 +67,9 @@ private data class PaceUi(
 )
 
 private val PACES_UI = listOf(
-    PaceUi(PaceChoice("ramadan", "Ramadan Pace", 30)),
-    PaceUi(PaceChoice("steady", "Steady Journey", 60), badge = "MOST BALANCED"),
-    PaceUi(PaceChoice("devotional", "Devotional Path", 365))
+    PaceUi(PaceChoice("ramadan", "Ramadan Pace", 30, "30 DAYS")),
+    PaceUi(PaceChoice("steady", "Steady Journey", 60, "60 DAYS"), badge = "MOST BALANCED"),
+    PaceUi(PaceChoice("devotional", "Devotional Path", 365, "1 YEAR"))
 )
 
 /** Web parity (Planner.jsx PACES icons): moon for Ramadan, sun for Steady, gem for Devotional. */
@@ -227,12 +227,22 @@ fun IntentionView(
                                 selected = isSelected
                             )
                         Spacer(modifier = Modifier.height(2.dp))
+                        // Web parity (Planner.jsx 135-149): title, duration pill row
+                        // (30/60 DAYS, 1 YEAR) + "N pages per day" mono line. Icon +
+                        // per-prayer line lives below.
                         Text(
                             text = pace.title,
                             fontFamily = fontUi,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = pal.ink
+                        )
+                        Text(
+                            text = pace.durationLabel,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            letterSpacing = 1.sp,
+                            color = pal.inkMuted
                         )
                         Text(
                             text = "$dailyPages pages per day",
