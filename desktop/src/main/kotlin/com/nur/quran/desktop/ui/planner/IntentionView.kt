@@ -1,7 +1,6 @@
 package com.nur.quran.desktop.ui.planner
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,6 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.painterResource
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
@@ -80,27 +82,13 @@ private val PaceUi.icon
 
 /** Web parity (Planner.jsx hero logo mark above THE FIRST STEP, shown at low opacity). */
 @Composable
-private fun IntentionLogoMark(pal: NurPalette) {
-    Box(
-        modifier = Modifier.size(72.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.size(64.dp)) {
-            drawArc(
-                color = pal.teal.copy(alpha = 0.22f),
-                startAngle = 40f,
-                sweepAngle = 280f,
-                useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 7.dp.toPx())
-            )
-        }
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(pal.teal.copy(alpha = 0.22f))
-        )
-    }
+private fun IntentionLogoMark() {
+    // Web parity (Planner.jsx 232-234): real QURAN_NUR logo mark at 20% opacity.
+    Image(
+        painter = painterResource("drawable/ic_logo.png"),
+        contentDescription = null,
+        modifier = Modifier.size(80.dp).clip(RoundedCornerShape(18.dp)).alpha(0.2f)
+    )
 }
 
 @Composable
@@ -160,15 +148,15 @@ fun IntentionView(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            IntentionLogoMark(pal)
+            IntentionLogoMark()
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "THE FIRST STEP",
                 fontFamily = fontBody,
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-                color = pal.gold
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 2.4.sp,
+                color = pal.teal
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -188,17 +176,6 @@ fun IntentionView(
                 color = pal.inkMid,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 8.dp)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "\u201CThe best of deeds are those done consistently, even if small.\u201D",
-                fontFamily = fontBody,
-                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                fontSize = 12.5.sp,
-                lineHeight = 19.sp,
-                color = pal.inkMuted,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
 
