@@ -167,9 +167,14 @@ fun PlannerScreenDesktop(
         refresh++
     }
 
+    // Web parity (useAppStore deletePlanner): deleting the active plan falls
+    // back to the first remaining plan; deleting the last plan clears active.
     fun deletePlan(plan: ReadingPlan) {
-        if (plan.id == activePlan?.id) return
-        PlannerStore.saveAllPlans(PlannerStore.getAllPlans().filterNot { it.id == plan.id })
+        val remaining = PlannerStore.getAllPlans().filterNot { it.id == plan.id }
+        PlannerStore.saveAllPlans(remaining)
+        if (plan.id == activePlan?.id) {
+            PlannerStore.saveActivePlan(remaining.firstOrNull())
+        }
         refresh++
     }
 
