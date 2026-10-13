@@ -175,7 +175,8 @@ fun CustomPlanModal(
     var unitType by remember { mutableStateOf("page") }
     var fromText by remember { mutableStateOf("1") }
     var toText by remember { mutableStateOf((PLANNER_UNITS["page"]?.max ?: 604).toString()) }
-    var perDayText by remember { mutableStateOf("1") }
+    // Web parity (Planner.jsx 158): custom composer opens with 10 units/day.
+    var perDayText by remember { mutableStateOf("10") }
     var startDate by remember { mutableStateOf(PlannerEngine.formatPlannerDate()) }
     var excludeDays by remember { mutableStateOf(emptyList<Int>()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -233,7 +234,9 @@ fun CustomPlanModal(
                             unitType = key
                             fromText = "1"
                             toText = meta.max.toString()
-                            perDayText = "1"
+                            // Web parity (Planner.jsx 158/430): 10/day default,
+                            // kept on unit switch like the web's range reset.
+                            perDayText = "10"
                             error = null
                         }
                     }
