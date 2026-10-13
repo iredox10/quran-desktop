@@ -505,8 +505,8 @@ fun IntentionView(
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = "${plan.durationDays} days \u00B7 ${plan.unitType} \u00B7 $pct%",
-                                        fontFamily = fontBody,
+                                        text = "${plan.durationDays} days \u00B7 ${plan.unitType} \u00B7 $pct% complete",
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                         fontSize = 10.sp,
                                         letterSpacing = 0.4.sp,
                                         color = pal.inkMuted
