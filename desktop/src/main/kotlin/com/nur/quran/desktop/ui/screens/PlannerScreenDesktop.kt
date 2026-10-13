@@ -358,14 +358,32 @@ fun PlannerScreenDesktop(
             val unitsLabel = PLANNER_UNITS[plan.unitType]?.plural ?: "Pages"
             val todayDone = todayProgress?.readPagesCount ?: 0
             val todayTotal = (todayProgress?.totalPagesCount ?: 1).coerceAtLeast(1)
-            val hasStartedReading = todayDone > 0
+            // Web parity (Planner.jsx line 673): started = pages read OR last read page.
+            val hasStartedReading = todayDone > 0 || plan.lastReadPage != null
+            // Web parity (Planner.jsx lines 705-714): next-prayer-aware subtitle
+            // with the "All done for today!" fallback (slots need no timings for status).
+            val nextPrayerName = remember(plan, todayAssignment) {
+                runCatching {
+                    val prefs = PlannerStore.getPrayerPrefs()
+                    buildPrayerSlots(
+                        plan = plan,
+                        todayAssignment = todayAssignment,
+                        prayerTimings = null,
+                        readPreference = prefs.readPreference,
+                        activePrayers = prefs.activePrayers
+                    ).firstOrNull { it.status == "current" || it.status == "upcoming" }?.name
+                }.getOrNull()
+            }
             val daySubtitle = when {
                 planDone -> "Plan complete! \uD83C\uDF89"
                 todayAssignment == null -> "Starting soon\u2026"
                 todayComplete && nextAssignment != null ->
                     "Day $currentDay complete! \uD83C\uDF89 \u00B7 Day ${nextAssignment.dayNumber} ready"
                 todayComplete -> "Day $currentDay complete! \uD83C\uDF89"
+                todayDone > 0 && nextPrayerName != null -> "$todayDone of $todayTotal $unitsLabel read \u00B7 $nextPrayerName next"
+                nextPrayerName != null -> "$todayTotal $unitsLabel today \u00B7 start with $nextPrayerName"
                 todayDone > 0 -> "$todayDone of $todayTotal $unitsLabel read"
+                todayComplete || todayDone >= todayTotal -> "All done for today! \u2713"
                 else -> "$todayTotal $unitsLabel today"
             }
             val ctaLabel = when {
@@ -374,7 +392,15 @@ fun PlannerScreenDesktop(
                 hasStartedReading -> "Resume Reading"
                 else -> "Open Al-Quran"
             }
-            val ctaDay = (nextAssignment ?: overview.firstIncomplete).date
+            val ctaDay = when {
+                // Web parity: every day complete but the window isn't finished
+                // leaves ctaRoute null -> disabled "All Caught Up" pill. Kotlin's
+                // firstIncomplete falls back to the last assignment, so null it
+                // out explicitly here.
+                todayComplete && nextAssignment == null && !planDone &&
+                    plan.assignments.all { PlannerEngine.getAssignmentProgress(plan, it).isComplete } -> null
+                else -> (nextAssignment ?: overview.firstIncomplete).date
+            }
             var switcherOpen by remember { mutableStateOf(false) }
 
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -470,6 +496,10 @@ fun PlannerScreenDesktop(
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
+                    // Web parity (Planner.jsx lines 775-792): plan-done adopts a
+                    // revision plan, missing route renders a DISABLED CTA label
+                    // ("Plan Complete ✓" / "All Caught Up") instead of opening a day.
+                    val ctaEnabled = planDone || ctaDay != null
                     Button(
                         onClick = {
                             if (planDone) {
@@ -478,16 +508,21 @@ fun PlannerScreenDesktop(
                                 }.getOrNull()
                                 if (rev != null) adoptPlan(rev)
                             } else {
-                                onOpenDay(ctaDay)
+                                ctaDay?.let { onOpenDay(it) }
                             }
                         },
+                        enabled = ctaEnabled,
                         shape = RoundedCornerShape(100.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                         modifier = Modifier.padding(top = 4.dp)
                     ) {
                         Text(
-                            text = if (planDone) "Start Revision Plan" else ctaLabel,
+                            text = when {
+                                planDone -> "Start Revision Plan"
+                                ctaDay == null -> ctaLabel
+                                else -> ctaLabel
+                            },
                             fontFamily = fontUi,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp,
