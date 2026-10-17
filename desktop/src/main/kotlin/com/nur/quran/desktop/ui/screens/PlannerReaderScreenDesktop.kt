@@ -295,6 +295,9 @@ fun PlannerReaderScreenDesktop(
     // Desktop keyboard nav (web lines 565-572): ArrowRight = prev page,
     // ArrowLeft = next page — bounded to the assignment range.
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    // Day checklist collapsed by default so the actual Quran text is what the
+    // reader sees first (web reader leads with verses, not the item list).
+    var showDayItems by remember { mutableStateOf(false) }
     // Swipe left/right turns pages on touchscreens (web useSwipeable parity).
     fun goNextPage(): Boolean {
         if (currentPage < assignment.pageEnd) {
@@ -469,8 +472,30 @@ fun PlannerReaderScreenDesktop(
             )
         }
 
-        // ── Day items with per-item completion ───────────────────────
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
+        // ── Day checklist (collapsed by default; tap header to expand) ──
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(pal.cream)
+                .clickable { showDayItems = !showDayItems }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Day checklist · ${progress.completedCount}/${progress.totalCount} done",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = pal.ink,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                if (showDayItems) "Hide" else "Show",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = pal.teal
+            )
+        }
+        if (showDayItems) Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)) {
             assignment.items.forEach { item ->
                 val done = progress.completedRangeValues.contains(item.rangeValue)
                 Row(
