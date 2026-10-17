@@ -292,7 +292,7 @@ fun HifdhReaderScreenDesktop(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = ::goBack, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = ::goBack, modifier = Modifier.size(48.dp)) {
                     Icon(
                         imageVector = Icons.Filled.ArrowBack,
                         contentDescription = "Back",
@@ -315,7 +315,7 @@ fun HifdhReaderScreenDesktop(
                         color = pal.inkMuted
                     )
                 }
-                IconButton(onClick = { showBreakdown = true }, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = { showBreakdown = true }, modifier = Modifier.size(48.dp)) {
                     Icon(
                         imageVector = Icons.Filled.Info,
                         contentDescription = "Surah breakdown",
@@ -774,7 +774,7 @@ fun HifdhReaderScreenDesktop(
                         Text(batchLabel, fontFamily = fontUi, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = { showCollections = true }, modifier = Modifier.size(42.dp)) {
+                    IconButton(onClick = { showCollections = true }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Filled.PlaylistAdd, "Add to collection", tint = pal.inkMid, modifier = Modifier.size(18.dp))
                     }
                     Spacer(modifier = Modifier.width(4.dp))

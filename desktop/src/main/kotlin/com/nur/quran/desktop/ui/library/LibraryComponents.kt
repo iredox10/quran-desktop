@@ -164,7 +164,7 @@ fun BookmarksSection(
                         }
                         Box(
                             modifier = Modifier
-                                .size(30.dp)
+                                .size(48.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { onRemove(key) },
                             contentAlignment = Alignment.Center
@@ -500,7 +500,7 @@ private fun CollectionCard(
                         )
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
+                                .size(48.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .clickable { onRemoveItem(key) },
                             contentAlignment = Alignment.Center

@@ -1,7 +1,7 @@
 package com.nur.quran.desktop.ui.input
 
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -9,25 +9,29 @@ import androidx.compose.ui.unit.dp
 /**
  * Shared touch/input helpers for the desktop app.
  *
- * Compose Desktop already routes touch taps through `clickable`, but raw
- * swipe navigation (web `react-swipeable`) and finger-sized hit targets need
- * explicit handling on touchscreens. This file centralises both so every
- * reader/screen behaves the same.
+ * Compose Desktop already routes touch taps through `clickable` and touch
+ * drags through scroll containers, so taps and scrolling work everywhere by
+ * default. What touchscreens actually lack on a mouse-first UI is finger-sized
+ * hit targets and swipe navigation (web `react-swipeable`). This file
+ * centralises both so every reader/screen behaves the same.
  */
 
 /** Minimum interactive hit-target, per Material touch-target guidance. */
 val TouchTargetMin = 48.dp
 
 /**
- * Enforces a minimum 48dp touch target while keeping the visual size intact.
- * Use on icon buttons / checkboxes / small pills.
+ * Guarantees a finger-sized hit target without changing the laid-out visual
+ * size: [minimumInteractiveComponentSize] pads the *touch* area to 48dp and
+ * centres the content, so a 16dp glyph still looks 16dp but is tappable with
+ * a fingertip. Apply it to the interactive wrapper (IconButton / clickable Box),
+ * never to the inner Icon.
  */
-fun Modifier.minTouchTarget(): Modifier = this.sizeIn(minWidth = TouchTargetMin, minHeight = TouchTargetMin)
+fun Modifier.touchTarget(): Modifier = this.minimumInteractiveComponentSize()
 
 /**
  * Horizontal swipe navigation: swipe left = next, swipe right = previous.
  *
- * Mirrors web `useSwipeable(onSwipedLeft/onSwipedRight)` in
+ * Mirrors web `useSwipeable(onSwippedLeft/onSwipedRight)` in
  * `PlannerReader.jsx` (lines ~545-573). Threshold of 64px avoids accidental
  * page turns from vertical scrolling.
  */

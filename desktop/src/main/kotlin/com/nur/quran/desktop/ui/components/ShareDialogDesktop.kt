@@ -88,7 +88,7 @@ fun ShareDialogDesktop(
                         fontWeight = FontWeight.Bold,
                         color = pal.ink
                     )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Filled.Close, contentDescription = "Close", tint = pal.inkMuted)
                     }
                 }

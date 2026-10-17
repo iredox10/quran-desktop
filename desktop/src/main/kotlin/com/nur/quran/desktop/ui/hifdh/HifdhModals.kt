@@ -121,7 +121,7 @@ private fun ModalHeader(
                 fontFamily = fontUi
             )
         }
-        IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+        IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
             Icon(
                 imageVector = Icons.Filled.Close,
                 contentDescription = "Close",
@@ -342,7 +342,7 @@ fun HifdhBreakdownDialog(
                             }
                         }
                     }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "Close",
@@ -544,7 +544,7 @@ fun HifdhTestDialog(
                             )
                         }
                     }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "Close",

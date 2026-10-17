@@ -206,7 +206,7 @@ fun SettingsDrawerDesktop(
                             )
                         }
                     }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                         Icon(
                             imageVector = Icons.Filled.Close,
                             contentDescription = "Close settings",

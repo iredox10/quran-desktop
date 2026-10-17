@@ -81,7 +81,7 @@ fun MiniPlayerDesktop(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            IconButton(onClick = onPrev, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onPrev, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.Filled.SkipPrevious,
                     contentDescription = "Previous verse",
@@ -89,7 +89,7 @@ fun MiniPlayerDesktop(
                     modifier = Modifier.size(20.dp)
                 )
             }
-            IconButton(onClick = onToggle, modifier = Modifier.size(40.dp)) {
+            IconButton(onClick = onToggle, modifier = Modifier.size(48.dp)) {
                 Surface(shape = CircleShape, color = pal.gold) {
                     Box(
                         modifier = Modifier.size(40.dp),
@@ -104,7 +104,7 @@ fun MiniPlayerDesktop(
                     }
                 }
             }
-            IconButton(onClick = onNext, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onNext, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.Filled.SkipNext,
                     contentDescription = "Next verse",
@@ -135,7 +135,7 @@ fun MiniPlayerDesktop(
                     modifier = Modifier.size(18.dp)
                 )
             }
-            IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = "Stop playback",

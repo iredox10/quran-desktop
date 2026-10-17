@@ -352,14 +352,22 @@ private fun TafsirCard(
                 fontFamily = fontBody
             )
         }
-        Icon(
-            imageVector = Icons.Filled.Close,
-            contentDescription = "Close tafsir",
-            tint = pal.inkMuted,
+        // Finger-sized hit target around the 16dp glyph (Material 48dp minimum),
+        // so the close is tappable on touchscreens without changing its look.
+        Box(
             modifier = Modifier
-                .size(16.dp)
-                .clickable(onClick = onClose)
-        )
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onClose),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = "Close tafsir",
+                tint = pal.inkMuted,
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 

@@ -95,7 +95,7 @@ fun LibraryScreenDesktop(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
@@ -318,7 +318,7 @@ private fun BookmarkRowDesktop(
                 tint = pal.gold,
                 modifier = Modifier.size(16.dp)
             )
-            IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
+            IconButton(onClick = onRemove, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = "Remove bookmark",
@@ -825,7 +825,7 @@ private fun CollectionVerseRowDesktop(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onOpen, modifier = Modifier.size(28.dp)) {
+            IconButton(onClick = onOpen, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Read verse",
@@ -833,7 +833,7 @@ private fun CollectionVerseRowDesktop(
                     modifier = Modifier.size(15.dp)
                 )
             }
-            IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
+            IconButton(onClick = onRemove, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = "Remove verse",

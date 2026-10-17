@@ -421,7 +421,7 @@ private fun SurahTopBar(
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
@@ -1009,7 +1009,7 @@ private fun SurahNavigationDialog(
                         color = pal.ink,
                         fontFamily = fontUi
                     )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                         Icon(
                             Icons.Filled.Close,
                             contentDescription = "Close",

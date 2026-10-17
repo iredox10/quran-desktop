@@ -254,7 +254,7 @@ private fun SaukaGroupCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
                     Icon(
                         Icons.Filled.Delete,
                         contentDescription = "Delete group",
@@ -305,7 +305,7 @@ fun SaukaGroupDesktop(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",

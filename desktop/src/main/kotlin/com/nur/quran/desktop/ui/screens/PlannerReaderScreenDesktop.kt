@@ -65,7 +65,7 @@ import com.nur.quran.desktop.data.WordStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.input.AppShortcuts
-import com.nur.quran.desktop.ui.input.minTouchTarget
+import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.desktop.ui.input.swipeToNavigate
 import com.nur.quran.desktop.ui.components.MushafPageLines
 import com.nur.quran.desktop.ui.components.VerseRow
@@ -350,7 +350,7 @@ fun PlannerReaderScreenDesktop(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.minTouchTarget()) {
+            IconButton(onClick = onBack, modifier = Modifier.touchTarget()) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = pal.ink)
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -447,7 +447,7 @@ fun PlannerReaderScreenDesktop(
                 )
             }
             // Reading-mode toggle: page-accurate mushaf lines vs verse list.
-            IconButton(onClick = { showMushaf = !showMushaf }, modifier = Modifier.minTouchTarget()) {
+            IconButton(onClick = { showMushaf = !showMushaf }, modifier = Modifier.touchTarget()) {
                 Icon(
                     Icons.Filled.MenuBook,
                     contentDescription = if (showMushaf) "Verse list view" else "Mushaf page view",
@@ -773,14 +773,14 @@ fun PlannerReaderScreenDesktop(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row {
-                IconButton(onClick = { prevDate?.let(onOpenDay) }, enabled = prevDate != null, modifier = Modifier.minTouchTarget()) {
+                IconButton(onClick = { prevDate?.let(onOpenDay) }, enabled = prevDate != null, modifier = Modifier.touchTarget()) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Previous day",
                         tint = if (prevDate != null) pal.ink else pal.inkMuted.copy(alpha = 0.4f)
                     )
                 }
-                IconButton(onClick = { nextDate?.let(onOpenDay) }, enabled = nextDate != null, modifier = Modifier.minTouchTarget()) {
+                IconButton(onClick = { nextDate?.let(onOpenDay) }, enabled = nextDate != null, modifier = Modifier.touchTarget()) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Next day",

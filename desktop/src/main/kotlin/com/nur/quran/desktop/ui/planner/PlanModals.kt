@@ -99,7 +99,7 @@ private fun ModalShell(pal: NurPalette, onDismiss: () -> Unit, title: String, co
                         color = pal.ink,
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                         Box(
                             modifier = Modifier.size(32.dp).clip(CircleShape).background(pal.bone),
                             contentAlignment = Alignment.Center

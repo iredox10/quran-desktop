@@ -397,7 +397,7 @@ private fun TopNavbar(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(48.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .clickable { onToggleTheme() },
                         contentAlignment = Alignment.Center
@@ -411,7 +411,7 @@ private fun TopNavbar(
                     }
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(48.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .clickable { onSettingsClick() },
                         contentAlignment = Alignment.Center
