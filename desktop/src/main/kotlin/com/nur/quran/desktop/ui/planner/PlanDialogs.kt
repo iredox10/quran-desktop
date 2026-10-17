@@ -76,6 +76,19 @@ fun AdjustPaceDialog(pal: NurPalette, plan: ReadingPlan, onDismiss: () -> Unit, 
                     }
                 }
                 Text(text = "DAYS  (min $minDuration)", fontFamily = fontBody, fontSize = 10.sp, color = pal.inkMuted)
+                // Web parity (Planner.jsx 1351-1357): stepper footer "X days total ·
+                // Y days remaining" + completed-days guard note.
+                Text(
+                    text = "$newDuration days total · ${maxOf(0, newDuration - plan.completedDays.size)} days remaining",
+                    fontFamily = fontBody, fontSize = 11.sp, color = pal.inkMuted
+                )
+                if (plan.completedDays.isNotEmpty()) {
+                    Text(
+                        text = "Cannot go below ${plan.completedDays.size + 1} days — you’ve completed ${plan.completedDays.size}.",
+                        fontFamily = fontBody, fontSize = 11.sp,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = pal.inkMuted
+                    )
+                }
                 Spacer(modifier = Modifier.height(20.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.5.dp, pal.boneDark), modifier = Modifier.weight(1f).height(46.dp)) { Text(text = "Cancel", fontFamily = fontUi, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = pal.inkMid) }
