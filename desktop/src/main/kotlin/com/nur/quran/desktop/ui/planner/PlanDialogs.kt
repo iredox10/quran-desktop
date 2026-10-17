@@ -49,7 +49,23 @@ fun AdjustPaceDialog(pal: NurPalette, plan: ReadingPlan, onDismiss: () -> Unit, 
                 Text(text = "Adjust Pace", fontFamily = fontUi, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = pal.ink)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = "Change how many days you want to complete your remaining plan in. This will re-calculate your daily assignments.", fontFamily = fontBody, fontSize = 13.sp, lineHeight = 20.sp, color = pal.inkMid)
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                // Web parity (Planner.jsx 362-364): "< N days" + "Need more/less time?" row.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "< $newDuration days", fontFamily = fontBody, fontSize = 13.sp, color = pal.inkMuted)
+                    Text(
+                        text = "Need more/less time?",
+                        fontFamily = fontBody,
+                        fontSize = 12.sp,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        color = pal.inkMuted
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(text = "NEW TOTAL DAYS", fontFamily = fontBody, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = pal.gold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(shape = RoundedCornerShape(14.dp), color = pal.white, border = BorderStroke(2.dp, pal.boneDark), modifier = Modifier.fillMaxWidth()) {
