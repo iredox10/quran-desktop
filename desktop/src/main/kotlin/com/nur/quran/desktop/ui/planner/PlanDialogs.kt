@@ -110,9 +110,10 @@ fun RebalanceDialog(pal: NurPalette, onDismiss: () -> Unit, onPick: (String) -> 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = "You missed some pages from past assignments. How would you like to catch up?", fontFamily = fontBody, fontSize = 13.sp, lineHeight = 20.sp, color = pal.inkMid)
                 Spacer(modifier = Modifier.height(16.dp))
-                RebalanceOption(pal, title = "Extend Plan", body = "Keep your daily reading amount exactly the same, but add extra days to the end of your plan.", onClick = { onPick("extend") })
+                // Web parity (Planner.jsx 1362-1387): short titles + arrow/refresh glyph.
+                RebalanceOption(pal, title = "Extend Plan →", body = "Keep your pace — add days", onClick = { onPick("extend") })
                 Spacer(modifier = Modifier.height(12.dp))
-                RebalanceOption(pal, title = "Spread Pages", body = "Keep your original deadline, but evenly distribute the missed pages across your remaining days.", onClick = { onPick("spread") })
+                RebalanceOption(pal, title = "Spread Pages ↻", body = "Keep deadline — daily load grows", onClick = { onPick("spread") })
             }
         }
     }
