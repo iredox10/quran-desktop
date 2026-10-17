@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Icon
@@ -86,7 +87,13 @@ private val navEntries: List<NavEntry> = listOf(
 )
 
 @Composable
-fun AppSidebar(pal: NurPalette, current: String, onNavigate: (String) -> Unit, modifier: Modifier = Modifier) {
+fun AppSidebar(
+    pal: NurPalette,
+    current: String,
+    onNavigate: (String) -> Unit,
+    onShowShortcuts: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val uiFont = rememberUiFontFamily()
     val active = DesktopRoutes.topLevelOf(current)
     Row(
@@ -157,6 +164,33 @@ fun AppSidebar(pal: NurPalette, current: String, onNavigate: (String) -> Unit, m
                 }
             }
             Spacer(modifier = Modifier.weight(1f))
+            // Touch-friendly footer entry opening the keyboard/touch help.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onShowShortcuts() }
+                    .padding(horizontal = 10.dp, vertical = 10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(modifier = Modifier.width(13.dp))
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = "Keyboard and touch shortcuts",
+                        tint = pal.inkMid,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Shortcuts",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = uiFont,
+                        color = pal.inkMid
+                    )
+                }
+            }
             Text(
                 text = "Desktop edition",
                 fontSize = 10.sp,

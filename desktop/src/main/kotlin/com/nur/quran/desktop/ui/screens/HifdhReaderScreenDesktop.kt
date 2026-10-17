@@ -77,6 +77,8 @@ import com.nur.quran.desktop.data.BookmarkStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
+import com.nur.quran.desktop.ui.input.AppShortcuts
+import com.nur.quran.desktop.ui.input.swipeToNavigate
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
@@ -253,29 +255,35 @@ fun HifdhReaderScreenDesktop(
         )
     }
 
+    fun hifdhNext(): Boolean {
+        val s = step()
+        if (index + s < queue.size) index += s
+        return true
+    }
+    fun hifdhPrev(): Boolean {
+        val s = step()
+        if (index > 0) index = (index - s).coerceAtLeast(0)
+        return true
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(pal.cream)
             .focusRequester(focusRequester)
             .focusable()
+            .swipeToNavigate(onNext = ::hifdhNext, onPrevious = ::hifdhPrev)
             .onKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onKeyEvent false
                 if (showBreakdown || showCollections || showAudioSettings) return@onKeyEvent false
-                when (ev.key) {
-                    // RTL layout: ArrowLeft advances (next), ArrowRight goes back.
-                    Key.DirectionLeft -> {
-                        val s = step()
-                        if (index + s < queue.size) index += s
-                        true
+                // RTL layout: ArrowLeft advances (next), ArrowRight goes back.
+                AppShortcuts.pageTurn(ev, onNext = ::hifdhNext, onPrevious = ::hifdhPrev) ||
+                    when (ev.key) {
+                        Key.Escape -> {
+                            goBack()
+                            true
+                        }
+                        else -> false
                     }
-                    Key.DirectionRight -> {
-                        val s = step()
-                        if (index > 0) index = (index - s).coerceAtLeast(0)
-                        true
-                    }
-                    else -> false
-                }
             }
     ) {
         // ── Top bar ──

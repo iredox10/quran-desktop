@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.LightMode
@@ -50,6 +51,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -79,6 +82,8 @@ import com.nur.quran.desktop.ui.components.SettingsDrawerDesktop
 import com.nur.quran.desktop.ui.components.TranslationTextDesktop
 import com.nur.quran.desktop.ui.components.copyToClipboard
 import com.nur.quran.desktop.ui.home.BrowseItem
+import com.nur.quran.desktop.ui.input.AppShortcuts
+import com.nur.quran.desktop.ui.input.ShortcutHelpDialog
 import com.nur.quran.desktop.ui.home.GlobalSearch
 import com.nur.quran.desktop.ui.home.HomeStatsRow
 import com.nur.quran.desktop.ui.home.RecentlyReadRow
@@ -161,11 +166,38 @@ fun App() {
         if (!welcomed) {
             WelcomeScreenDesktop(pal = pal) { welcomed = true }
         } else {
-            Row(modifier = Modifier.fillMaxSize().background(pal.white)) {
+            var showShortcutHelp by remember { mutableStateOf(false) }
+            // App-wide keyboard support: Ctrl/Cmd+1..8 jumps sections.
+            // NOTE: no shell focus request here — readers own focus for arrows/Esc.
+            // The shell Box has no focusable() so it only sees bubbled (unconsumed)
+            // keys via onKeyEvent, never stealing from focused readers.
+            val topRoutes = listOf(
+                DesktopRoutes.HOME,
+                DesktopRoutes.MEMORIZE,
+                DesktopRoutes.PLANNER,
+                DesktopRoutes.SAUKA,
+                DesktopRoutes.ANALYTICS,
+                DesktopRoutes.LIBRARY,
+                DesktopRoutes.DOWNLOADS,
+                DesktopRoutes.HISTORY,
+            )
+            Row(
+                modifier = Modifier.fillMaxSize().background(pal.white)
+                    .onKeyEvent { event ->
+                        if (showSettings || showShortcutHelp) return@onKeyEvent false
+                        // Only section jumps bubble here (Ctrl+digit). Readers consume
+                        // arrows/Esc/Space themselves, so those never reach us.
+                        AppShortcuts.sectionJump(
+                            event,
+                            topLevelRoute = { index -> topRoutes.getOrNull(index)?.let { route = it } },
+                        )
+                    }
+            ) {
                 AppSidebar(
                     pal = pal,
                     current = route,
                     onNavigate = { route = it },
+                    onShowShortcuts = { showShortcutHelp = true },
                     modifier = Modifier.fillMaxHeight()
                 )
                 Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
@@ -291,6 +323,9 @@ fun App() {
                             }
                         }
                     }
+                }
+                if (showShortcutHelp) {
+                    ShortcutHelpDialog(pal = pal, onDismiss = { showShortcutHelp = false })
                 }
             }
         }

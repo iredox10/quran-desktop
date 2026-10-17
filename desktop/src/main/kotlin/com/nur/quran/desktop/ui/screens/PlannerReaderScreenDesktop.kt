@@ -64,6 +64,9 @@ import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.WordStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.SessionStore
+import com.nur.quran.desktop.ui.input.AppShortcuts
+import com.nur.quran.desktop.ui.input.minTouchTarget
+import com.nur.quran.desktop.ui.input.swipeToNavigate
 import com.nur.quran.desktop.ui.components.MushafPageLines
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.components.WordRef
@@ -292,31 +295,50 @@ fun PlannerReaderScreenDesktop(
     // Desktop keyboard nav (web lines 565-572): ArrowRight = prev page,
     // ArrowLeft = next page — bounded to the assignment range.
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    // Swipe left/right turns pages on touchscreens (web useSwipeable parity).
+    fun goNextPage(): Boolean {
+        if (currentPage < assignment.pageEnd) {
+            currentPage = currentPage + 1
+            scrollToPage(currentPage)
+        }
+        return true
+    }
+    fun goPrevPage(): Boolean {
+        if (currentPage > assignment.pageStart) {
+            currentPage = currentPage - 1
+            scrollToPage(currentPage)
+        }
+        return true
+    }
     Column(
         modifier = Modifier.fillMaxSize().background(pal.white)
             .focusRequester(focusRequester)
             .focusable()
+            .swipeToNavigate(onNext = { goNextPage() }, onPrevious = { goPrevPage() })
             .onKeyEvent { event ->
                 if (event.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) {
                     return@onKeyEvent false
                 }
-                when (event.key) {
-                    androidx.compose.ui.input.key.Key.DirectionLeft -> {
-                        if (currentPage < assignment.pageEnd) {
-                            currentPage = currentPage + 1
+                // Full reader map: arrows + Space/PgDn/PgUp page turns,
+                // Home/End jump to assignment bounds, Esc goes back.
+                AppShortcuts.pageTurn(event, onNext = ::goNextPage, onPrevious = ::goPrevPage) ||
+                    when (event.key) {
+                        androidx.compose.ui.input.key.Key.MoveHome -> {
+                            currentPage = assignment.pageStart
                             scrollToPage(currentPage)
+                            true
                         }
-                        true
-                    }
-                    androidx.compose.ui.input.key.Key.DirectionRight -> {
-                        if (currentPage > assignment.pageStart) {
-                            currentPage = currentPage - 1
+                        androidx.compose.ui.input.key.Key.MoveEnd -> {
+                            currentPage = assignment.pageEnd
                             scrollToPage(currentPage)
+                            true
                         }
-                        true
+                        androidx.compose.ui.input.key.Key.Escape -> {
+                            onBack()
+                            true
+                        }
+                        else -> false
                     }
-                    else -> false
-                }
             }
     ) {
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -325,7 +347,7 @@ fun PlannerReaderScreenDesktop(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = onBack, modifier = Modifier.minTouchTarget()) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = pal.ink)
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -422,7 +444,7 @@ fun PlannerReaderScreenDesktop(
                 )
             }
             // Reading-mode toggle: page-accurate mushaf lines vs verse list.
-            IconButton(onClick = { showMushaf = !showMushaf }) {
+            IconButton(onClick = { showMushaf = !showMushaf }, modifier = Modifier.minTouchTarget()) {
                 Icon(
                     Icons.Filled.MenuBook,
                     contentDescription = if (showMushaf) "Verse list view" else "Mushaf page view",
@@ -726,14 +748,14 @@ fun PlannerReaderScreenDesktop(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row {
-                IconButton(onClick = { prevDate?.let(onOpenDay) }, enabled = prevDate != null) {
+                IconButton(onClick = { prevDate?.let(onOpenDay) }, enabled = prevDate != null, modifier = Modifier.minTouchTarget()) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Previous day",
                         tint = if (prevDate != null) pal.ink else pal.inkMuted.copy(alpha = 0.4f)
                     )
                 }
-                IconButton(onClick = { nextDate?.let(onOpenDay) }, enabled = nextDate != null) {
+                IconButton(onClick = { nextDate?.let(onOpenDay) }, enabled = nextDate != null, modifier = Modifier.minTouchTarget()) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Next day",

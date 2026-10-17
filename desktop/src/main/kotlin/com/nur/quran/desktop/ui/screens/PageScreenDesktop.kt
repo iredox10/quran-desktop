@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +61,11 @@ import com.nur.quran.desktop.ui.components.WordRef
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import com.nur.quran.desktop.ui.input.AppShortcuts
+import com.nur.quran.desktop.ui.input.swipeToNavigate
 import com.nur.quran.shared.getHizbByPage
 import com.nur.quran.shared.getJuzByPage
 import kotlinx.coroutines.Dispatchers
@@ -107,8 +114,40 @@ fun PageScreenDesktop(
     val isPageActive = nowPlayingKey in pageKeys
     val isPagePlaying = isPageActive && AudioEngine.playing
 
+    // Keyboard + swipe page turns (web PlannerReader 565-573 parity for pages).
+    val pageFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(pageNumber) { pageFocus.requestFocus() }
+    fun goNextPage(): Boolean {
+        if (pageNumber < 604) onPageChange(pageNumber + 1)
+        return true
+    }
+    fun goPrevPage(): Boolean {
+        if (pageNumber > 1) onPageChange(pageNumber - 1)
+        return true
+    }
     Box(
         modifier = modifier.fillMaxSize().background(pal.white)
+            .focusRequester(pageFocus)
+            .focusable()
+            .swipeToNavigate(onNext = ::goNextPage, onPrevious = ::goPrevPage)
+            .onKeyEvent { event ->
+                AppShortcuts.pageTurn(event, onNext = ::goNextPage, onPrevious = ::goPrevPage) ||
+                    (event.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && when (event.key) {
+                        androidx.compose.ui.input.key.Key.MoveHome -> {
+                            onPageChange(1)
+                            true
+                        }
+                        androidx.compose.ui.input.key.Key.MoveEnd -> {
+                            onPageChange(604)
+                            true
+                        }
+                        androidx.compose.ui.input.key.Key.Escape -> {
+                            onBack()
+                            true
+                        }
+                        else -> false
+                    })
+            }
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             PageTopBar(

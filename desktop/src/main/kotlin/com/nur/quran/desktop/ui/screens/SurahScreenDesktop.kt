@@ -88,6 +88,8 @@ import com.nur.quran.shared.HIZB_STARTS
 import com.nur.quran.shared.JUZ_STARTS
 import com.nur.quran.shared.getHizbByPage
 import com.nur.quran.shared.getJuzByPage
+import com.nur.quran.desktop.ui.input.AppShortcuts
+import com.nur.quran.desktop.ui.input.swipeToNavigate
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
@@ -191,41 +193,43 @@ fun SurahScreenDesktop(
     // suppressed while the navigation dialog owns the focus (text fields).
     val focusRequester = remember { FocusRequester() }
     val keyScope = rememberCoroutineScope()
+    fun goNextSurah(): Boolean {
+        if (chapterId > 1) onOpenSurah(chapterId - 1, null)
+        return true
+    }
+    fun goPrevSurah(): Boolean {
+        if (chapterId < 114) onOpenSurah(chapterId + 1, null)
+        return true
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(pal.white)
             .focusRequester(focusRequester)
             .focusable()
+            .swipeToNavigate(onNext = ::goNextSurah, onPrevious = ::goPrevSurah)
             .onKeyEvent { event ->
                 if (event.type != KeyEventType.KeyDown || showNavDialog) return@onKeyEvent false
-                when (event.key) {
-                    Key.DirectionLeft -> {
-                        if (chapterId > 1) onOpenSurah(chapterId - 1, null)
-                        true
-                    }
-                    Key.DirectionRight -> {
-                        if (chapterId < 114) onOpenSurah(chapterId + 1, null)
-                        true
-                    }
-                    Key.MoveHome -> {
-                        keyScope.launch { listState.scrollToItem(0) }
-                        true
-                    }
-                    Key.MoveEnd -> {
-                        keyScope.launch {
-                            listState.scrollToItem(
-                                (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
-                            )
+                AppShortcuts.pageTurn(event, onNext = ::goNextSurah, onPrevious = ::goPrevSurah) ||
+                    when (event.key) {
+                        Key.MoveHome -> {
+                            keyScope.launch { listState.scrollToItem(0) }
+                            true
                         }
-                        true
+                        Key.MoveEnd -> {
+                            keyScope.launch {
+                                listState.scrollToItem(
+                                    (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)
+                                )
+                            }
+                            true
+                        }
+                        Key.Escape -> {
+                            onBack()
+                            true
+                        }
+                        else -> false
                     }
-                    Key.Escape -> {
-                        onBack()
-                        true
-                    }
-                    else -> false
-                }
             }
     ) {
         LaunchedEffect(chapterId) { focusRequester.requestFocus() }
