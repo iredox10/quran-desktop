@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Schedule
@@ -38,8 +38,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.PlannerStore
@@ -164,16 +168,16 @@ fun TodayTab(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Web parity (line 946): RingProgress size=240 hero at
-                // desktop density -> 200.dp.
+                // Web parity (Planner.jsx 946-948): 240px ring, 3.5rem label,
+                // 0.65rem mono uppercase ring label.
                 PaceRing(
                     pal = pal,
                     progress = todayPct / 100f,
                     label = "$todayPct%",
                     subLabel = ringLabel,
-                    diameter = 200.dp,
-                    labelFontSize = 44.sp,
-                    subLabelFontSize = 8.sp
+                    diameter = 240.dp,
+                    labelFontSize = 56.sp,
+                    subLabelFontSize = 10.4.sp
                 )
             }
             Spacer(modifier = Modifier.width(20.dp))
@@ -250,7 +254,7 @@ fun TodayTab(
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.8.dp)) {
             slots.forEach { slot ->
                 val isCurrent = slot.status == "current"
                 val isCompleted = slot.status == "completed"
@@ -258,33 +262,39 @@ fun TodayTab(
                 val isLocked = slot.status == "locked"
                 val isEmpty = slot.status == "empty"
 
+                // Web parity (Planner.jsx 987-997): current scales up 2%,
+                // completed/empty/locked scale down to 95% and fade, and the
+                // completed/locked/empty rows use tighter vertical padding.
+                val scale = when {
+                    isCurrent -> 1.02f
+                    isCompleted || isEmpty || isLocked -> 0.95f
+                    else -> 1f
+                }
+                val opacity = when {
+                    isCompleted -> 0.8f
+                    isEmpty || isLocked -> 0.7f
+                    else -> 1f
+                }
                 val container = when {
-                    isCurrent -> pal.cream
-                    isCompleted -> pal.green.copy(alpha = 0.08f)
-                    else -> pal.cream.copy(alpha = 0.6f)
+                    isCurrent -> pal.white
+                    isCompleted -> pal.green.copy(alpha = 0.03f)
+                    isUpcoming -> pal.white
+                    else -> pal.cream.copy(alpha = 0.5f)
                 }
                 val border = when {
-                    isCurrent -> BorderStroke(2.dp, pal.gold)
-                    isCompleted -> BorderStroke(1.dp, pal.green.copy(alpha = 0.4f))
-                    else -> BorderStroke(1.dp, pal.boneDark)
-                }
-                // Web parity (1004-1011): check / book / clock / lock icons.
-                val statusIcon = when {
-                    isCompleted -> Icons.Filled.Check
-                    isCurrent -> Icons.Filled.MenuBook
-                    isUpcoming -> Icons.Filled.Schedule
-                    isLocked -> Icons.Filled.Lock
-                    else -> Icons.Filled.Info
+                    isCurrent -> BorderStroke(1.dp, pal.gold)
+                    isCompleted -> BorderStroke(1.dp, pal.green.copy(alpha = 0.2f))
+                    else -> BorderStroke(1.5.dp, pal.boneDark)
                 }
                 val iconBg = when {
                     isCompleted -> pal.green
                     isCurrent -> pal.gold
-                    else -> pal.bone
+                    isUpcoming -> pal.bone
+                    else -> Color.Transparent
                 }
-                val iconTint = when {
-                    isCompleted || isCurrent -> pal.white
-                    else -> pal.inkMuted.copy(alpha = 0.6f)
-                }
+                val iconBorder = if (isEmpty || isLocked) {
+                    BorderStroke(1.dp, pal.boneDark)
+                } else null
                 val subLabel = when {
                     isCompleted -> "${slot.doneInSlot}/${slot.count} $unitPlural ✓"
                     isCurrent -> "${slot.doneInSlot} of ${slot.count} $unitPlural read"
@@ -292,43 +302,89 @@ fun TodayTab(
                     isLocked -> "${slot.count} $unitPlural · locked"
                     else -> "No reading required"
                 }
+                val verticalPadding = if (isCompleted || isEmpty || isLocked) 10.dp else 16.dp
 
                 Surface(
                     shape = RoundedCornerShape(18.dp),
                     color = container,
                     border = border,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer(scaleX = scale, scaleY = scale)
+                        .alpha(opacity)
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.padding(
+                            horizontal = 16.dp,
+                            vertical = verticalPadding
+                        ),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(CircleShape)
-                                .background(iconBg),
+                                .background(iconBg)
+                                .then(
+                                    if (iconBorder != null) {
+                                        Modifier.border(iconBorder, CircleShape)
+                                    } else {
+                                        Modifier
+                                    }
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                statusIcon,
-                                contentDescription = slot.status,
-                                tint = iconTint,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            when {
+                                isCompleted -> Icon(
+                                    Icons.Filled.Check,
+                                    contentDescription = slot.status,
+                                    tint = pal.white,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                isCurrent -> Icon(
+                                    Icons.Filled.MenuBook,
+                                    contentDescription = slot.status,
+                                    tint = pal.white,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                isUpcoming -> Icon(
+                                    Icons.Filled.Schedule,
+                                    contentDescription = slot.status,
+                                    tint = pal.inkMuted,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                isLocked -> Icon(
+                                    Icons.Filled.Lock,
+                                    contentDescription = slot.status,
+                                    tint = pal.inkMuted.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                else -> Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(pal.inkMuted)
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = slot.name,
                                     fontFamily = fontUi,
-                                    fontSize = 16.sp,
+                                    fontSize = 17.6.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isCompleted || isLocked || isEmpty) {
-                                        pal.inkMuted
+                                    textDecoration = if (isCompleted) {
+                                        TextDecoration.LineThrough
                                     } else {
-                                        pal.ink
+                                        TextDecoration.None
+                                    },
+                                    color = pal.ink,
+                                    modifier = if (isCompleted) {
+                                        Modifier.alpha(0.5f)
+                                    } else {
+                                        Modifier
                                     }
                                 )
                                 val slotTime = slot.time
@@ -336,12 +392,13 @@ fun TodayTab(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Surface(
                                         shape = RoundedCornerShape(6.dp),
-                                        color = pal.bone
+                                        color = pal.bone,
+                                        border = BorderStroke(1.5.dp, pal.boneDark)
                                     ) {
                                         Text(
                                             text = slotTime,
-                                            fontFamily = fontBody,
-                                            fontSize = 10.sp,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                            fontSize = 11.2.sp,
                                             color = pal.inkMid,
                                             modifier = Modifier.padding(
                                                 horizontal = 6.dp,
@@ -351,71 +408,93 @@ fun TodayTab(
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = subLabel,
-                                fontFamily = fontBody,
-                                fontSize = 11.sp,
-                                letterSpacing = 0.5.sp,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.6.sp,
                                 color = if (isCurrent) pal.gold else pal.inkMuted
                             )
                         }
-                        when {
-                            isCompleted -> IconButton(
-                                onClick = { onSlotUndo(dayDate, slot.slotStart) }
-                            ) {
-                                Icon(
-                                    Icons.Filled.Check,
-                                    contentDescription = "Undo this slot",
-                                    tint = pal.green,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            isCurrent -> Button(
-                                // Web parity (lines 1033-1037): Start/Resume
-                                // deep-links to the day reader; Resume goes to
-                                // the first-incomplete day when available.
-                                onClick = { onOpenDay(resumeDayDate ?: dayDate) },
-                                shape = RoundedCornerShape(100.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = pal.gold,
-                                    contentColor = pal.white
-                                )
-                            ) {
-                                Text(
-                                    text = if (hasStarted) "Resume" else "Start",
-                                    fontFamily = fontUi,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
-                            }
-                            isUpcoming -> Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .border(1.dp, pal.boneDark, CircleShape)
-                                    .clickable { onSlotDone(dayDate, slot.slotEnd) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
+                        Box(modifier = Modifier.size(32.dp)) {
+                            when {
+                                isCompleted -> Box(
                                     modifier = Modifier
-                                        .size(12.dp)
+                                        .size(32.dp)
                                         .clip(CircleShape)
-                                        .border(1.dp, pal.inkMuted, CircleShape)
+                                        .background(pal.green.copy(alpha = 0.12f))
+                                        .border(
+                                            1.dp,
+                                            pal.green.copy(alpha = 0.3f),
+                                            CircleShape
+                                        )
+                                        .clickable { onSlotUndo(dayDate, slot.slotStart) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = "Undo this prayer",
+                                        tint = pal.green,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                isCurrent -> Button(
+                                    // Web parity (1033-1037): Start/Resume
+                                    // deep-links to the day reader; Resume goes
+                                    // to the first-incomplete day when available.
+                                    onClick = { onOpenDay(resumeDayDate ?: dayDate) },
+                                    shape = RoundedCornerShape(100.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = pal.gold,
+                                        contentColor = pal.white
+                                    ),
+                                    contentPadding = PaddingValues(
+                                        horizontal = 20.dp,
+                                        vertical = 10.dp
+                                    ),
+                                    modifier = Modifier.align(Alignment.Center)
+                                ) {
+                                    Text(
+                                        text = if (hasStarted) "Resume" else "Start",
+                                        fontFamily = fontUi,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.2.sp
+                                    )
+                                }
+                                isUpcoming -> Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(pal.white)
+                                        .border(1.5.dp, pal.boneDark, CircleShape)
+                                        .clickable { onSlotDone(dayDate, slot.slotEnd) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clip(CircleShape)
+                                            .border(1.5.dp, pal.inkMuted, CircleShape)
+                                    )
+                                }
+                                isLocked -> Icon(
+                                    Icons.Filled.Lock,
+                                    contentDescription = "Locked",
+                                    tint = pal.inkMuted.copy(alpha = 0.6f),
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .align(Alignment.Center)
+                                )
+                                else -> Text(
+                                    text = "–",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Light,
+                                    color = pal.inkMuted.copy(alpha = 0.3f),
+                                    modifier = Modifier.align(Alignment.Center)
                                 )
                             }
-                            isLocked -> Icon(
-                                Icons.Filled.Info,
-                                contentDescription = "Locked",
-                                tint = pal.inkMuted.copy(alpha = 0.6f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            else -> Text(
-                                text = "–",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Light,
-                                color = pal.inkMuted.copy(alpha = 0.4f)
-                            )
                         }
                     }
                 }

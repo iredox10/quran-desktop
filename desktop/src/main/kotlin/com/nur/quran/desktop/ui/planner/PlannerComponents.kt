@@ -159,7 +159,6 @@ fun PaceRing(
     subLabelFontSize: TextUnit = 8.sp
 ) {
     val fontUi = rememberUiFontFamily()
-    val fontBody = rememberBodyFontFamily()
     val p = progress.coerceIn(0f, 1f)
     Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
@@ -199,9 +198,10 @@ fun PaceRing(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = subLabel ?: "${(p * 100).toInt()}% COMPLETE",
-                fontFamily = fontBody,
                 fontSize = subLabelFontSize,
-                letterSpacing = 1.2.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                letterSpacing = 1.5.sp,
                 color = pal.inkMid
             )
         }
