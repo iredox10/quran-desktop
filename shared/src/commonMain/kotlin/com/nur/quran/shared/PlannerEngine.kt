@@ -784,17 +784,19 @@ object PlannerEngine {
     }
 
     // ── Assignment Status Helper ────────────────────────────────────────
+    // Web parity (planner.js getAssignmentStatus): completion comes from
+    // getAssignmentProgress (item/page-aware), "today" wins over "partial"
+    // for the current date, and past days are partial only when pages were read.
     fun getAssignmentStatus(plan: ReadingPlan, assignment: PlannerAssignment, today: String = formatPlannerDate()): String {
-        val isComplete = plan.completedDays.contains(assignment.dayNumber)
-        if (isComplete) return "completed"
-        if (assignment.date == today) {
-            val readPages = plan.assignmentReadPages[assignment.dayNumber]?.size ?: 0
-            return if (readPages > 0) "partial" else "today"
-        }
+        val progress = getAssignmentProgress(plan, assignment)
+        if (progress.isComplete) return "completed"
+
         if (assignment.date < today) {
-            val readPages = plan.assignmentReadPages[assignment.dayNumber]?.size ?: 0
-            return if (readPages > 0) "partial" else "overdue"
+            return if (progress.readPagesCount > 0) "partial" else "overdue"
         }
+
+        if (assignment.date == today) return "today"
+
         return "upcoming"
     }
 
@@ -947,6 +949,16 @@ object PlannerEngine {
         }
     }
 
+    // Web parity (Planner.jsx completionDate): toLocaleDateString month short,
+    // day numeric — no weekday ("Jan 5").
+    fun formatPlannerShortDate(dateStr: String): String {
+        return try {
+            SimpleDateFormat("MMM d", Locale.US).format(parsePlannerDate(dateStr))
+        } catch (e: Exception) {
+            dateStr
+        }
+    }
+
     // ── Pace Stats ────────────────────────────────────────────────────
     // Web parity (Planner.jsx getPaceStats): daily pages, per-prayer split,
     // and an end label that skips excludeDays (Sunday=0..Saturday=6 via
@@ -1055,7 +1067,10 @@ fun buildPrayerSlots(
     val items = todayAssignment.items
     val total = items.size
     val numSlots = sortedPrayers.size.coerceAtLeast(1)
-    val completedRangeValues = plan.assignmentCompletedItems[todayAssignment.dayNumber] ?: emptyList()
+    // Web parity (Planner.jsx buildPrayerSlots): completion is resolved through
+    // getAssignmentProgress so legacy count-only progress also counts as done.
+    val completedRangeValues =
+        PlannerEngine.getAssignmentProgress(plan, todayAssignment).completedRangeValues
 
     return sortedPrayers.mapIndexed { i, name ->
         val slotStart = ceil((i.toDouble() / numSlots) * total).toInt()
