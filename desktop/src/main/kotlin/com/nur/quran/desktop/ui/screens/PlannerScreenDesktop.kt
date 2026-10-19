@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -63,11 +64,12 @@ import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.planner.ArchivesModal
 import com.nur.quran.desktop.ui.planner.CustomPlanModal
 import com.nur.quran.desktop.ui.planner.CustomPlanParams
+import com.nur.quran.desktop.ui.planner.DeletePlanDialog
 import com.nur.quran.desktop.ui.planner.IntentionView
-import com.nur.quran.desktop.ui.planner.JournalEditor
 import com.nur.quran.desktop.ui.planner.JournalTab
 import com.nur.quran.desktop.ui.planner.PaceRing
-import com.nur.quran.desktop.ui.planner.PlanTodayCard
+import com.nur.quran.desktop.ui.planner.RebalanceDialog
+import com.nur.quran.desktop.ui.planner.ReplacePlanDialog
 import com.nur.quran.desktop.ui.planner.SectionTitle
 import com.nur.quran.desktop.ui.planner.TemplatePreviewModal
 import com.nur.quran.desktop.ui.planner.TodayTab
@@ -127,6 +129,11 @@ fun PlannerScreenDesktop(
     var showArchivesModal by remember { mutableStateOf(false) }
     var previewPlan by remember { mutableStateOf<ReadingPlan?>(null) }
     var showPlannerSettings by remember { mutableStateOf(false) }
+    var showDeletePlan by remember { mutableStateOf(false) }
+    var showAutoRebalance by remember { mutableStateOf(false) }
+    var pendingReplace by remember {
+        mutableStateOf<Pair<ReadingPlan, ReadingPlan>?>(null)
+    }
 
     // ── Prayer slots state (Aladhan, cache-first via PrayerStore) ──
     var prayerCity by remember { mutableStateOf(PrayerStore.getCity()) }
@@ -154,12 +161,49 @@ fun PlannerScreenDesktop(
     val activePlan = remember(refresh) { PlannerStore.getActivePlan() }
     val allPlans = remember(refresh) { PlannerStore.getAllPlans() }
 
+    // Web parity (Planner.jsx 1523-1528): the page opens on the Intention view
+    // unless the active plan already has progress. Creating/switching a plan
+    // explicitly enters the active view.
+    val hasPlanProgress = activePlan != null && (
+        activePlan.completedDays.isNotEmpty() ||
+            activePlan.assignmentProgress.isNotEmpty() ||
+            activePlan.lastReadPage != null
+        )
+    var showActive by remember { mutableStateOf(hasPlanProgress) }
+    LaunchedEffect(activePlan?.id) {
+        if (activePlan == null) showActive = false
+    }
+
+    // Web parity (ActiveView useEffect 687-695): nudge a rebalance once when
+    // the first incomplete assignment is already in the past.
+    LaunchedEffect(activePlan?.id, todayStr) {
+        val plan = activePlan ?: return@LaunchedEffect
+        val firstIncomplete = PlannerEngine.getPlannerOverview(plan, todayStr)?.firstIncomplete
+        if (firstIncomplete != null && firstIncomplete.date < todayStr) {
+            showAutoRebalance = true
+        }
+    }
+
     fun adoptPlan(plan: ReadingPlan) {
         val updated = PlannerStore.getAllPlans().filterNot { it.id == plan.id } + plan
         PlannerStore.saveAllPlans(updated)
         PlannerStore.saveActivePlan(plan)
         customError = null
         refresh++
+    }
+
+    // Web parity (Planner.jsx handleBegin 1537-1547): a plan with the same
+    // title asks to replace the existing one before being added.
+    fun beginPlan(plan: ReadingPlan) {
+        val existing = PlannerStore.getAllPlans().firstOrNull {
+            it.title.isNotBlank() && plan.title.isNotBlank() && it.title == plan.title
+        }
+        if (existing != null) {
+            pendingReplace = existing to plan
+            return
+        }
+        adoptPlan(plan)
+        showActive = true
     }
 
     fun activatePlan(plan: ReadingPlan) {
@@ -175,34 +219,41 @@ fun PlannerScreenDesktop(
         if (plan.id == activePlan?.id) {
             PlannerStore.saveActivePlan(remaining.firstOrNull())
         }
+        if (remaining.isEmpty()) showActive = false
         refresh++
     }
 
-    /** Prayer-slot mark/undo: writes a progress count for the assignment date. */
+    /** Prayer-slot mark/undo: mirrors web setPlannerAssignmentProgress. */
     fun setSlotProgress(plan: ReadingPlan, dayDate: String, count: Int) {
         val assignment = plan.assignments.firstOrNull { it.date == dayDate } ?: return
-        val total = PlannerEngine.getAssignmentProgress(plan, assignment).totalCount
-            .coerceAtLeast(1)
-        val clamped = count.coerceIn(0, total)
+        val totalItems = assignment.items.size
+        val clamped = count.coerceIn(0, totalItems)
+
         val progress = plan.assignmentProgress.toMutableMap()
         progress[assignment.dayNumber] = clamped
-        var completedDays = plan.completedDays.toMutableList()
-        var completedAt = plan.assignmentCompletedAt.toMutableMap()
-        if (clamped >= total) {
-            if (!completedDays.contains(assignment.dayNumber)) {
-                completedDays.add(assignment.dayNumber)
-            }
-            completedAt.putIfAbsent(
-                assignment.dayNumber,
-                PlannerEngine.formatPlannerDate()
-            )
+
+        // Web parity: completion is the first N items, and completedDays is
+        // derived from the progress map (not from item-level explicit marks).
+        val completedItems = plan.assignmentCompletedItems.toMutableMap()
+        completedItems[assignment.dayNumber] =
+            assignment.items.take(clamped).map { it.rangeValue }
+
+        val completedAt = plan.assignmentCompletedAt.toMutableMap()
+        if (clamped >= totalItems) {
+            completedAt.putIfAbsent(assignment.dayNumber, PlannerEngine.formatPlannerDate())
         } else {
-            completedDays.remove(assignment.dayNumber)
             completedAt.remove(assignment.dayNumber)
         }
+
+        val completedDays = plan.assignments
+            .filter { (progress[it.dayNumber] ?: 0) >= it.items.size }
+            .map { it.dayNumber }
+            .sorted()
+
         PlannerStore.saveActivePlan(
             plan.copy(
                 assignmentProgress = progress,
+                assignmentCompletedItems = completedItems,
                 completedDays = completedDays,
                 assignmentCompletedAt = completedAt
             )
@@ -239,7 +290,7 @@ fun PlannerScreenDesktop(
 
     fun confirmTemplate(plan: ReadingPlan) {
         previewPlan = null
-        adoptPlan(plan)
+        beginPlan(plan)
     }
 
     fun createCustomPlan(params: CustomPlanParams) {
@@ -257,25 +308,34 @@ fun PlannerScreenDesktop(
                 chapters = planChapters()
             )
             showCustomModal = false
-            adoptPlan(built)
+            beginPlan(built)
         } catch (e: Exception) {
             customError = e.message ?: "Could not create plan"
         }
     }
 
-    // ── No active plan → intention/onboarding view ──
-    if (activePlan == null) {
-        Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
+    // ── Intention view (no progress yet, or back from the active view) ──
+    if (!showActive || activePlan == null) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(pal.white)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 20.dp)
+        ) {
             IntentionView(
                 pal = pal,
-                hasActivePlan = false,
+                hasActivePlan = activePlan != null,
                 plans = allPlans,
-                activePlanId = null,
+                activePlanId = activePlan?.id,
                 chapters = planChapters(),
-                onBegin = { adoptPlan(it) },
-                onViewActive = {},
+                onBegin = { beginPlan(it) },
+                onViewActive = { showActive = true },
                 onSwitchPlan = { id ->
-                    allPlans.firstOrNull { it.id == id }?.let { activatePlan(it) }
+                    allPlans.firstOrNull { it.id == id }?.let {
+                        activatePlan(it)
+                        showActive = true
+                    }
                 },
                 onDeletePlan = { id ->
                     allPlans.firstOrNull { it.id == id }?.let { deletePlan(it) }
@@ -286,7 +346,7 @@ fun PlannerScreenDesktop(
                 templates = PLAN_TEMPLATES,
                 onPickTemplate = ::startFromTemplate,
                 chaptersReady = planChapters().isNotEmpty(),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             )
         }
         previewPlan?.let { built ->
@@ -309,11 +369,19 @@ fun PlannerScreenDesktop(
             ArchivesModal(
                 pal = pal,
                 archived = PlannerStore.getArchived(),
-                onDismiss = { showArchivesModal = false },
-                onRestore = {
-                    PlannerStore.restoreArchived(it.plan.id)
-                    showArchivesModal = false
-                    refresh++
+                onDismiss = { showArchivesModal = false }
+            )
+        }
+        pendingReplace?.let { (existing, replacement) ->
+            ReplacePlanDialog(
+                pal = pal,
+                planTitle = replacement.title,
+                onDismiss = { pendingReplace = null },
+                onConfirm = {
+                    deletePlan(existing)
+                    adoptPlan(replacement)
+                    showActive = true
+                    pendingReplace = null
                 }
             )
         }
@@ -346,9 +414,9 @@ fun PlannerScreenDesktop(
             } else null
             val planDone = overview.isFinishedWindow && nextAssignment == null
             val currentDay = overview.currentDayNumber
-            val overallPct = (overview.completionRatio * 100).toInt()
+            val overallPct = Math.round(overview.completionRatio * 100)
             val completionDate = try {
-                PlannerEngine.formatPlannerDateLabel(
+                PlannerEngine.formatPlannerShortDate(
                     PlannerEngine.addDays(plan.startDate, plan.durationDays - 1)
                 )
             } catch (_: Exception) {
@@ -374,33 +442,29 @@ fun PlannerScreenDesktop(
                     ).firstOrNull { it.status == "current" || it.status == "upcoming" }?.name
                 }.getOrNull()
             }
+            // Web parity (Planner.jsx 811-819): exact subtitle cascade.
             val daySubtitle = when {
                 planDone -> "Plan complete! \uD83C\uDF89"
                 todayAssignment == null -> "Starting soon\u2026"
                 todayComplete && nextAssignment != null ->
                     "Day $currentDay complete! \uD83C\uDF89 \u00B7 Day ${nextAssignment.dayNumber} ready"
                 todayComplete -> "Day $currentDay complete! \uD83C\uDF89"
-                todayDone > 0 && nextPrayerName != null -> "$todayDone of $todayTotal $unitsLabel read \u00B7 $nextPrayerName next"
-                nextPrayerName != null -> "$todayTotal $unitsLabel today \u00B7 start with $nextPrayerName"
-                todayDone > 0 -> "$todayDone of $todayTotal $unitsLabel read"
-                todayComplete || todayDone >= todayTotal -> "All done for today! \u2713"
-                else -> "$todayTotal $unitsLabel today"
+                todayDone > 0 && todayDone < todayTotal && nextPrayerName != null ->
+                    "$todayDone of $todayTotal $unitsLabel read \u00B7 $nextPrayerName next"
+                nextPrayerName != null ->
+                    "$todayTotal $unitsLabel today \u00B7 start with $nextPrayerName"
+                else -> "All done for today! \u2713"
             }
             val ctaLabel = when {
+                planDone -> "Plan Complete \u2713"
                 todayComplete && nextAssignment != null -> "Continue to Day ${nextAssignment.dayNumber}"
                 todayComplete -> "All Caught Up"
                 hasStartedReading -> "Resume Reading"
                 else -> "Open Al-Quran"
             }
-            val ctaDay = when {
-                // Web parity: every day complete but the window isn't finished
-                // leaves ctaRoute null -> disabled "All Caught Up" pill. Kotlin's
-                // firstIncomplete falls back to the last assignment, so null it
-                // out explicitly here.
-                todayComplete && nextAssignment == null && !planDone &&
-                    plan.assignments.all { PlannerEngine.getAssignmentProgress(plan, it).isComplete } -> null
-                else -> (nextAssignment ?: overview.firstIncomplete).date
-            }
+            // Web parity (Planner.jsx 824): firstIncomplete always exists, so the
+            // CTA route is never null for a non-empty plan.
+            val ctaDay = (nextAssignment ?: overview.firstIncomplete).date
             var switcherOpen by remember { mutableStateOf(false) }
 
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -414,7 +478,7 @@ fun PlannerScreenDesktop(
                             .clip(CircleShape)
                             .background(pal.white)
                             .border(1.dp, pal.boneDark, CircleShape)
-                            .clickable { onBack() },
+                            .clickable { showActive = false },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -496,10 +560,9 @@ fun PlannerScreenDesktop(
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    // Web parity (Planner.jsx lines 775-792): plan-done adopts a
-                    // revision plan, missing route renders a DISABLED CTA label
-                    // ("Plan Complete ✓" / "All Caught Up") instead of opening a day.
-                    val ctaEnabled = planDone || ctaDay != null
+                    // Web parity (Planner.jsx 879-898): plan-done adopts a
+                    // revision plan; otherwise the CTA opens the next/current
+                    // assignment. The route is never null for a non-empty plan.
                     Button(
                         onClick = {
                             if (planDone) {
@@ -508,21 +571,16 @@ fun PlannerScreenDesktop(
                                 }.getOrNull()
                                 if (rev != null) adoptPlan(rev)
                             } else {
-                                ctaDay?.let { onOpenDay(it) }
+                                onOpenDay(ctaDay)
                             }
                         },
-                        enabled = ctaEnabled,
                         shape = RoundedCornerShape(100.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                         modifier = Modifier.padding(top = 4.dp)
                     ) {
                         Text(
-                            text = when {
-                                planDone -> "Start Revision Plan"
-                                ctaDay == null -> ctaLabel
-                                else -> ctaLabel
-                            },
+                            text = if (planDone) "Start Revision Plan" else ctaLabel,
                             fontFamily = fontUi,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp,
@@ -630,35 +688,6 @@ fun PlannerScreenDesktop(
                             onSlotDone = { dayDate, upTo -> setSlotProgress(plan, dayDate, upTo) },
                             onSlotUndo = { dayDate, from -> setSlotProgress(plan, dayDate, from) }
                         )
-                        // ── Reminders ──
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SectionTitle(pal = pal, text = "Reminders")
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "System notifications: " +
-                                        if (java.awt.SystemTray.isSupported()) "on" else "off",
-                                    fontSize = 12.sp,
-                                    color = pal.inkMuted,
-                                    fontFamily = fontBody
-                                )
-                                TextButton(
-                                    onClick = {
-                                        Notifier.notify(
-                                            "Quran Nur",
-                                            "Reminders work — today's reading is ready."
-                                        )
-                                    }
-                                ) {
-                                    Text("Test notification", color = pal.teal, fontSize = 12.sp)
-                                }
-                            }
-                        }
-                        // ── Focus timer ──
-                        com.nur.quran.desktop.ui.pomodoro.PomodoroWidget(pal = pal)
                     }
                 }
             }
@@ -680,7 +709,6 @@ fun PlannerScreenDesktop(
                                 pal = pal,
                                 plan = plan,
                                 todayStr = todayStr,
-                                chapters = planChapters(),
                                 onAdoptPlan = { adoptPlan(it) }
                             )
                         }
@@ -694,101 +722,37 @@ fun PlannerScreenDesktop(
                         JournalTab(
                             pal = pal,
                             plan = jp,
-                            journalDate = journalDate,
-                            onJournalDateChange = { journalDate = it; refresh++ },
-                            onOpenSurah = onOpenSurah,
-                            onSaved = { refresh++ }
+                            onOpenSurah = onOpenSurah
                         )
                     }
-                } else {
-                    item(key = "journal") {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            OutlinedTextField(
-                                value = journalDate,
-                                onValueChange = { journalDate = it },
-                                label = { Text("Date (yyyy-MM-dd)") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            key(journalDate) {
-                                JournalEditor(
-                                    pal = pal,
-                                    dateStr = journalDate,
-                                    initial = PlannerStore.getJournal(journalDate),
-                                    onSave = { text ->
-                                        PlannerStore.saveJournal(journalDate, text)
-                                        refresh++
-                                    }
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
 
-        // ── My plans (management) ──
-        if (allPlans.isNotEmpty()) {
-            item(key = "my-plans-title") {
-                SectionTitle(pal = pal, text = "My plans • ${allPlans.size}")
-            }
-            items(allPlans, key = { "plan-${it.id}" }) { plan ->
-                val isActive = plan.id == activePlan?.id
-                val planAnalytics = remember(plan.id) {
-                    runCatching { PlannerEngine.getPlannerAnalytics(plan) }.getOrNull()
-                }
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isActive) pal.tealSoft else pal.cream,
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp, if (isActive) pal.teal else pal.boneDark
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = plan.title + if (isActive) "  • active" else "",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isActive) pal.teal else pal.ink,
-                                    fontFamily = fontUi
-                                )
-                                Text(
-                                    text = "${plan.startDate} · ${plan.durationDays} days",
-                                    fontSize = 11.sp,
-                                    color = pal.inkMuted,
-                                    fontFamily = fontBody
-                                )
-                                planAnalytics?.let { a ->
-                                    Text(
-                                        text = "${a.onTimeRate}% on time · ${a.totalReadPages} pages read",
-                                        fontSize = 11.sp,
-                                        color = pal.inkMuted,
-                                        fontFamily = fontBody
-                                    )
-                                }
-                            }
-                            if (!isActive) {
-                                TextButton(onClick = { activatePlan(plan) }) {
-                                    Text("Activate", color = pal.teal, fontSize = 12.sp)
-                                }
-                                TextButton(onClick = { deletePlan(plan) }) {
-                                    Text("Delete", color = pal.gold, fontSize = 12.sp)
-                                }
-                            }
-                        }
-                    }
+        // ── Footer: delete plan (web Planner.jsx 1306-1315) ──
+        item(key = "delete-plan-footer") {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                TextButton(onClick = { showDeletePlan = true }) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = null,
+                        tint = pal.inkMuted,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Delete plan",
+                        fontFamily = fontBody,
+                        fontSize = 13.sp,
+                        color = pal.inkMuted
+                    )
                 }
             }
         }
 
-        // ── Plan creation lives on the Intention (no-plan) screen; the active
-        // view only manages the current plan via its tabs and settings ──
         if (customError != null) {
             item(key = "custom-error") {
                 Text(
@@ -828,6 +792,27 @@ fun PlannerScreenDesktop(
             onCountryChange = { prayerCountry = it },
             onRefresh = { fetchPrayerTimings(prayerCity.trim(), prayerCountry.trim()) },
             onDismiss = { showPlannerSettings = false }
+        )
+    }
+    if (showDeletePlan && activePlan != null) {
+        DeletePlanDialog(
+            pal = pal,
+            planTitle = activePlan.title,
+            onDismiss = { showDeletePlan = false },
+            onConfirm = {
+                showDeletePlan = false
+                deletePlan(activePlan)
+            }
+        )
+    }
+    if (showAutoRebalance && activePlan != null) {
+        RebalanceDialog(
+            pal = pal,
+            onDismiss = { showAutoRebalance = false },
+            onPick = { strategy ->
+                adoptPlan(PlannerEngine.rebalancePlanner(activePlan, strategy))
+                showAutoRebalance = false
+            }
         )
     }
 }
