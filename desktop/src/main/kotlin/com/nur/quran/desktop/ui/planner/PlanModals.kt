@@ -408,10 +408,8 @@ fun CustomPlanModal(
 fun ArchivesModal(
     pal: NurPalette,
     archived: List<ArchivedPlan>,
-    onDismiss: () -> Unit,
-    onRestore: (ArchivedPlan) -> Unit
+    onDismiss: () -> Unit
 ) {
-    val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
     ModalShell(pal = pal, onDismiss = onDismiss, title = "Past Plans Archive") {
         Column(
@@ -496,21 +494,6 @@ fun ArchivesModal(
                                 fontSize = 12.sp,
                                 color = pal.inkMid
                             )
-                            Spacer(Modifier.height(10.dp))
-                            OutlinedButton(
-                                onClick = { onRestore(entry) },
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.5.dp, pal.teal),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "Restore",
-                                    fontFamily = fontUi,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = pal.teal
-                                )
-                            }
                         }
                     }
                 }
