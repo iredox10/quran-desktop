@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,7 +65,6 @@ fun ProgressTab(
     pal: NurPalette,
     plan: ReadingPlan,
     todayStr: String,
-    chapters: List<PlanChapter>,
     onAdoptPlan: (ReadingPlan) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -75,31 +77,18 @@ fun ProgressTab(
     val analytics = remember(plan, todayStr) { PlannerEngine.getPlannerAnalytics(plan, todayStr) }
     val difficulty = remember(plan) { PlannerEngine.getDifficultyIndicators(plan.assignments) }
     val weekly = remember(plan) { PlannerEngine.getWeeklySummary(plan) }
-    val pace = remember(plan) { PlannerEngine.getPaceStats(plan.durationDays, plan.excludeDays, plan.startDate) }
     val completedDays = overview?.completedCount ?: 0
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = pal.cream,
-            border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                PaceRing(pal = pal, progress = overview?.completionRatio ?: 0f, label = "$completedDays/${plan.durationDays}", subLabel = "days done")
-                Spacer(modifier = Modifier.width(16.dp))
-                StatsCards(pal = pal, stats = listOf("DAILY PACE" to "${pace.dailyPages} pages", "PER PRAYER" to "${pace.perPrayer} pages", "ENDS" to pace.endLabel))
-            }
-        }
         TimelineSection(pal, plan, todayStr, completedDays, difficulty, selectedDay, { selectedDay = it }, { showAdjust = true }, { showRebalance = true })
         PerformanceSection(pal, analytics.onTimeRate, analytics.catchUpDays, analytics.avgPagesPerDay.roundToInt())
         if (weekly.isNotEmpty()) WeeklySection(pal, weekly)
         val overdueDays = overview?.overdueDays ?: 0
         if (overdueDays > 0) OverdueSection(pal, overdueDays, { onAdoptPlan(PlannerEngine.rebalancePlanner(plan, "extend")) }, { onAdoptPlan(PlannerEngine.rebalancePlanner(plan, "spread")) })
-        RevisionCtaCard(pal = pal, plan = plan, chapters = chapters, onAdoptRevision = onAdoptPlan)
     }
     if (showAdjust) AdjustPaceDialog(pal = pal, plan = plan, onDismiss = { showAdjust = false }, onApply = { nd -> onAdoptPlan(PlannerEngine.adjustPlannerPace(plan, nd)); showAdjust = false })
     if (showRebalance) RebalanceDialog(pal = pal, onDismiss = { showRebalance = false }, onPick = { s -> onAdoptPlan(PlannerEngine.rebalancePlanner(plan, s)); showRebalance = false })
 }
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TimelineSection(
     pal: NurPalette,
@@ -131,15 +120,20 @@ private fun TimelineSection(
         Spacer(modifier = Modifier.height(10.dp))
         Surface(shape = RoundedCornerShape(20.dp), color = pal.white, border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                plan.assignments.chunked(8).forEach { row ->
-                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { assignment ->
-                            val status = PlannerEngine.getAssignmentStatus(plan, assignment, todayStr)
-                            val prog = PlannerEngine.getAssignmentProgress(plan, assignment)
-                            val pct = if (prog.totalPagesCount > 0) ((prog.readPagesCount * 100) / prog.totalPagesCount).coerceIn(0, 100) else 0
-                            TimelineDot(pal, assignment, status, pct, difficulty[assignment.dayNumber]?.level, selectedDay?.dayNumber == assignment.dayNumber) {
-                                onSelect(if (selectedDay?.dayNumber == assignment.dayNumber) null else assignment)
-                            }
+                // Web parity (Planner.jsx 1080-1118): flex-wrap dot grid.
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    plan.assignments.forEach { assignment ->
+                        val status = PlannerEngine.getAssignmentStatus(plan, assignment, todayStr)
+                        val prog = PlannerEngine.getAssignmentProgress(plan, assignment)
+                        val pct = if (prog.totalPagesCount > 0) {
+                            Math.round((prog.readPagesCount.toFloat() / prog.totalPagesCount) * 100)
+                        } else 0
+                        TimelineDot(pal, assignment, status, pct, difficulty[assignment.dayNumber]?.level, selectedDay?.dayNumber == assignment.dayNumber) {
+                            onSelect(if (selectedDay?.dayNumber == assignment.dayNumber) null else assignment)
                         }
                     }
                 }
@@ -156,7 +150,7 @@ private fun TimelineSection(
                 selectedDay?.let { day ->
                     val sStatus = PlannerEngine.getAssignmentStatus(plan, day, todayStr)
                     val sProg = PlannerEngine.getAssignmentProgress(plan, day)
-                    val sPct = if (sProg.totalPagesCount > 0) ((sProg.readPagesCount * 100) / sProg.totalPagesCount).coerceIn(0, 100) else 0
+                    val sPct = if (sProg.totalPagesCount > 0) Math.round((sProg.readPagesCount.toFloat() / sProg.totalPagesCount) * 100) else 0
                     val statusText = when (sStatus) { "completed" -> "\u2713 Completed"; "today" -> "Today's plan ($sPct%)"; "partial" -> "Partially finished ($sPct%)"; "overdue" -> "Missed completely"; else -> "Upcoming" }
                     Spacer(modifier = Modifier.height(12.dp))
                     Surface(shape = RoundedCornerShape(14.dp), color = pal.cream, border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark), modifier = Modifier.fillMaxWidth()) {
@@ -177,9 +171,33 @@ private fun TimelineDot(pal: NurPalette, assignment: PlannerAssignment, status: 
     val bg = when (status) { "completed" -> pal.gold; "today" -> pal.white; "partial" -> pal.white; "overdue" -> OverdueRed.copy(alpha = 0.10f); else -> pal.cream }
     val borderColor = when (status) { "completed" -> pal.gold; "today" -> pal.gold; "partial" -> pal.gold; "overdue" -> OverdueRed.copy(alpha = 0.4f); else -> pal.boneDark }
     val numberColor = when (status) { "completed" -> Color.White; "today" -> pal.gold; "overdue" -> OverdueRed; else -> pal.inkMuted }
-    Box(modifier = Modifier.size(38.dp).clip(CircleShape).background(bg).border(width = if (selected) 2.5.dp else if (status == "today") 2.dp else 1.5.dp, color = if (selected) pal.ink else borderColor, shape = CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    val width = if (selected) 2.5.dp else if (status == "today") 2.dp else 1.5.dp
+    val base = Modifier
+        .size(42.dp)
+        .clip(CircleShape)
+        .background(bg)
+        .then(
+            if (status == "partial" && !selected) {
+                Modifier.drawBehind {
+                    drawRoundRect(
+                        color = pal.gold,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = width.toPx(),
+                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                                floatArrayOf(6f, 4f), 0f
+                            )
+                        ),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width / 2f)
+                    )
+                }
+            } else {
+                Modifier.border(width = width, color = if (selected) pal.ink else borderColor, shape = CircleShape)
+            }
+        )
+        .clickable(onClick = onClick)
+    Box(modifier = base, contentAlignment = Alignment.Center) {
         if (status != "completed" && pct > 0) {
-            Canvas(modifier = Modifier.size(38.dp)) { drawArc(color = pal.gold.copy(alpha = 0.22f), startAngle = -90f, sweepAngle = 360f * (pct / 100f), useCenter = true) }
+            Canvas(modifier = Modifier.size(42.dp)) { drawArc(color = pal.gold.copy(alpha = 0.22f), startAngle = -90f, sweepAngle = 360f * (pct / 100f), useCenter = true) }
         }
         Text(text = assignment.dayNumber.toString(), fontFamily = fontBody, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = numberColor)
         if (status == "completed") Text(text = "\u2713", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White.copy(alpha = 0.95f), modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-4).dp, y = (-3).dp))
