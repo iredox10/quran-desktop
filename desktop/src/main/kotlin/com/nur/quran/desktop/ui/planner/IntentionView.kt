@@ -192,13 +192,6 @@ fun IntentionView(
                 val isSelected = selectedPace == pace.id
                 val dailyPages = ceil(604.0 / pace.durationDays).toInt()
                 val perPrayer = ceil(dailyPages / 5.0).toInt()
-                val endLabel = try {
-                    PlannerEngine.formatPlannerDateLabel(
-                        PlannerEngine.addDays(today, pace.durationDays - 1)
-                    )
-                } catch (_: Exception) {
-                    ""
-                }
                 Box(modifier = Modifier.weight(1f)) {
                     Card(
                         shape = RoundedCornerShape(14.dp),
@@ -215,103 +208,59 @@ fun IntentionView(
                         Column(
                             modifier = Modifier
                                 .clickable { selectedPace = pace.id }
-                                .padding(horizontal = 20.dp, vertical = 24.dp)
-                                .padding(top = if (paceUi.badge != null) 8.dp else 0.dp),
+                                .padding(horizontal = 24.dp)
+                                .padding(top = 32.dp, bottom = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalArrangement = Arrangement.spacedBy(6.4.dp)
                         ) {
+                            // Web parity (Planner.jsx 259): ring → title → daily pages
+                            // → icon + per-prayer line → journey button. The duration
+                            // pill and the mobile-only summary row are not rendered on
+                            // desktop.
                             PaceCardRing(
                                 pal = pal,
                                 durationDays = pace.durationDays,
                                 dailyPages = dailyPages,
                                 selected = isSelected
                             )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        // Web parity (Planner.jsx 135-149): title, duration pill row
-                        // (30/60 DAYS, 1 YEAR) + "N pages per day" mono line. Icon +
-                        // per-prayer line lives below.
-                        Text(
-                            text = pace.title,
-                            fontFamily = fontUi,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = pal.ink
-                        )
-                        Text(
-                            text = pace.durationLabel,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            fontSize = 10.sp,
-                            letterSpacing = 1.sp,
-                            color = pal.inkMuted
-                        )
-                        Text(
-                            text = "$dailyPages pages per day",
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            letterSpacing = 0.3.sp,
-                            color = pal.inkMid
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = paceUi.icon,
-                                contentDescription = null,
-                                tint = pal.inkMid,
-                                modifier = Modifier.size(21.dp)
+                            Text(
+                                text = pace.title,
+                                fontFamily = fontUi,
+                                fontSize = 16.8.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = pal.ink
                             )
                             Text(
-                                text = "$perPrayer pages per prayer",
-                                fontFamily = fontBody,
-                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                fontSize = 13.sp,
+                                text = "$dailyPages pages per day",
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                fontSize = 10.9.sp,
+                                letterSpacing = 0.3.sp,
                                 color = pal.inkMid
                             )
-                        }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        if (isSelected) {
-                            // Web parity (Planner.jsx 281-296): selected card expands an
-                            // inline "pages/day · Done by <date>" summary row above a
-                            // full-width teal journey button.
-                            Column(
-                                modifier = Modifier.fillMaxWidth()
-                                    .padding(top = 6.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            Row(
+                                modifier = Modifier.padding(top = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(
-                                        5.dp,
-                                        Alignment.CenterHorizontally
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "$dailyPages pages/day",
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                        fontSize = 11.sp,
-                                        letterSpacing = 0.3.sp,
-                                        color = pal.inkMid
-                                    )
-                                    Text(
-                                        text = "·",
-                                        fontFamily = fontBody,
-                                        fontSize = 11.sp,
-                                        color = pal.boneDark
-                                    )
-                                    Text(
-                                        text = "Done by $endLabel",
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                        fontSize = 11.sp,
-                                        letterSpacing = 0.3.sp,
-                                        color = pal.inkMid
-                                    )
-                                }
-                            Button(
-                                onClick = {
+                                Icon(
+                                    imageVector = paceUi.icon,
+                                    contentDescription = null,
+                                    tint = pal.inkMid,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                                Text(
+                                    text = "$perPrayer pages per prayer",
+                                    fontFamily = fontBody,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                    fontSize = 13.1.sp,
+                                    color = pal.inkMid
+                                )
+                            }
+                            // Web parity (Planner.jsx 269-279): desktop button. The
+                            // selected card's filled "Begin Journey" builds the plan;
+                            // an unselected card's outlined "Select Path" only selects.
+                            val beginJourney = {
+                                if (isSelected) {
                                     try {
                                         val built = PlannerEngine.buildReadingPlanner(
                                             unitType = "page",
@@ -328,41 +277,46 @@ fun IntentionView(
                                     } catch (e: Exception) {
                                         beginError = e.message ?: "Could not build plan"
                                     }
-                                },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "BEGIN MY JOURNEY",
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 11.5.sp,
-                                    letterSpacing = 1.6.sp,
-                                    color = pal.white
-                                )
+                                } else {
+                                    selectedPace = pace.id
+                                }
                             }
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = { selectedPace = pace.id },
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.5.dp, pal.boneDark),
-                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = "SELECT PATH",
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 11.5.sp,
-                                    letterSpacing = 1.2.sp,
-                                    color = pal.inkMid
-                                )
+                            if (isSelected) {
+                                Button(
+                                    onClick = beginJourney,
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "Begin Journey",
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 11.5.sp,
+                                        letterSpacing = 1.15.sp,
+                                        color = pal.white
+                                    )
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = beginJourney,
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.5.dp, pal.boneDark),
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "Select Path",
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 11.5.sp,
+                                        letterSpacing = 1.15.sp,
+                                        color = pal.inkMid
+                                    )
+                                }
                             }
                         }
-                    }
                     }
                     if (paceUi.badge != null) {
                         Surface(
