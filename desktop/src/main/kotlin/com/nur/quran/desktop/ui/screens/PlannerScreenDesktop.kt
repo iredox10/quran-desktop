@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -1032,15 +1033,17 @@ private fun PlannerSettingsDialog(
 
     @Composable
     fun SectionHeader(label: String) {
+        // Web parity (Planner.jsx 1380): mono 0.75rem bold uppercase,
+        // tracking 0.15em, accent (gold) colour.
         Text(
-            text = label,
-            fontSize = 11.sp,
+            text = label.uppercase(),
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp,
-            color = pal.teal,
-            fontFamily = fontUi
+            letterSpacing = 1.8.sp,
+            color = pal.gold,
+            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(12.dp))
     }
 
     fun esc(text: String): String = text
@@ -1079,28 +1082,21 @@ private fun PlannerSettingsDialog(
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(24.dp),
             color = pal.cream,
             border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
-            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth()
+            modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(20.dp).verticalScroll(rememberScrollState())) {
+            Column(modifier = Modifier.padding(28.dp).verticalScroll(rememberScrollState())) {
                 Text(
                     text = "Planner Settings",
-                    fontSize = 18.sp,
+                    fontSize = 22.4.sp,
                     fontWeight = FontWeight.Bold,
                     color = pal.ink,
                     fontFamily = fontUi
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Used to split the day's reading across prayers.",
-                    fontSize = 12.sp,
-                    color = pal.inkMuted,
-                    fontFamily = fontBody
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                SectionHeader("DAILY PRAYERS")
+                Spacer(modifier = Modifier.height(32.dp))
+                SectionHeader("Daily Prayers")
                 Text(
                     text = "Select which prayers you want to distribute reading across.",
                     fontSize = 12.sp,
@@ -1144,76 +1140,117 @@ private fun PlannerSettingsDialog(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader("READING PREFERENCE")
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "after" to "Read After Prayer",
-                        "before" to "Read Before Prayer",
-                        "split" to "Split Before & After"
-                    ).forEach { (value, label) ->
-                        val selected = readPref == value
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (selected) pal.teal else pal.white)
-                                .border(
-                                    1.5.dp,
-                                    if (selected) pal.teal else pal.boneDark,
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .clickable {
+                Spacer(modifier = Modifier.height(24.dp))
+                SectionHeader("Reading Preference")
+                // Web parity (Planner.jsx 1405-1416): a single select with the
+                // three preference options and a chevron on the right.
+                var readPrefOpen by remember { mutableStateOf(false) }
+                val readPrefLabel = when (readPref) {
+                    "before" -> "Read Before Prayer"
+                    "split" -> "Split Before & After"
+                    else -> "Read After Prayer"
+                }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(pal.white)
+                            .border(2.dp, pal.boneDark, RoundedCornerShape(16.dp))
+                            .clickable { readPrefOpen = true }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = readPrefLabel,
+                            fontFamily = fontUi,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = pal.ink,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            Icons.Filled.ArrowDropDown,
+                            contentDescription = null,
+                            tint = pal.inkMuted
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = readPrefOpen,
+                        onDismissRequest = { readPrefOpen = false }
+                    ) {
+                        listOf(
+                            "after" to "Read After Prayer",
+                            "before" to "Read Before Prayer",
+                            "split" to "Split Before & After"
+                        ).forEach { (value, label) ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(label, fontFamily = fontUi, color = pal.ink)
+                                },
+                                onClick = {
                                     readPref = value
                                     persist()
+                                    readPrefOpen = false
                                 }
-                                .padding(horizontal = 16.dp, vertical = 10.dp)
-                        ) {
-                            Text(
-                                text = label,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (selected) Color.White else pal.inkMuted,
-                                fontFamily = fontBody,
-                                modifier = Modifier.weight(1f)
                             )
-                            if (selected) {
-                                Text(
-                                    text = "\u2713",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    fontFamily = fontUi
-                                )
-                            }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader("INTENTION PROMPTS")
-                Text(
-                    text = "Show a mindfulness prompt before reading.",
-                    fontSize = 12.sp,
-                    color = pal.inkMuted,
-                    fontFamily = fontBody
+                Spacer(modifier = Modifier.height(20.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.5.dp)
+                        .background(pal.boneDark)
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(20.dp))
+                // Web parity (Planner.jsx 1418-1430): header + description on
+                // the left, toggle on the right.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Intention Prompts",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.8.sp,
+                            color = pal.gold,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                        Text(
+                            text = "Show a mindfulness prompt before reading.",
+                            fontSize = 13.6.sp,
+                            color = pal.inkMid,
+                            fontFamily = fontBody
+                        )
+                    }
                     Switch(
                         checked = intentionOn,
                         onCheckedChange = {
                             intentionOn = it
                             persist()
-                        }
+                        },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = pal.green
+                        )
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                SectionHeader("PRAYER TIMES LOCATION")
+                Spacer(modifier = Modifier.height(20.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.5.dp)
+                        .background(pal.boneDark)
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                SectionHeader("Prayer Times Location")
                 OutlinedTextField(
                     value = city,
                     onValueChange = onCityChange,
@@ -1241,17 +1278,37 @@ private fun PlannerSettingsDialog(
                 ) {
                     Text(if (loading) "Loading…" else "Refresh times", fontFamily = fontUi)
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.5.dp)
+                        .background(pal.boneDark)
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                // Web parity (Planner.jsx 1442-1447): full-width outlined
+                // white card button with a calendar glyph.
                 OutlinedButton(
                     onClick = { exportStatus = exportPlanIcs() },
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.teal),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = pal.teal),
-                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = pal.white,
+                        contentColor = pal.ink
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
                 ) {
+                    Icon(
+                        Icons.Filled.DateRange,
+                        contentDescription = null,
+                        tint = pal.ink,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Export to Calendar (.ics)",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.4.sp,
+                        fontWeight = FontWeight.SemiBold,
                         fontFamily = fontUi
                     )
                 }
@@ -1264,9 +1321,23 @@ private fun PlannerSettingsDialog(
                         fontFamily = fontBody
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                    Text("Done", color = pal.inkMid)
+                Spacer(modifier = Modifier.height(20.dp))
+                OutlinedButton(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = pal.white,
+                        contentColor = pal.ink
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Text(
+                        text = "Done",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontUi
+                    )
                 }
             }
         }
