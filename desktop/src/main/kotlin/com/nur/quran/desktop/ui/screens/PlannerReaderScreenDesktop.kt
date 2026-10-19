@@ -263,8 +263,9 @@ fun PlannerReaderScreenDesktop(
     var showMushaf by remember(dayDate) { mutableStateOf(false) }
 
     // Page-read tracking: mark ONLY the page the reader is currently on (web
-    // parity — markPlannerPageRead(currentDay, pageNumber) on page change) and
-    // persist lastReadPage for the next Resume jump.
+    // parity — markPlannerPageRead(currentDay, pageNumber) on page change),
+    // promote fully-read items, recompute progress/completedDays, and persist
+    // lastReadPage for the next Resume jump.
     LaunchedEffect(currentPage, assignment) {
         val dayNumber = assignment.dayNumber
         val existingPages = currentPlan.assignmentReadPages[dayNumber].orEmpty().toSet()
@@ -274,8 +275,46 @@ fun PlannerReaderScreenDesktop(
             readMap[dayNumber] = (existingPages + currentPage).sorted()
             base = currentPlan.copy(assignmentReadPages = readMap)
         }
-        val updated = if (base.lastReadPage != currentPage) base.copy(lastReadPage = currentPage) else base
-        if (updated !== currentPlan) {
+
+        // Web parity (useAppStore markPlannerPageRead): an item is complete once
+        // every page in its range has been read; progress is the completed-item
+        // count and completedDays is derived from those item lists.
+        val readPages = base.assignmentReadPages[dayNumber].orEmpty().toSet()
+        val completedItemsMap = base.assignmentCompletedItems.toMutableMap()
+        val completedForDay = completedItemsMap[dayNumber].orEmpty().toMutableSet()
+        assignment.items.forEach { item ->
+            if ((item.pageStart..item.pageEnd).all { it in readPages }) {
+                completedForDay.add(item.rangeValue)
+            }
+        }
+        completedItemsMap[dayNumber] = completedForDay.toList()
+
+        val progressMap = base.assignmentProgress.toMutableMap()
+        progressMap[dayNumber] = completedForDay.size
+
+        val completedAtMap = base.assignmentCompletedAt.toMutableMap()
+        if (completedForDay.size >= assignment.items.size) {
+            completedAtMap.putIfAbsent(dayNumber, PlannerEngine.formatPlannerDate())
+        }
+
+        val completedDays = base.assignments
+            .filter {
+                (completedItemsMap[it.dayNumber]?.size ?: 0) >= it.items.size &&
+                    it.items.isNotEmpty()
+            }
+            .map { it.dayNumber }
+            .sorted()
+
+        var updated = base.copy(
+            assignmentCompletedItems = completedItemsMap,
+            assignmentProgress = progressMap,
+            assignmentCompletedAt = completedAtMap,
+            completedDays = completedDays
+        )
+        if (updated.lastReadPage != currentPage) {
+            updated = updated.copy(lastReadPage = currentPage)
+        }
+        if (updated != currentPlan) {
             PlannerStore.saveActivePlan(updated)
             plan = updated
         }
