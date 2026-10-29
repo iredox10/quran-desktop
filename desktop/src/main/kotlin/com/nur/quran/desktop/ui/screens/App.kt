@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -478,11 +480,14 @@ private fun HomeScreen(
                 maxW < 980.dp -> 2
                 else -> 3
             }
+            val homeListState = rememberLazyListState()
             LazyColumn(
+                state = homeListState,
                 modifier = Modifier
                     .widthIn(max = 1100.dp)
                     .align(Alignment.TopCenter)
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .dragToScroll(homeListState),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)
             ) {
                 // ── Greeting hero + Continue ──

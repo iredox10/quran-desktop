@@ -53,19 +53,95 @@ Verify with `id -Gn` showing `input`, and:
 libinput debug-events --device /dev/input/event8
 ```
 
-## Framework ceiling (why the app cannot fix this itself)
+## Framework ceiling & Drag-to-Scroll Mechanics
+
+### 1. Why standard Compose Desktop never drag-scrolls with mouse or touchscreen
 
 Compose Multiplatform desktop has **no touch-event API**. From
 [JetBrains/compose-multiplatform#1555](https://github.com/JetBrains/compose-multiplatform/issues/1555)
 (a maintainer): *"There are no immediate plans for it."* The framework consumes
 AWT mouse events only.
 
-Therefore "touch support" on desktop == OS touch->pointer emulation + adequately
-sized hit targets + drag-gesture handlers. This app implements the last two:
+In `androidx.compose.foundation.gestures.ScrollableKt`:
+```kotlin
+private val CanDragCalculation: (PointerInputChange) -> Boolean = { change ->
+    change.type != PointerType.Mouse
+}
+```
+`Modifier.verticalScroll`, `Modifier.horizontalScroll`, `LazyColumn`, and `LazyRow`
+all delegate to `scrollable`, which hard-rejects any pointer with `PointerType.Mouse`.
+Because Linux X11/Xwayland touchscreen drivers and [TouchBridge] report pointer
+events through AWT, every touch arrives as `PointerType.Mouse`. Compose's built-in
+scroll containers therefore completely ignore drag gestures on desktop!
 
-- `ui/input/TouchInput.kt` — `touchTarget()` (48dp hit area via
-  `minimumInteractiveComponentSize`), `swipeToNavigate()` (64px threshold).
-- App-wide 48dp hit targets on all icon buttons and small clickables.
+### 2. The `mouseSlop` trap with standard `detectVerticalDragGestures`
 
-True multi-touch (pinch-zoom, two-finger gestures) is **not possible** with
-Compose Desktop.
+Attempting to fix this by blindly applying `detectVerticalDragGestures` introduces a
+critical bug: Compose Desktop assigns a tiny `mouseSlop = 0.125dp` to mouse pointers.
+When a user taps the screen with a finger, natural skin deformation moves the
+contact point by 1–3 pixels.
+With `0.125dp` slop, Compose immediately classifies this tiny movement as an
+active drag, calls `change.consume()`, and **cancels child clickables**!
+As a result, verses, ayah bookmark buttons, and controls become impossible to click.
+
+### 3. The Solution: `Modifier.dragToScroll(state, orientation)`
+
+Implemented in [TouchInput.kt](file:///home/iredox/Desktop/personal-apps/quran-desktop-kotlin/desktop/src/main/kotlin/com/nur/quran/desktop/ui/input/TouchInput.kt):
+
+- Uses `awaitVerticalTouchSlopOrCancellation` / `awaitHorizontalTouchSlopOrCancellation`,
+  which explicitly enforce full touch slop (18dp) regardless of pointer type.
+- Taps and slight finger wobbles pass unconsumed to child clickables, preserving normal clicks.
+- Once touch slop is passed, it locks into drag, consumes pointer movement, and
+  smoothly dispatches scroll deltas (`-delta`) to any `ScrollableState` (`LazyListState`, `ScrollState`).
+- Tracks release velocity with `VelocityTracker` and performs natural inertial fling
+  via `ScrollableDefaults.flingBehavior()`.
+- Halts ongoing fling animations instantly when a new touch down is detected.
+- Supports both `Orientation.Vertical` and `Orientation.Horizontal`.
+
+### 4. Integration Guide Across Screens
+
+To enable drag-scrolling on any screen:
+
+**For LazyColumn / LazyRow:**
+```kotlin
+val listState = rememberLazyListState()
+LazyColumn(
+    state = listState,
+    modifier = Modifier.fillMaxSize().dragToScroll(listState)
+) { ... }
+```
+
+**For Column with verticalScroll:**
+```kotlin
+val scrollState = rememberScrollState()
+Column(
+    modifier = Modifier
+        .verticalScroll(scrollState)
+        .dragToScroll(scrollState)
+) { ... }
+```
+
+**For Horizontal scroll containers (e.g. RecentlyReadRow):**
+```kotlin
+val scrollState = rememberScrollState()
+Row(
+    modifier = Modifier
+        .horizontalScroll(scrollState)
+        .dragToScroll(scrollState, orientation = Orientation.Horizontal)
+) { ... }
+```
+
+Integrated screens:
+- `SurahScreenDesktop.kt` (Standard verse list & continuous reading mode)
+- `PageScreenDesktop.kt` (Verse list & mushaf column)
+- `PlannerScreenDesktop.kt` (Intention view, dashboard LazyColumn, settings dialog)
+- `PlannerReaderScreenDesktop.kt` (Verse list & mushaf view)
+- `LibraryScreenDesktop.kt` (Bookmarks & collections list)
+- `App.kt` (Home screen chapter directory)
+- `RecentlyReadRow.kt` (Horizontal recent reads carousel)
+- `HistoryScreenDesktop.kt` (Recitation history log)
+- `DownloadsScreenDesktop.kt` (Reciter and translation downloads)
+- `AnalyticsScreenDesktop.kt` (Reading stats and charts)
+- `MemorizeScreenDesktop.kt` (Hifdh test list)
+- `SaukaScreensDesktop.kt` (Khatmah creation and group session views)
+- `SettingsDrawerDesktop.kt` (App settings dialog)

@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -122,8 +124,10 @@ fun LibraryScreenDesktop(
         }
 
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val listState = rememberLazyListState()
             LazyColumn(
-                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize(),
+                state = listState,
+                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().dragToScroll(listState),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(28.dp)
             ) {

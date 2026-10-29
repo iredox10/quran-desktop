@@ -18,7 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -256,8 +258,10 @@ fun MemorizeScreenDesktop(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
+        val memorizeListState = rememberLazyListState()
         LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            state = memorizeListState,
+            modifier = Modifier.weight(1f).fillMaxWidth().dragToScroll(memorizeListState),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp
             ),

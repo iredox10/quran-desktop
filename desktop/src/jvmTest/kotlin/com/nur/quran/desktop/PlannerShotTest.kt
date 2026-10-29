@@ -84,7 +84,6 @@ class PlannerShotTest {
                 pal = pal,
                 plan = plan,
                 todayStr = todayStr,
-                chapters = chapters(),
                 onAdoptPlan = {}
             )
         }
@@ -92,10 +91,7 @@ class PlannerShotTest {
             com.nur.quran.desktop.ui.planner.JournalTab(
                 pal = pal,
                 plan = plan,
-                journalDate = todayStr,
-                onJournalDateChange = {},
-                onOpenSurah = { _, _ -> },
-                onSaved = {}
+                onOpenSurah = { _, _ -> }
             )
         }
     }

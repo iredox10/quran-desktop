@@ -127,7 +127,7 @@ fun MiniPlayerDesktop(
                     .clickable(enabled = track != null) { track?.let { onOpenVerse(it.verseKey) } }
                     .padding(vertical = 8.dp)
             )
-            IconButton(onClick = { onSettings?.invoke(); showSheet = true }, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = { onSettings?.invoke(); showSheet = true }, modifier = Modifier.size(48.dp)) {
                 Icon(
                     imageVector = Icons.Filled.Settings,
                     contentDescription = "Audio settings",

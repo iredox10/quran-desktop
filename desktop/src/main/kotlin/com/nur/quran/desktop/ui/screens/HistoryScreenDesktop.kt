@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.History
@@ -152,8 +154,10 @@ fun HistoryScreenDesktop(
             }
         } else {
             val grouped = remember(tick, entries) { groupByDay(entries) }
+            val historyListState = rememberLazyListState()
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                state = historyListState,
+                modifier = Modifier.fillMaxSize().dragToScroll(historyListState),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     horizontal = 16.dp, vertical = 12.dp
                 )

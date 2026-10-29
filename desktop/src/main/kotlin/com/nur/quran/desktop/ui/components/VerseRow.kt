@@ -43,6 +43,7 @@ import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.BookmarkStore
 import com.nur.quran.desktop.data.DeskVerse
 import com.nur.quran.desktop.data.TafsirStore
+import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.shared.HtmlStripper
 import com.nur.quran.shared.Verse
 import com.nur.quran.shared.formatArabicDigits
@@ -301,6 +302,7 @@ private fun VerseActionIcon(
 ) {
     Box(
         modifier = Modifier
+            .touchTarget()
             .size(32.dp)
             .clip(CircleShape)
             .background(if (active) pal.goldLight else androidx.compose.ui.graphics.Color.Transparent)

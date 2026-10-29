@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -40,6 +42,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +71,7 @@ import com.nur.quran.desktop.ui.input.AppShortcuts
 import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.desktop.ui.input.swipeToNavigate
 import com.nur.quran.desktop.ui.components.MushafPageLines
+import com.nur.quran.desktop.ui.components.TouchReaderOverlay
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.components.WordRef
 import com.nur.quran.desktop.ui.theme.NurPalette
@@ -261,6 +265,18 @@ fun PlannerReaderScreenDesktop(
     // Reading mode: page-accurate 15-line mushaf vs verse list
     // (web `readingMode` toggle parity).
     var showMushaf by remember(dayDate) { mutableStateOf(false) }
+    var fontScale by remember { mutableStateOf(com.nur.quran.desktop.PrefsCache.getArabicScale()) }
+    var touchMode by remember { mutableStateOf(com.nur.quran.desktop.PrefsCache.getTouchMode()) }
+    val mushafScrollState = rememberScrollState()
+    val showScrollToTop by remember(showMushaf) {
+        derivedStateOf {
+            if (!showMushaf) {
+                listState.firstVisibleItemIndex > 1 || listState.firstVisibleItemScrollOffset > 250
+            } else {
+                mushafScrollState.value > 250
+            }
+        }
+    }
 
     // Page-read tracking: mark ONLY the page the reader is currently on (web
     // parity — markPlannerPageRead(currentDay, pageNumber) on page change),
@@ -352,7 +368,7 @@ fun PlannerReaderScreenDesktop(
         }
         return true
     }
-    Column(
+    Box(
         modifier = Modifier.fillMaxSize().background(pal.white)
             .focusRequester(focusRequester)
             .focusable()
@@ -383,6 +399,7 @@ fun PlannerReaderScreenDesktop(
                     }
             }
     ) {
+        Column(modifier = Modifier.fillMaxSize()) {
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
         // ── Header ───────────────────────────────────────────────────
         Row(
@@ -439,7 +456,10 @@ fun PlannerReaderScreenDesktop(
             Spacer(modifier = Modifier.width(8.dp))
             // Timer pill — tap to pause/resume (web isTimerRunning toggle).
             Row(
-                modifier = Modifier.clip(RoundedCornerShape(100.dp)).background(pal.tealSoft)
+                modifier = Modifier
+                    .touchTarget()
+                    .clip(RoundedCornerShape(100.dp))
+                    .background(pal.tealSoft)
                     .clickable { isTimerRunning = !isTimerRunning }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -477,7 +497,8 @@ fun PlannerReaderScreenDesktop(
                         )
                     }
                 },
-                enabled = pageVerses.isNotEmpty()
+                enabled = pageVerses.isNotEmpty(),
+                modifier = Modifier.touchTarget()
             ) {
                 Icon(
                     if (pageAudioActive && AudioEngine.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -491,6 +512,20 @@ fun PlannerReaderScreenDesktop(
                     Icons.Filled.MenuBook,
                     contentDescription = if (showMushaf) "Verse list view" else "Mushaf page view",
                     tint = if (showMushaf) pal.gold else pal.teal
+                )
+            }
+            // Tablet / Touch Mode toggle
+            IconButton(
+                onClick = {
+                    touchMode = !touchMode
+                    com.nur.quran.desktop.PrefsCache.putTouchMode(touchMode)
+                },
+                modifier = Modifier.touchTarget()
+            ) {
+                Icon(
+                    Icons.Filled.TouchApp,
+                    contentDescription = "Tablet mode",
+                    tint = if (touchMode) pal.gold else pal.inkMuted
                 )
             }
         }
@@ -740,7 +775,7 @@ fun PlannerReaderScreenDesktop(
         if (!showMushaf) {
         // ── Verse list ───────────────────────────────────────────────
         var lastChapter = -1
-        LazyColumn(modifier = Modifier.weight(1f), state = listState) {
+        LazyColumn(modifier = Modifier.weight(1f).dragToScroll(listState), state = listState) {
             items(verses, key = { it.verseKey }) { verse ->
                 if (verse.chapterId != lastChapter) {
                     lastChapter = verse.chapterId
@@ -762,6 +797,7 @@ fun PlannerReaderScreenDesktop(
                 VerseRow(
                     verse = verse,
                     pal = pal,
+                    fontScale = fontScale,
                     highlighted = (verse.pageNumber == resumePage &&
                         verse.verseKey == verses.firstOrNull { it.pageNumber == resumePage }?.verseKey) ||
                         AudioEngine.current?.verseKey == verse.verseKey,
@@ -797,9 +833,10 @@ fun PlannerReaderScreenDesktop(
                     }
                     Column(
                         modifier = Modifier.weight(1f)
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(mushafScrollState)
+                            .dragToScroll(mushafScrollState)
                     ) {
-                        MushafPageLines(wordsByLine = wordsByLine)
+                        MushafPageLines(wordsByLine = wordsByLine, scale = fontScale)
                     }
                 }
             }
@@ -882,5 +919,35 @@ fun PlannerReaderScreenDesktop(
                 )
             }
         }
+        }
+        TouchReaderOverlay(
+            pal = pal,
+            touchMode = touchMode,
+            onToggleTouchMode = {
+                touchMode = !touchMode
+                com.nur.quran.desktop.PrefsCache.putTouchMode(touchMode)
+            },
+            currentScale = fontScale,
+            onScaleChange = { newScale ->
+                fontScale = newScale
+                com.nur.quran.desktop.PrefsCache.putArabicScale(newScale)
+                com.nur.quran.desktop.PrefsCache.putTranslationScale(newScale)
+            },
+            onPrevious = if (currentPage > assignment.pageStart) { { goPrevPage() } } else null,
+            previousLabel = if (currentPage > assignment.pageStart) "Pg ${currentPage - 1}" else null,
+            onNext = if (currentPage < assignment.pageEnd) { { goNextPage() } } else null,
+            nextLabel = if (currentPage < assignment.pageEnd) "Pg ${currentPage + 1}" else null,
+            showScrollToTop = showScrollToTop,
+            onScrollToTop = {
+                scope.launch {
+                    if (!showMushaf) {
+                        listState.animateScrollToItem(0)
+                    } else {
+                        mushafScrollState.animateScrollTo(0)
+                    }
+                }
+            },
+            bottomPadding = 16.dp
+        )
     }
 }

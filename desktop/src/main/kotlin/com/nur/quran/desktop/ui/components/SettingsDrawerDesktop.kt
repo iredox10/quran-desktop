@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -153,6 +154,7 @@ fun SettingsDrawerDesktop(
     var showTranslation by remember(tick) { mutableStateOf(PrefsCache.getReaderTranslationEnabled()) }
     var tajweed by remember(tick) { mutableStateOf(PrefsCache.getTajweedEnabled()) }
     var mushafMode by remember(tick) { mutableStateOf(PrefsCache.getMushafMode()) }
+    var touchMode by remember(tick) { mutableStateOf(PrefsCache.getTouchMode()) }
     var backupStatus by remember { mutableStateOf("") }
 
     val mushafObj = remember(mushaf) { Mushaf.fromId(mushaf) }
@@ -217,11 +219,13 @@ fun SettingsDrawerDesktop(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // ── Body (scrolls; sub-view replaces root) ───────────────────
+                val drawerScrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 620.dp)
-                        .verticalScroll(rememberScrollState())
+                        .verticalScroll(drawerScrollState)
+                        .dragToScroll(drawerScrollState)
                 ) {
                     if (activeView == VIEW_ROOT) {
                         // Segmented tabs: General | Reading | Data
@@ -322,6 +326,15 @@ fun SettingsDrawerDesktop(
                                     ) {
                                         showTranslation = it
                                         PrefsCache.putReaderTranslationEnabled(it)
+                                    }
+                                    ToggleRow(
+                                        pal = pal, fontUi = fontUi, fontBody = fontBody,
+                                        label = "Tablet / Touch Controls",
+                                        hint = "Floating turn buttons, quick font steppers, and fast scroll",
+                                        checked = touchMode
+                                    ) {
+                                        touchMode = it
+                                        PrefsCache.putTouchMode(it)
                                     }
                                     // Structure parity: the row exists but the desktop has no
                                     // word-level tooltips yet, so the control is shown disabled.

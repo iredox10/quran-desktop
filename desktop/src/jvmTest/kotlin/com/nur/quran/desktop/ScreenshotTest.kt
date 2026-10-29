@@ -138,6 +138,7 @@ class ScreenshotTest {
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun `planner renders`() {
+        com.nur.quran.desktop.data.PlannerStore.saveActivePlan(null)
         rule.setContent { NurTheme { PlannerScreenDesktop(pal = pal) } }
         rule.waitForIdle()
         save(rule.onRoot().captureToImage(), "planner.png")

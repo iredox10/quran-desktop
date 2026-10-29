@@ -36,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 
@@ -132,6 +133,7 @@ fun AppSidebar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 2.dp)
+                        .touchTarget()
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (selected) pal.tealSoft else androidx.compose.ui.graphics.Color.Transparent)
                         .clickable { onNavigate(entry.route) }
@@ -169,6 +171,7 @@ fun AppSidebar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 2.dp)
+                    .touchTarget()
                     .clip(RoundedCornerShape(12.dp))
                     .clickable { onShowShortcuts() }
                     .padding(horizontal = 10.dp, vertical = 10.dp)

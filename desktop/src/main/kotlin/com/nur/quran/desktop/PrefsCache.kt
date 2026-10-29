@@ -96,6 +96,11 @@ object PrefsCache {
     fun getMushafMode(): Boolean = prefs.getBoolean(KEY_MUSHAF_MODE, false)
     fun putMushafMode(value: Boolean) = prefs.putBoolean(KEY_MUSHAF_MODE, value)
 
+    // --- tablet / touch mode ---
+    private const val KEY_TOUCH_MODE = "touch_mode"
+    fun getTouchMode(): Boolean = prefs.getBoolean(KEY_TOUCH_MODE, false)
+    fun putTouchMode(value: Boolean) = prefs.putBoolean(KEY_TOUCH_MODE, value)
+
     /** Clears all cached desktop prefs (used by tests / reset-to-defaults). */
     fun clear() = prefs.clear()
 }

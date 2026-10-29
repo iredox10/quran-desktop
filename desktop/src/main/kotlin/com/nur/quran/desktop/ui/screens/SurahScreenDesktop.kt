@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -47,8 +48,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,14 +85,17 @@ import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.audio.AudioSetupSheetDesktop
 import com.nur.quran.desktop.ui.audio.MiniPlayerDesktop
 import com.nur.quran.desktop.ui.components.PlainVerseText
+import com.nur.quran.desktop.ui.components.TouchReaderOverlay
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
+import com.nur.quran.desktop.ui.input.dragToScroll
 import com.nur.quran.shared.HIZB_STARTS
 import com.nur.quran.shared.JUZ_STARTS
 import com.nur.quran.shared.getHizbByPage
 import com.nur.quran.shared.getJuzByPage
 import com.nur.quran.desktop.ui.input.AppShortcuts
 import com.nur.quran.desktop.ui.input.swipeToNavigate
+import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
@@ -128,6 +134,9 @@ fun SurahScreenDesktop(
     val translationScale = remember(settingsTick) { PrefsCache.getTranslationScale() }
     val lineHeightMult = remember(settingsTick) { PrefsCache.getLineHeightMult() }
     val translationOn = remember(settingsTick) { PrefsCache.getReaderTranslationEnabled() }
+    var touchMode by remember(settingsTick) { mutableStateOf(PrefsCache.getTouchMode()) }
+    var localArabicScale by remember(arabicScale) { mutableStateOf(arabicScale) }
+    var localTranslationScale by remember(translationScale) { mutableStateOf(translationScale) }
 
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
@@ -156,6 +165,13 @@ fun SurahScreenDesktop(
     val juzByKey = remember { JUZ_STARTS.associateBy { it.verseKey } }
     val hizbByKey = remember { HIZB_STARTS.associateBy { it.verseKey } }
     val listState = rememberLazyListState()
+    val readingListState = rememberLazyListState()
+    val activeListState = if (readingMode) readingListState else listState
+    val showScrollToTop by remember(activeListState) {
+        derivedStateOf {
+            activeListState.firstVisibleItemIndex > 1 || activeListState.firstVisibleItemScrollOffset > 250
+        }
+    }
     val hasBismillah = chapterId != 1 && chapterId != 9
 
     LaunchedEffect(targetVerseKey, chapterId, readingMode) {
@@ -194,11 +210,11 @@ fun SurahScreenDesktop(
     val focusRequester = remember { FocusRequester() }
     val keyScope = rememberCoroutineScope()
     fun goNextSurah(): Boolean {
-        if (chapterId > 1) onOpenSurah(chapterId - 1, null)
+        if (chapterId < 114) onOpenSurah(chapterId + 1, null)
         return true
     }
     fun goPrevSurah(): Boolean {
-        if (chapterId < 114) onOpenSurah(chapterId + 1, null)
+        if (chapterId > 1) onOpenSurah(chapterId - 1, null)
         return true
     }
     Box(
@@ -248,7 +264,12 @@ fun SurahScreenDesktop(
             onTitleClick = { showNavDialog = true },
             onToggleReadingMode = { readingMode = !readingMode },
             onToggleTheme = onToggleTheme,
-            onSettingsClick = onSettingsClick
+            onSettingsClick = onSettingsClick,
+            touchMode = touchMode,
+            onToggleTouchMode = {
+                touchMode = !touchMode
+                PrefsCache.putTouchMode(touchMode)
+            }
         )
 
         if (readingMode) {
@@ -256,10 +277,11 @@ fun SurahScreenDesktop(
                 pal = pal,
                 fontArabic = fontArabic,
                 fontName = fontName,
-                arabicScale = arabicScale,
+                arabicScale = localArabicScale,
                 lineHeightMult = lineHeightMult,
                 chapterId = chapterId,
-                isAutoScrollActive = isAutoScrollActive
+                isAutoScrollActive = isAutoScrollActive,
+                listState = readingListState
             )
         } else {
             if (isAutoScrollActive) {
@@ -272,7 +294,7 @@ fun SurahScreenDesktop(
             }
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().dragToScroll(listState),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 48.dp)
             ) {
                 item(key = "header") {
@@ -327,8 +349,8 @@ fun SurahScreenDesktop(
                             verse = verse,
                             pal = pal,
                             fontName = fontName,
-                            fontScale = arabicScale,
-                            translationScale = translationScale,
+                            fontScale = localArabicScale,
+                            translationScale = localTranslationScale,
                             lineHeightMultiplier = lineHeightMult,
                             showTranslation = translationOn,
                             highlighted = verse.verseKey == targetVerseKey ||
@@ -388,6 +410,33 @@ fun SurahScreenDesktop(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+        val hasMiniPlayer = nowPlayingTrack != null
+        TouchReaderOverlay(
+            pal = pal,
+            touchMode = touchMode,
+            onToggleTouchMode = {
+                touchMode = !touchMode
+                PrefsCache.putTouchMode(touchMode)
+            },
+            currentScale = localArabicScale,
+            onScaleChange = { newScale ->
+                localArabicScale = newScale
+                localTranslationScale = newScale
+                PrefsCache.putArabicScale(newScale)
+                PrefsCache.putTranslationScale(newScale)
+            },
+            onPrevious = if (chapterId > 1) { { onOpenSurah(chapterId - 1, null) } } else null,
+            previousLabel = if (chapterId > 1) (QuranStore.chapter(chapterId - 1)?.nameSimple ?: "Surah ${chapterId - 1}") else null,
+            onNext = if (chapterId < 114) { { onOpenSurah(chapterId + 1, null) } } else null,
+            nextLabel = if (chapterId < 114) (QuranStore.chapter(chapterId + 1)?.nameSimple ?: "Surah ${chapterId + 1}") else null,
+            showScrollToTop = showScrollToTop,
+            onScrollToTop = {
+                keyScope.launch {
+                    activeListState.animateScrollToItem(0)
+                }
+            },
+            bottomPadding = if (hasMiniPlayer) 76.dp else 16.dp
+        )
     }
 }
 
@@ -407,7 +456,9 @@ private fun SurahTopBar(
     onTitleClick: () -> Unit,
     onToggleReadingMode: () -> Unit,
     onToggleTheme: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    touchMode: Boolean = false,
+    onToggleTouchMode: () -> Unit = {}
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -433,9 +484,10 @@ private fun SurahTopBar(
                     // Content-sized: the weighted spacer below owns the free
                     // space so the action icons align to the right edge.
                     modifier = Modifier
+                        .touchTarget()
                         .clip(RoundedCornerShape(8.dp))
                         .clickable(onClick = onTitleClick)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
@@ -504,6 +556,19 @@ private fun SurahTopBar(
                         modifier = Modifier.size(18.dp)
                     )
                 }
+                TopBarIconBtn(
+                    pal = pal,
+                    active = touchMode,
+                    description = "Tablet / Touch controls",
+                    onClick = onToggleTouchMode
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TouchApp,
+                        contentDescription = "Tablet mode",
+                        tint = if (touchMode) pal.gold else pal.inkMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
                 TopBarIconBtn(pal = pal, description = "Settings", onClick = onSettingsClick) {
                     Icon(
                         imageVector = Icons.Filled.Settings,
@@ -529,8 +594,9 @@ private fun TopBarIconBtn(
 ) {
     Box(
         modifier = Modifier
+            .touchTarget()
             .padding(horizontal = 2.dp)
-            .size(36.dp)
+            .size(38.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(if (active) pal.goldSoft else Color.Transparent)
             .clickable(onClick = onClick),
@@ -921,23 +987,23 @@ private fun ContinuousReadingList(
     arabicScale: Float,
     lineHeightMult: Float,
     chapterId: Int,
-    isAutoScrollActive: Boolean = false
+    isAutoScrollActive: Boolean = false,
+    listState: LazyListState = rememberLazyListState()
 ) {
     val verses = remember(chapterId) { QuranStore.versesOfChapter(chapterId) }
     val byPage = remember(verses) { verses.groupBy { it.pageNumber }.toSortedMap() }
     val fontBody = rememberBodyFontFamily()
-    val readingListState = rememberLazyListState()
     if (isAutoScrollActive) {
         LaunchedEffect(chapterId) {
             while (true) {
                 delay(400)
-                readingListState.animateScrollBy(120f)
+                listState.animateScrollBy(120f)
             }
         }
     }
     LazyColumn(
-        state = readingListState,
-        modifier = Modifier.fillMaxSize(),
+        state = listState,
+        modifier = Modifier.fillMaxSize().dragToScroll(listState),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 48.dp)
     ) {
         byPage.forEach { (page, pageVerses) ->
@@ -1025,6 +1091,7 @@ private fun SurahNavigationDialog(
                         Column(
                             modifier = Modifier
                                 .weight(1f)
+                                .touchTarget()
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable { tab = i }
                                 .padding(vertical = 8.dp),

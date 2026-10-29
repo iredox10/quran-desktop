@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -285,8 +287,10 @@ fun DownloadsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
     Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
         DownloadsTopBar(pal = pal, fontUi = fontUi, onBack = onBack)
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val downloadsListState = rememberLazyListState()
             LazyColumn(
-                modifier = Modifier.widthIn(max = 640.dp).fillMaxSize(),
+                state = downloadsListState,
+                modifier = Modifier.widthIn(max = 640.dp).fillMaxSize().dragToScroll(downloadsListState),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {

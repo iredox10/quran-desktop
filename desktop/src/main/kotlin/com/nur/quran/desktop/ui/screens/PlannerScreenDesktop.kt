@@ -21,10 +21,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -317,11 +319,13 @@ fun PlannerScreenDesktop(
 
     // ── Intention view (no progress yet, or back from the active view) ──
     if (!showActive || activePlan == null) {
+        val intentionScroll = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(pal.white)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(intentionScroll)
+                .dragToScroll(intentionScroll)
                 .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
             IntentionView(
@@ -389,8 +393,10 @@ fun PlannerScreenDesktop(
         return
     }
 
+    val dashboardListState = rememberLazyListState()
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(pal.white),
+        state = dashboardListState,
+        modifier = Modifier.fillMaxSize().background(pal.white).dragToScroll(dashboardListState),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {

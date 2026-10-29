@@ -3,7 +3,9 @@ package com.nur.quran.desktop.ui.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.horizontalScroll
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,10 +87,12 @@ fun RecentlyReadRow(
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
+        val rowScrollState = rememberScrollState()
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+                .horizontalScroll(rowScrollState)
+                .dragToScroll(rowScrollState, orientation = Orientation.Horizontal),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             entries.forEach { entry ->

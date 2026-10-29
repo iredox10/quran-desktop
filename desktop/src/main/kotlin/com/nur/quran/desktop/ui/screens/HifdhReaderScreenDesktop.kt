@@ -79,6 +79,7 @@ import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.components.verseDisplayArabic
 import com.nur.quran.desktop.ui.input.AppShortcuts
 import com.nur.quran.desktop.ui.input.swipeToNavigate
+import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberArabicFontFamily
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
@@ -328,7 +329,7 @@ fun HifdhReaderScreenDesktop(
                         if (audioEnabled) AudioEngine.stop()
                         audioEnabled = !audioEnabled
                     },
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
                         imageVector = if (audioEnabled) Icons.Filled.Stop else Icons.Filled.VolumeUp,
@@ -341,7 +342,7 @@ fun HifdhReaderScreenDesktop(
                     Surface(
                         shape = RoundedCornerShape(100),
                         color = pal.goldSoft,
-                        modifier = Modifier.clickable { testMode = !testMode }
+                        modifier = Modifier.touchTarget().clickable { testMode = !testMode }
                     ) {
                         Text(
                             text = if (testMode) "Test: On" else "Test: Off",
@@ -714,7 +715,7 @@ fun HifdhReaderScreenDesktop(
                     val surahOn = remember(surahMemTick) { HifdhStore.loadMemorizedSurahs().contains(chapterId) }
                     IconButton(
                         onClick = { HifdhStore.toggleMemorizedSurah(chapterId); surahMemTick++ },
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Filled.MilitaryTech,
@@ -782,7 +783,7 @@ fun HifdhReaderScreenDesktop(
                     Box {
                         IconButton(
                             onClick = { showAudioSettings = !showAudioSettings },
-                            modifier = Modifier.size(42.dp)
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(Icons.Filled.Tune, "Audio settings", tint = pal.inkMid, modifier = Modifier.size(18.dp))
                         }
@@ -805,7 +806,7 @@ fun HifdhReaderScreenDesktop(
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = pal.cream, contentColor = pal.ink),
                                         shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth().touchTarget()
                                     ) {
                                         Text(repLabels[AudioEngine.repeatMode] ?: "Off", fontFamily = fontUi, fontSize = 12.sp)
                                     }
@@ -819,7 +820,7 @@ fun HifdhReaderScreenDesktop(
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = pal.cream, contentColor = pal.ink),
                                         shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth().touchTarget()
                                     ) {
                                         Text(if (AudioEngine.sleepMinutes == 0) "Off" else "${AudioEngine.sleepMinutes}m", fontFamily = fontUi, fontSize = 12.sp)
                                     }
@@ -828,13 +829,13 @@ fun HifdhReaderScreenDesktop(
                         }
                     }
                     Spacer(modifier = Modifier.width(4.dp))
-                    IconButton(onClick = { if (index > 0) index-- }, enabled = index > 0, modifier = Modifier.size(42.dp)) {
+                    IconButton(onClick = { if (index > 0) index-- }, enabled = index > 0, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Filled.ChevronLeft, "Previous", tint = pal.inkMid, modifier = Modifier.size(20.dp))
                     }
                     IconButton(
                         onClick = { val s = step(); if (index + s < queue.size) index += s },
                         enabled = index < queue.size - 1,
-                        modifier = Modifier.size(42.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(Icons.Filled.ChevronRight, "Next", tint = pal.inkMid, modifier = Modifier.size(20.dp))
                     }

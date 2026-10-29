@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -134,8 +136,10 @@ fun ProfileScreenDesktop(
     Column(modifier = Modifier.fillMaxSize().background(pal.white)) {
         ProfileTopBar(pal = pal, fontUi = fontUi, onBack = onBack)
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val profileListState = rememberLazyListState()
             LazyColumn(
-                modifier = Modifier.widthIn(max = 640.dp).fillMaxSize(),
+                state = profileListState,
+                modifier = Modifier.widthIn(max = 640.dp).fillMaxSize().dragToScroll(profileListState),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     horizontal = 16.dp,
                     vertical = 8.dp

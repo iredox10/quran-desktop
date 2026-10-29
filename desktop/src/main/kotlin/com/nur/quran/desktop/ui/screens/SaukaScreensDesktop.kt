@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -74,8 +76,10 @@ fun SaukaIndexDesktop(
     var division by remember { mutableStateOf("juz") }
     var deadline by remember { mutableStateOf("") }
 
+    val createListState = rememberLazyListState()
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(pal.white),
+        state = createListState,
+        modifier = Modifier.fillMaxSize().background(pal.white).dragToScroll(createListState),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -366,8 +370,10 @@ fun SaukaGroupDesktop(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
+        val detailListState = rememberLazyListState()
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            state = detailListState,
+            modifier = Modifier.fillMaxSize().dragToScroll(detailListState),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

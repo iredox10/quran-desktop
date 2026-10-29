@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.focusable
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,9 +38,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +62,7 @@ import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.WordStore
 import com.nur.quran.desktop.ui.audio.MiniPlayerDesktop
 import com.nur.quran.desktop.ui.components.MushafPageLines
+import com.nur.quran.desktop.ui.components.TouchReaderOverlay
 import com.nur.quran.desktop.ui.components.WordRef
 import com.nur.quran.desktop.ui.components.VerseRow
 import com.nur.quran.desktop.ui.theme.NurPalette
@@ -66,9 +72,11 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import com.nur.quran.desktop.ui.input.AppShortcuts
 import com.nur.quran.desktop.ui.input.swipeToNavigate
+import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.shared.getHizbByPage
 import com.nur.quran.shared.getJuzByPage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -96,6 +104,21 @@ fun PageScreenDesktop(
             com.nur.quran.desktop.PrefsCache.getArabicScale(),
             com.nur.quran.desktop.PrefsCache.getReaderTranslationEnabled()
         )
+    }
+    var localScale by remember(readerPrefs) { mutableStateOf(readerPrefs.second) }
+    var touchMode by remember(settingsTick) { mutableStateOf(com.nur.quran.desktop.PrefsCache.getTouchMode()) }
+    val pageListState = rememberLazyListState()
+    val mushafScrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+    var showMushaf by remember { mutableStateOf(com.nur.quran.desktop.PrefsCache.getMushafMode()) }
+    val showScrollToTop by remember(showMushaf) {
+        derivedStateOf {
+            if (!showMushaf) {
+                pageListState.firstVisibleItemIndex > 0 || pageListState.firstVisibleItemScrollOffset > 250
+            } else {
+                mushafScrollState.value > 250
+            }
+        }
     }
     // Alternate translation pack per verse chapter (null = bundled).
     val translationId = remember(settingsTick) {
@@ -168,7 +191,12 @@ fun PageScreenDesktop(
                         )
                     }
                 },
-                onToggleTheme = onToggleTheme
+                onToggleTheme = onToggleTheme,
+                touchMode = touchMode,
+                onToggleTouchMode = {
+                    touchMode = !touchMode
+                    com.nur.quran.desktop.PrefsCache.putTouchMode(touchMode)
+                }
             )
 
             Column(
@@ -176,7 +204,6 @@ fun PageScreenDesktop(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // List/Mushaf toggle (pills mirror the browse mode pills in App.kt).
-                var showMushaf by remember { mutableStateOf(com.nur.quran.desktop.PrefsCache.getMushafMode()) }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -194,7 +221,8 @@ fun PageScreenDesktop(
 
                 if (!showMushaf) {
                     LazyColumn(
-                        modifier = Modifier.weight(1f),
+                        state = pageListState,
+                        modifier = Modifier.weight(1f).dragToScroll(pageListState),
                         contentPadding = PaddingValues(bottom = 88.dp)
                     ) {
                         items(verses, key = { it.verseKey }) { verse ->
@@ -202,7 +230,7 @@ fun PageScreenDesktop(
                                 verse = verse,
                                 pal = pal,
                                 fontName = readerPrefs.first,
-                                fontScale = readerPrefs.second,
+                                fontScale = localScale,
                                 showTranslation = readerPrefs.third,
                                 translationOverride = translationMaps[verse.chapterId]?.get(verse.verseKey)
                             )
@@ -239,12 +267,13 @@ fun PageScreenDesktop(
                             }
                             Column(
                                 modifier = Modifier.weight(1f)
-                                    .verticalScroll(rememberScrollState())
+                                    .verticalScroll(mushafScrollState)
+                                    .dragToScroll(mushafScrollState)
                                     .padding(bottom = 88.dp)
                             ) {
                                 MushafPageLines(
                                     wordsByLine = wordsByLine,
-                                    scale = readerPrefs.second
+                                    scale = localScale
                                 )
                             }
                         }
@@ -259,14 +288,16 @@ fun PageScreenDesktop(
             ) {
                 Button(
                     onClick = { if (pageNumber > 1) onPageChange(pageNumber - 1) },
-                    enabled = pageNumber > 1
+                    enabled = pageNumber > 1,
+                    modifier = Modifier.touchTarget()
                 ) {
                     Text("← Previous")
                 }
                 Text(text = "Page $pageNumber / 604", fontSize = 14.sp)
                 Button(
                     onClick = { if (pageNumber < 604) onPageChange(pageNumber + 1) },
-                    enabled = pageNumber < 604
+                    enabled = pageNumber < 604,
+                    modifier = Modifier.touchTarget()
                 ) {
                     Text("Next →")
                 }
@@ -290,6 +321,36 @@ fun PageScreenDesktop(
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
         }
+        val hasMiniPlayer = nowPlayingTrack != null
+        TouchReaderOverlay(
+            pal = pal,
+            touchMode = touchMode,
+            onToggleTouchMode = {
+                touchMode = !touchMode
+                com.nur.quran.desktop.PrefsCache.putTouchMode(touchMode)
+            },
+            currentScale = localScale,
+            onScaleChange = { newScale ->
+                localScale = newScale
+                com.nur.quran.desktop.PrefsCache.putArabicScale(newScale)
+                com.nur.quran.desktop.PrefsCache.putTranslationScale(newScale)
+            },
+            onPrevious = if (pageNumber > 1) { { onPageChange(pageNumber - 1) } } else null,
+            previousLabel = if (pageNumber > 1) "Pg ${pageNumber - 1}" else null,
+            onNext = if (pageNumber < 604) { { onPageChange(pageNumber + 1) } } else null,
+            nextLabel = if (pageNumber < 604) "Pg ${pageNumber + 1}" else null,
+            showScrollToTop = showScrollToTop,
+            onScrollToTop = {
+                coroutineScope.launch {
+                    if (!showMushaf) {
+                        pageListState.animateScrollToItem(0)
+                    } else {
+                        mushafScrollState.animateScrollTo(0)
+                    }
+                }
+            },
+            bottomPadding = if (hasMiniPlayer) 76.dp else 16.dp
+        )
     }
 }
 
@@ -303,7 +364,9 @@ private fun PageTopBar(
     isPlaying: Boolean,
     onBack: () -> Unit,
     onTogglePlayPage: () -> Unit,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    touchMode: Boolean = false,
+    onToggleTouchMode: () -> Unit = {}
 ) {
     val juz = remember(pageNumber) { getJuzByPage(pageNumber) }
     val hizb = remember(pageNumber) { getHizbByPage(pageNumber) }
@@ -352,11 +415,11 @@ private fun PageTopBar(
                 Surface(
                     shape = CircleShape,
                     color = pal.gold,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.touchTarget().size(40.dp)
                 ) {
                     IconButton(
                         onClick = onTogglePlayPage,
-                        modifier = Modifier.size(40.dp)
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -367,6 +430,19 @@ private fun PageTopBar(
                     }
                 }
                 Spacer(modifier = Modifier.width(4.dp))
+                PageTopBarIconBtn(
+                    pal = pal,
+                    active = touchMode,
+                    description = "Tablet / Touch controls",
+                    onClick = onToggleTouchMode
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.TouchApp,
+                        contentDescription = "Tablet mode",
+                        tint = if (touchMode) pal.gold else pal.inkMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
                 PageTopBarIconBtn(pal = pal, description = "Toggle theme", onClick = onToggleTheme) {
                     Icon(
                         imageVector = if (dark) Icons.Filled.LightMode else Icons.Filled.DarkMode,
@@ -385,15 +461,18 @@ private fun PageTopBar(
 @Composable
 private fun PageTopBarIconBtn(
     pal: NurPalette,
+    active: Boolean = false,
     description: String,
     onClick: () -> Unit,
     icon: @Composable () -> Unit
 ) {
     Box(
         modifier = Modifier
+            .touchTarget()
             .padding(horizontal = 2.dp)
-            .size(36.dp)
+            .size(38.dp)
             .clip(RoundedCornerShape(12.dp))
+            .background(if (active) pal.goldSoft else Color.Transparent)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -411,6 +490,7 @@ private fun ViewPill(
 ) {
     Surface(
         onClick = onClick,
+        modifier = Modifier.touchTarget(),
         shape = RoundedCornerShape(20.dp),
         color = if (selected) pal.tealSoft else Color.Transparent,
         border = BorderStroke(1.5.dp, if (selected) pal.teal else pal.boneDark)
