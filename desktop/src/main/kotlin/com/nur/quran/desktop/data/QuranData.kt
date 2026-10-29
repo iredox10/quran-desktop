@@ -40,7 +40,8 @@ data class DeskVerse(
     val textIndopak: String = "",
     val tajweedHtml: String? = null,
     val translation: String,
-    val pageNumber: Int
+    val pageNumber: Int,
+    val juzNumber: Int = 1
 )
 
 /**
@@ -70,13 +71,15 @@ object QuranStore {
                     textIndopak = v.textIndopak,
                     tajweedHtml = v.textUthmaniTajweed,
                     translation = v.translation,
-                    pageNumber = v.pageNumber
+                    pageNumber = v.pageNumber,
+                    juzNumber = v.juzNumber
                 )
             }
     }
 
     private val byChapter: Map<Int, List<DeskVerse>> by lazy { allVerses.groupBy { it.chapterId } }
     private val byPage: Map<Int, List<DeskVerse>> by lazy { allVerses.groupBy { it.pageNumber } }
+    private val byJuz: Map<Int, List<DeskVerse>> by lazy { allVerses.groupBy { it.juzNumber } }
 
     fun chapter(id: Int): ChapterJson? = chapters.firstOrNull { it.id == id }
 
@@ -85,6 +88,9 @@ object QuranStore {
 
     fun versesOfPage(page: Int): List<DeskVerse> =
         byPage[page].orEmpty().sortedWith(compareBy({ it.chapterId }, { it.verseNumber }))
+
+    fun versesOfJuz(juz: Int): List<DeskVerse> =
+        byJuz[juz].orEmpty().sortedWith(compareBy({ it.chapterId }, { it.verseNumber }))
 
     val verseCount: Int by lazy { allVerses.size }
 

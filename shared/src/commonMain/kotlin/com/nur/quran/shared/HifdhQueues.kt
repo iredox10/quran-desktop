@@ -15,7 +15,7 @@ object HifdhQueues {
         val entry = history[key]
         val totalReviews = entry?.card?.reps ?: 0
         val state = entry?.card?.state ?: 0
-        if (entry == null || entry.card == null || totalReviews < 3 || state == FsrsState.LEARNING) {
+        if (entry == null || entry.card == null || state == FsrsState.NEW || state == FsrsState.LEARNING || totalReviews < 3) {
             return HifdhQueue.SABAQ
         }
         if (sabqiSurahId != null && key.substringBefore(":").toIntOrNull() == sabqiSurahId) {

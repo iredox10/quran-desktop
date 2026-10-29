@@ -437,6 +437,7 @@ fun HifdhTestDialog(
     onDismiss: () -> Unit,
     onOpenSurah: (Int, String?) -> Unit,
     queue: List<String>? = null,
+    queueTitle: String? = null
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
@@ -537,7 +538,7 @@ fun HifdhTestDialog(
                                 fontFamily = fontUi
                             )
                             Text(
-                                text = chapter?.let { "${it.id}. ${it.nameSimple}" } ?: "Surah $chapterId",
+                                text = queueTitle ?: (chapter?.let { "${it.id}. ${it.nameSimple}" } ?: "Surah $chapterId"),
                                 fontSize = 11.sp,
                                 color = pal.inkMuted,
                                 fontFamily = fontBody
