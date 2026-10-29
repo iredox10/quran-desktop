@@ -29,6 +29,7 @@ object BackupStore {
         Preferences.userRoot().node("session_prefs"),
         Preferences.userRoot().node("collection_prefs"),
         Preferences.userRoot().node("profile_prefs"),
+        Preferences.userRoot().node("onboarding_prefs"),
         Preferences.userNodeForPackage(HifdhStore::class.java).node("hifdh_settings")
     )
 
