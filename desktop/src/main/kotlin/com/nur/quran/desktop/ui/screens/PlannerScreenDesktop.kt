@@ -798,7 +798,6 @@ fun PlannerScreenDesktop(
     if (showDeletePlan && activePlan != null) {
         DeletePlanDialog(
             pal = pal,
-            planTitle = activePlan.title,
             onDismiss = { showDeletePlan = false },
             onConfirm = {
                 showDeletePlan = false

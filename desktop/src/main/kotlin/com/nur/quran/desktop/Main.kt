@@ -6,12 +6,17 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.nur.quran.desktop.ui.input.TouchBridge
 import com.nur.quran.desktop.ui.screens.App
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 fun main() = application {
     // True fullscreen: some window managers ignore maximized requests and
@@ -43,6 +48,21 @@ fun main() = application {
             }
         }
     ) {
+        // Touchscreen support: on Wayland/Xwayland sessions the compositor may
+        // not deliver touch events to this X11 client (AWT has no XI2 touch
+        // support). TouchBridge reads the touchscreen device directly and
+        // synthesises pointer events so every clickable works with a finger.
+        // It is a no-op when no touchscreen node is readable.
+        LaunchedEffect(Unit) {
+            val screen = java.awt.Toolkit.getDefaultToolkit().screenSize
+            TouchBridge.start(
+                scope = this,
+                screenWidth = screen.width,
+                screenHeight = screen.height,
+                screenTop = 0
+            )
+            println("TouchBridge: ${TouchBridge.status}")
+        }
         App()
     }
 }

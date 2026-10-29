@@ -523,7 +523,6 @@ fun IntentionView(
                         if (pendingDelete) {
                             DeletePlanDialog(
                                 pal = pal,
-                                planTitle = plan.title.ifBlank { "Unnamed Plan" },
                                 onDismiss = { pendingDelete = false },
                                 onConfirm = {
                                     pendingDelete = false
