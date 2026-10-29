@@ -112,6 +112,14 @@ object PlannerStore {
             putJson(KEY_ACTIVE_PLAN, null)
         } else {
             putJson(KEY_ACTIVE_PLAN, gson.toJson(plan))
+            val all = getAllPlans().toMutableList()
+            val idx = all.indexOfFirst { it.id == plan.id }
+            if (idx == -1) {
+                all.add(plan)
+            } else {
+                all[idx] = plan
+            }
+            putJson(KEY_ALL_PLANS, gson.toJson(all))
         }
     }
 

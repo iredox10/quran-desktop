@@ -81,7 +81,7 @@ private val DayShortNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sa
 @Composable
 private fun ModalShell(pal: NurPalette, onDismiss: () -> Unit, title: String, content: @Composable () -> Unit) {
     val fontUi = rememberUiFontFamily()
-    Dialog(onCloseRequest = onDismiss) {
+    Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier.widthIn(max = 480.dp).padding(vertical = 16.dp),
             shape = RoundedCornerShape(20.dp),

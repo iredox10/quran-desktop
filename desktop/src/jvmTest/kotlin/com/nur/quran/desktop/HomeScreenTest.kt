@@ -60,8 +60,8 @@ class HomeScreenTest {
         onAllNodesWithText("Search", substring = true).onFirst().assertExists()
 
         // 6. Assert Chapter cards in the grid
-        onNodeWithText("Al-Fatihah", substring = true).assertExists()
-        onNodeWithText("Al-Baqarah", substring = true).assertExists()
+        onAllNodesWithText("Al-Fatihah", substring = true).onFirst().assertExists()
+        onAllNodesWithText("Al-Baqarah", substring = true).onFirst().assertExists()
 
         // 7. Capture and save high-resolution screenshot
         val image: ImageBitmap = onRoot().captureToImage()

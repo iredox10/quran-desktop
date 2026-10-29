@@ -177,12 +177,7 @@ fun PlannerScreenDesktop(
     // Web parity (Planner.jsx 1523-1528): the page opens on the Intention view
     // unless the active plan already has progress. Creating/switching a plan
     // explicitly enters the active view.
-    val hasPlanProgress = activePlan != null && (
-        activePlan.completedDays.isNotEmpty() ||
-            activePlan.assignmentProgress.isNotEmpty() ||
-            activePlan.lastReadPage != null
-        )
-    var showActive by remember { mutableStateOf(hasPlanProgress) }
+    var showActive by remember(activePlan != null) { mutableStateOf(activePlan != null) }
     LaunchedEffect(activePlan?.id) {
         if (activePlan == null) showActive = false
     }
@@ -202,6 +197,7 @@ fun PlannerScreenDesktop(
         PlannerStore.saveAllPlans(updated)
         PlannerStore.saveActivePlan(plan)
         customError = null
+        showActive = true
         refresh++
     }
 
@@ -221,6 +217,7 @@ fun PlannerScreenDesktop(
 
     fun activatePlan(plan: ReadingPlan) {
         PlannerStore.saveActivePlan(plan)
+        showActive = true
         refresh++
     }
 
@@ -230,7 +227,9 @@ fun PlannerScreenDesktop(
         val remaining = PlannerStore.getAllPlans().filterNot { it.id == plan.id }
         PlannerStore.saveAllPlans(remaining)
         if (plan.id == activePlan?.id) {
-            PlannerStore.saveActivePlan(remaining.firstOrNull())
+            val next = remaining.firstOrNull()
+            PlannerStore.saveActivePlan(next)
+            if (next == null) showActive = false
         }
         if (remaining.isEmpty()) showActive = false
         refresh++
@@ -364,60 +363,14 @@ fun PlannerScreenDesktop(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        previewPlan?.let { built ->
-            TemplatePreviewModal(
-                pal = pal,
-                plan = built,
-                onDismiss = { previewPlan = null },
-                onConfirm = { confirmTemplate(built) }
-            )
-        }
-        if (showCustomModal) {
-            CustomPlanModal(
-                pal = pal,
-                chapters = planChapters(),
-                onDismiss = { showCustomModal = false },
-                onCreate = { createCustomPlan(it) }
-            )
-        }
-        if (showArchivesModal) {
-            ArchivesModal(
-                pal = pal,
-                archived = PlannerStore.getArchived(),
-                onDismiss = { showArchivesModal = false },
-                onRestore = { planId ->
-                    PlannerStore.restoreArchived(planId)
-                    refresh++
-                },
-                onDelete = { planId ->
-                    PlannerStore.deleteArchived(planId)
-                    refresh++
-                }
-            )
-        }
-        pendingReplace?.let { (existing, replacement) ->
-            ReplacePlanDialog(
-                pal = pal,
-                planTitle = replacement.title,
-                onDismiss = { pendingReplace = null },
-                onConfirm = {
-                    deletePlan(existing)
-                    adoptPlan(replacement)
-                    showActive = true
-                    pendingReplace = null
-                }
-            )
-        }
-        return
-    }
-
-    val dashboardListState = rememberLazyListState()
-    LazyColumn(
-        state = dashboardListState,
-        modifier = Modifier.fillMaxSize().background(pal.white).dragToScroll(dashboardListState),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
+    } else {
+        val dashboardListState = rememberLazyListState()
+        LazyColumn(
+            state = dashboardListState,
+            modifier = Modifier.fillMaxSize().background(pal.white).dragToScroll(dashboardListState),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
         // ── Dashboard header ──
         item(key = "header") {
             val plan = activePlan ?: return@item
@@ -877,6 +830,7 @@ fun PlannerScreenDesktop(
             }
         }
     }
+}
 
     if (showCustomModal) {
         CustomPlanModal(
@@ -884,6 +838,34 @@ fun PlannerScreenDesktop(
             chapters = planChapters(),
             onDismiss = { showCustomModal = false },
             onCreate = { createCustomPlan(it) }
+        )
+    }
+    if (showArchivesModal) {
+        ArchivesModal(
+            pal = pal,
+            archived = PlannerStore.getArchived(),
+            onDismiss = { showArchivesModal = false },
+            onRestore = { planId ->
+                PlannerStore.restoreArchived(planId)
+                refresh++
+            },
+            onDelete = { planId ->
+                PlannerStore.deleteArchived(planId)
+                refresh++
+            }
+        )
+    }
+    pendingReplace?.let { (existing, replacement) ->
+        ReplacePlanDialog(
+            pal = pal,
+            planTitle = replacement.title,
+            onDismiss = { pendingReplace = null },
+            onConfirm = {
+                deletePlan(existing)
+                adoptPlan(replacement)
+                showActive = true
+                pendingReplace = null
+            }
         )
     }
     previewPlan?.let { built ->

@@ -122,7 +122,8 @@ fun PlannerReaderScreenDesktop(
 
     val currentPlan = plan!!
     val assignment = remember(currentPlan, dayDate) {
-        currentPlan.assignments.find { it.date == dayDate }
+        currentPlan.assignments.find { it.date == dayDate || it.dayNumber.toString() == dayDate }
+            ?: currentPlan.assignments.firstOrNull()
     }
 
     // ── Assignment missing for this date ─────────────────────────────

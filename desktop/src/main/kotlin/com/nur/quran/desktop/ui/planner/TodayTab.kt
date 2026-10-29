@@ -490,6 +490,10 @@ private fun DailyRitualSection(
                         .fillMaxWidth()
                         .graphicsLayer(scaleX = scale, scaleY = scale)
                         .alpha(opacity)
+                        .then(
+                            if (isCurrent) Modifier.clickable { onCtaClick() }
+                            else Modifier
+                        )
                 ) {
                     Row(
                         modifier = Modifier.padding(

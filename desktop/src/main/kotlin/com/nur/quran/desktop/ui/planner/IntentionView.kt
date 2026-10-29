@@ -378,21 +378,19 @@ fun IntentionView(
                             val isActive = plan.id == activePlanId
                             var pendingDelete by remember(plan.id) { mutableStateOf(false) }
                             Card(
+                                onClick = {
+                                    onSwitchPlan(plan.id)
+                                    onViewActive()
+                                },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(containerColor = pal.cream),
                                 border = BorderStroke(
                                     1.5.dp,
                                     if (isActive) pal.gold else pal.boneDark
                                 ),
-                                // Web parity (Planner.jsx 329): row body tap switches
-                                // plan AND navigates to the active view.
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .touchTarget()
-                                    .clickable {
-                                        onSwitchPlan(plan.id)
-                                        onViewActive()
-                                    }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
@@ -597,7 +595,7 @@ private fun PaceCardItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .touchTarget()
-                .clickable { onSelect() }
+                .clickable { if (isSelected) onBegin() else onSelect() }
         ) {
             Column(
                 modifier = Modifier
