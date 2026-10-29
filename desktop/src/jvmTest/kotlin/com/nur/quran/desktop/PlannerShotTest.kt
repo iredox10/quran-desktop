@@ -51,8 +51,11 @@ class PlannerShotTest {
         }
         val png = scene.render().encodeToData(org.jetbrains.skia.EncodedImageFormat.PNG)
             ?: error("PNG encode failed")
-        File("build/screenshots").apply { mkdirs() }
-        File(File("build/screenshots"), name).writeBytes(png.bytes)
+        val dirs = listOf(File("build/screenshots"), File("desktop/build/screenshots"))
+        for (dir in dirs) {
+            dir.mkdirs()
+            File(dir, name).writeBytes(png.bytes)
+        }
         scene.close()
     }
 

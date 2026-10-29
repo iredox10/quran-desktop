@@ -29,9 +29,17 @@ import androidx.compose.foundation.verticalScroll
 import com.nur.quran.desktop.ui.input.dragToScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import com.nur.quran.desktop.ui.components.copyToClipboard
+import com.nur.quran.desktop.ui.input.touchTarget
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -70,7 +78,9 @@ import com.nur.quran.desktop.ui.planner.CustomPlanParams
 import com.nur.quran.desktop.ui.planner.DeletePlanDialog
 import com.nur.quran.desktop.ui.planner.IntentionView
 import com.nur.quran.desktop.ui.planner.JournalTab
+import com.nur.quran.desktop.ui.planner.MetricGlassCard
 import com.nur.quran.desktop.ui.planner.PaceRing
+import com.nur.quran.desktop.ui.planner.PlannerSettingsDialog
 import com.nur.quran.desktop.ui.planner.RebalanceDialog
 import com.nur.quran.desktop.ui.planner.ReplacePlanDialog
 import com.nur.quran.desktop.ui.planner.SectionTitle
@@ -374,7 +384,15 @@ fun PlannerScreenDesktop(
             ArchivesModal(
                 pal = pal,
                 archived = PlannerStore.getArchived(),
-                onDismiss = { showArchivesModal = false }
+                onDismiss = { showArchivesModal = false },
+                onRestore = { planId ->
+                    PlannerStore.restoreArchived(planId)
+                    refresh++
+                },
+                onDelete = { planId ->
+                    PlannerStore.deleteArchived(planId)
+                    refresh++
+                }
             )
         }
         pendingReplace?.let { (existing, replacement) ->
@@ -473,6 +491,13 @@ fun PlannerScreenDesktop(
             // CTA route is never null for a non-empty plan.
             val ctaDay = (nextAssignment ?: overview.firstIncomplete).date
             var switcherOpen by remember { mutableStateOf(false) }
+            var copiedShare by remember { mutableStateOf(false) }
+            LaunchedEffect(copiedShare) {
+                if (copiedShare) {
+                    delay(2000)
+                    copiedShare = false
+                }
+            }
 
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -485,6 +510,7 @@ fun PlannerScreenDesktop(
                             .clip(CircleShape)
                             .background(pal.white)
                             .border(1.dp, pal.boneDark, CircleShape)
+                            .touchTarget()
                             .clickable { showActive = false },
                         contentAlignment = Alignment.Center
                     ) {
@@ -495,20 +521,21 @@ fun PlannerScreenDesktop(
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         if (allPlans.size > 1) {
                             Box {
                                 Row(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
+                                        .touchTarget()
                                         .clickable { switcherOpen = true }
                                         .padding(horizontal = 4.dp, vertical = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
                                         text = plan.title.ifBlank { "Quran Plan" },
-                                        fontSize = 22.sp,
+                                        fontSize = 24.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = pal.ink,
                                         fontFamily = fontUi
@@ -517,7 +544,7 @@ fun PlannerScreenDesktop(
                                         Icons.Filled.ArrowDropDown,
                                         contentDescription = "Switch plan",
                                         tint = pal.inkMid,
-                                        modifier = Modifier.size(22.dp)
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                                 DropdownMenu(
@@ -536,7 +563,8 @@ fun PlannerScreenDesktop(
                                             onClick = {
                                                 switcherOpen = false
                                                 activatePlan(p)
-                                            }
+                                            },
+                                            modifier = Modifier.touchTarget()
                                         )
                                     }
                                 }
@@ -544,7 +572,7 @@ fun PlannerScreenDesktop(
                         } else {
                             Text(
                                 text = plan.title.ifBlank { "Quran Plan" },
-                                fontSize = 22.sp,
+                                fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = pal.ink,
                                 fontFamily = fontUi
@@ -566,84 +594,159 @@ fun PlannerScreenDesktop(
                             fontFamily = fontBody
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    // Web parity (Planner.jsx 879-898): plan-done adopts a
-                    // revision plan; otherwise the CTA opens the next/current
-                    // assignment. The route is never null for a non-empty plan.
-                    Button(
-                        onClick = {
-                            if (planDone) {
-                                val rev = runCatching {
-                                    PlannerEngine.buildRevisionPlanner(plan, planChapters())
-                                }.getOrNull()
-                                if (rev != null) adoptPlan(rev)
-                            } else {
-                                onOpenDay(ctaDay)
-                            }
-                        },
-                        shape = RoundedCornerShape(100.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-                        modifier = Modifier.padding(top = 4.dp)
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    // Right header actions: Action buttons (Share, Settings, Delete) + Primary CTA
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = if (planDone) "Start Revision Plan" else ctaLabel,
-                            fontFamily = fontUi,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            color = pal.white
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                // Stats header cards \u2014 web parity (Overall / Finish by / Streak)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    listOf(
-                        "Overall" to "$overallPct%",
-                        "Finish by" to completionDate,
-                        "Streak" to "${streak} Day${if (streak != 1) "s" else ""}"
-                    ).forEach { (label, value) ->
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = pal.cream,
-                            border = BorderStroke(1.dp, pal.boneDark),
-                            modifier = Modifier.weight(1f)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text(
-                                    text = label.uppercase(),
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                    fontSize = 10.sp,
-                                    letterSpacing = 0.8.sp,
-                                    color = pal.inkMuted
+                            // Share Progress button
+                            val shareText = "I've completed ${overview.completedCount} days of my ${plan.durationDays}-day Quran reading plan on Quran Nur! I'm currently on Day $currentDay."
+                            IconButton(
+                                onClick = { copiedShare = copyToClipboard(shareText) },
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(pal.white)
+                                    .border(1.dp, pal.boneDark, CircleShape)
+                                    .touchTarget()
+                            ) {
+                                Icon(
+                                    Icons.Filled.Share,
+                                    contentDescription = if (copiedShare) "Progress copied!" else "Share progress",
+                                    tint = if (copiedShare) pal.green else pal.inkMid,
+                                    modifier = Modifier.size(17.dp)
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = value,
-                                    fontFamily = fontUi,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = pal.ink
+                            }
+
+                            // Settings gear button
+                            IconButton(
+                                onClick = { showPlannerSettings = true },
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(pal.white)
+                                    .border(1.dp, pal.boneDark, CircleShape)
+                                    .touchTarget()
+                            ) {
+                                Icon(
+                                    Icons.Filled.Settings,
+                                    contentDescription = "Planner settings",
+                                    tint = pal.inkMid,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+
+                            // Delete trashcan button
+                            IconButton(
+                                onClick = { showDeletePlan = true },
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(pal.white)
+                                    .border(1.dp, pal.boneDark, CircleShape)
+                                    .touchTarget()
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = "Delete plan",
+                                    tint = pal.inkMuted,
+                                    modifier = Modifier.size(17.dp)
                                 )
                             }
                         }
+
+                        // Primary CTA Button
+                        Button(
+                            onClick = {
+                                if (planDone) {
+                                    val rev = runCatching {
+                                        PlannerEngine.buildRevisionPlanner(plan, planChapters())
+                                    }.getOrNull()
+                                    if (rev != null) adoptPlan(rev)
+                                } else {
+                                    onOpenDay(ctaDay)
+                                }
+                            },
+                            shape = RoundedCornerShape(100.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 11.dp),
+                            modifier = Modifier.touchTarget()
+                        ) {
+                            Text(
+                                text = if (planDone) "Start Revision Plan" else ctaLabel,
+                                fontFamily = fontUi,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                color = pal.white
+                            )
+                        }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // 3 Top metric glass cards:
+                // 1. Overall Progress (overallPct%, X of Y days finished)
+                // 2. Finish by (completionDate formatted like "Nov 28")
+                // 3. Streak (X Days)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    MetricGlassCard(
+                        label = "OVERALL",
+                        value = "$overallPct%",
+                        subtitle = "${overview.completedCount} of ${plan.durationDays} days finished",
+                        icon = Icons.AutoMirrored.Filled.TrendingUp,
+                        iconTint = pal.inkMuted.copy(alpha = 0.5f),
+                        pal = pal,
+                        fontUi = fontUi,
+                        fontBody = fontBody,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    MetricGlassCard(
+                        label = "FINISH BY",
+                        value = completionDate,
+                        subtitle = "${plan.durationDays} days total",
+                        icon = Icons.Filled.CalendarMonth,
+                        iconTint = pal.inkMuted.copy(alpha = 0.5f),
+                        pal = pal,
+                        fontUi = fontUi,
+                        fontBody = fontBody,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    MetricGlassCard(
+                        label = "STREAK",
+                        value = "${streak} Day${if (streak != 1) "s" else ""}",
+                        subtitle = if (streak > 0) "Consistency streak" else "Start your streak",
+                        icon = Icons.Filled.LocalFireDepartment,
+                        iconTint = Color(0xFFF59E0B).copy(alpha = 0.85f),
+                        pal = pal,
+                        fontUi = fontUi,
+                        fontBody = fontBody,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
 
-        // ── Simple tab row: Today / Progress / Journal ──
+        // ── Tab row pills: [Today | Progress | Journal] ──
         item(key = "tabs") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(18.dp))
                     .background(pal.cream)
-                    .border(1.dp, pal.boneDark, RoundedCornerShape(14.dp))
-                    .padding(4.dp),
+                    .border(1.5.dp, pal.boneDark, RoundedCornerShape(18.dp))
+                    .padding(5.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 listOf("Today", "Progress", "Journal").forEachIndexed { index, label ->
@@ -657,14 +760,15 @@ fun PlannerScreenDesktop(
                                 if (selected) Modifier.border(1.dp, pal.boneDark, RoundedCornerShape(14.dp))
                                 else Modifier
                             )
+                            .touchTarget()
                             .clickable { tab = index }
-                            .padding(vertical = 10.dp),
+                            .padding(vertical = 11.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = label,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                             color = if (selected) pal.teal else pal.inkMuted,
                             fontFamily = fontUi
                         )
@@ -716,7 +820,8 @@ fun PlannerScreenDesktop(
                                 pal = pal,
                                 plan = plan,
                                 todayStr = todayStr,
-                                onAdoptPlan = { adoptPlan(it) }
+                                onAdoptPlan = { adoptPlan(it) },
+                                onOpenDay = { date -> onOpenDay(date) }
                             )
                         }
                     }
@@ -820,6 +925,61 @@ fun PlannerScreenDesktop(
                 showAutoRebalance = false
             }
         )
+    }
+}
+
+@Composable
+private fun MetricGlassCard(
+    label: String,
+    value: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    pal: NurPalette,
+    fontUi: androidx.compose.ui.text.font.FontFamily,
+    fontBody: androidx.compose.ui.text.font.FontFamily,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = pal.cream.copy(alpha = 0.85f),
+        border = BorderStroke(1.dp, pal.boneDark),
+        modifier = modifier
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().padding(14.dp)) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier
+                    .size(20.dp)
+                    .align(Alignment.TopEnd)
+            )
+            Column {
+                Text(
+                    text = label.uppercase(),
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    letterSpacing = 0.8.sp,
+                    color = pal.inkMuted
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = value,
+                    fontFamily = fontUi,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = pal.ink
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontFamily = fontBody,
+                    fontSize = 11.sp,
+                    color = pal.inkMuted
+                )
+            }
+        }
     }
 }
 
@@ -1011,340 +1171,3 @@ private fun CustomPlanForm(
     }
 }
 
-/** Planner Settings dialog (web `Planner.jsx` modal parity): prayers, reading preference, intention, location, export. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun PlannerSettingsDialog(
-    pal: NurPalette,
-    city: String,
-    country: String,
-    loading: Boolean,
-    onCityChange: (String) -> Unit,
-    onCountryChange: (String) -> Unit,
-    onRefresh: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val fontUi = rememberUiFontFamily()
-    val fontBody = rememberBodyFontFamily()
-    val savedPrefs = remember { PlannerStore.getPrayerPrefs() }
-    var activePrayers by remember { mutableStateOf(savedPrefs.activePrayers) }
-    var readPref by remember { mutableStateOf(savedPrefs.readPreference) }
-    var intentionOn by remember { mutableStateOf(savedPrefs.intentionPromptEnabled) }
-    var exportStatus by remember { mutableStateOf("") }
-
-    fun persist() {
-        PlannerStore.savePrayerPrefs(PrayerPrefs(activePrayers, readPref, intentionOn))
-    }
-
-    @Composable
-    fun SectionHeader(label: String) {
-        // Web parity (Planner.jsx 1380): mono 0.75rem bold uppercase,
-        // tracking 0.15em, accent (gold) colour.
-        Text(
-            text = label.uppercase(),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.8.sp,
-            color = pal.gold,
-            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-    }
-
-    fun esc(text: String): String = text
-        .replace("\n", "\\n")
-        .replace(",", "\\,")
-        .replace(";", "\\;")
-
-    fun exportPlanIcs(): String {
-        val plan = PlannerStore.getActivePlan() ?: return "No active plan"
-        return try {
-            val stampFormat = java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'", java.util.Locale.US)
-            stampFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
-            val dtStamp = stampFormat.format(java.util.Date())
-            val sb = StringBuilder()
-            sb.append("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Quran Nur//Planner//EN\r\n")
-            plan.assignments.forEach { a ->
-                sb.append("BEGIN:VEVENT\r\n")
-                sb.append("UID:planner-${plan.id}-${a.dayNumber}@quran-nur\r\n")
-                sb.append("DTSTAMP:$dtStamp\r\n")
-                sb.append("DTSTART;VALUE=DATE:${a.date.replace("-", "")}\r\n")
-                sb.append("SUMMARY:${esc(a.title)} (Day ${a.dayNumber})\r\n")
-                sb.append("DESCRIPTION:${esc(a.subtitle)}\r\n")
-                sb.append("END:VEVENT\r\n")
-            }
-            sb.append("END:VCALENDAR\r\n")
-            val chooser = JFileChooser()
-            chooser.selectedFile = File("quran-nur-planner.ics")
-            if (chooser.showSaveDialog(null) != JFileChooser.APPROVE_OPTION) return "Export cancelled"
-            val out = chooser.selectedFile
-            out.writeText(sb.toString(), Charsets.UTF_8)
-            "Saved to ${out.absolutePath}"
-        } catch (_: Exception) {
-            "Export failed"
-        }
-    }
-
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = pal.cream,
-            border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark),
-            modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(28.dp).verticalScroll(rememberScrollState())) {
-                Text(
-                    text = "Planner Settings",
-                    fontSize = 22.4.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = pal.ink,
-                    fontFamily = fontUi
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-                SectionHeader("Daily Prayers")
-                Text(
-                    text = "Select which prayers you want to distribute reading across.",
-                    fontSize = 12.sp,
-                    color = pal.inkMuted,
-                    fontFamily = fontBody
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    PRAYER_NAMES.forEach { prayer ->
-                        val active = prayer in activePrayers
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (active) pal.teal else pal.white)
-                                .border(
-                                    1.5.dp,
-                                    if (active) pal.teal else pal.boneDark,
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .clickable {
-                                    if (active && activePrayers.size == 1) return@clickable
-                                    activePrayers = if (active) {
-                                        activePrayers - prayer
-                                    } else {
-                                        (activePrayers + prayer).sortedBy { PRAYER_NAMES.indexOf(it) }
-                                    }
-                                    persist()
-                                }
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = prayer,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (active) Color.White else pal.inkMuted,
-                                fontFamily = fontBody
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-                SectionHeader("Reading Preference")
-                // Web parity (Planner.jsx 1405-1416): a single select with the
-                // three preference options and a chevron on the right.
-                var readPrefOpen by remember { mutableStateOf(false) }
-                val readPrefLabel = when (readPref) {
-                    "before" -> "Read Before Prayer"
-                    "split" -> "Split Before & After"
-                    else -> "Read After Prayer"
-                }
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(pal.white)
-                            .border(2.dp, pal.boneDark, RoundedCornerShape(16.dp))
-                            .clickable { readPrefOpen = true }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = readPrefLabel,
-                            fontFamily = fontUi,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = pal.ink,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            Icons.Filled.ArrowDropDown,
-                            contentDescription = null,
-                            tint = pal.inkMuted
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = readPrefOpen,
-                        onDismissRequest = { readPrefOpen = false }
-                    ) {
-                        listOf(
-                            "after" to "Read After Prayer",
-                            "before" to "Read Before Prayer",
-                            "split" to "Split Before & After"
-                        ).forEach { (value, label) ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(label, fontFamily = fontUi, color = pal.ink)
-                                },
-                                onClick = {
-                                    readPref = value
-                                    persist()
-                                    readPrefOpen = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.5.dp)
-                        .background(pal.boneDark)
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                // Web parity (Planner.jsx 1418-1430): header + description on
-                // the left, toggle on the right.
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = "Intention Prompts",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.8.sp,
-                            color = pal.gold,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                        )
-                        Text(
-                            text = "Show a mindfulness prompt before reading.",
-                            fontSize = 13.6.sp,
-                            color = pal.inkMid,
-                            fontFamily = fontBody
-                        )
-                    }
-                    Switch(
-                        checked = intentionOn,
-                        onCheckedChange = {
-                            intentionOn = it
-                            persist()
-                        },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = pal.green
-                        )
-                    )
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.5.dp)
-                        .background(pal.boneDark)
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                SectionHeader("Prayer Times Location")
-                OutlinedTextField(
-                    value = city,
-                    onValueChange = onCityChange,
-                    label = { Text("City") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = country,
-                    onValueChange = onCountryChange,
-                    label = { Text("Country") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onRefresh,
-                    enabled = !loading,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = pal.teal,
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (loading) "Loading…" else "Refresh times", fontFamily = fontUi)
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.5.dp)
-                        .background(pal.boneDark)
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                // Web parity (Planner.jsx 1442-1447): full-width outlined
-                // white card button with a calendar glyph.
-                OutlinedButton(
-                    onClick = { exportStatus = exportPlanIcs() },
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = pal.white,
-                        contentColor = pal.ink
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Icon(
-                        Icons.Filled.DateRange,
-                        contentDescription = null,
-                        tint = pal.ink,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Export to Calendar (.ics)",
-                        fontSize = 14.4.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = fontUi
-                    )
-                }
-                if (exportStatus.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = exportStatus,
-                        fontSize = 12.sp,
-                        color = if (exportStatus.startsWith("Saved")) pal.teal else OverdueRed,
-                        fontFamily = fontBody
-                    )
-                }
-                Spacer(modifier = Modifier.height(20.dp))
-                OutlinedButton(
-                    onClick = onDismiss,
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.boneDark),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = pal.white,
-                        contentColor = pal.ink
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
-                ) {
-                    Text(
-                        text = "Done",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = fontUi
-                    )
-                }
-            }
-        }
-    }
-}

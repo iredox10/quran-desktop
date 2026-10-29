@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
@@ -91,50 +93,45 @@ fun PaceCardRing(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val strokeWidth = 7.dp.toPx()
             val sweep = 360f * ratio
-            // Track: full-circle bone ring (--plr-ring-bg #EAE5D4 light).
+            val arcOffset = Offset(strokeWidth / 2f, strokeWidth / 2f)
+            val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+
+            // Track: full-circle bone ring (--plr-ring-bg #EAE5D4 light, #3A3A36 dark).
             drawArc(
                 color = pal.bone,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter = false,
-                topLeft = Offset(
-                    strokeWidth / 2f + 4.dp.toPx(),
-                    strokeWidth / 2f + 4.dp.toPx()
-                ),
-                size = Size(
-                    size.width - strokeWidth - 8.dp.toPx(),
-                    size.height - strokeWidth - 8.dp.toPx()
-                ),
+                topLeft = arcOffset,
+                size = arcSize,
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
             // Sweep: web dash pattern (filled arc + gap) starting at 135°.
-            // Unselected uses the muted --plr-ring-stroke (#C8B88A light).
-            val ringStroke = Color(0xFFC8B88A)
+            // Unselected uses muted --plr-ring-stroke (#C8B88A light, #A89870 dark).
+            val ringStroke = if (pal.dark) Color(0xFFA89870) else Color(0xFFC8B88A)
             drawArc(
                 color = if (selected) pal.gold else ringStroke,
                 startAngle = 135f,
                 sweepAngle = sweep,
                 useCenter = false,
-                topLeft = Offset(
-                    strokeWidth / 2f + 4.dp.toPx(),
-                    strokeWidth / 2f + 4.dp.toPx()
-                ),
-                size = Size(
-                    size.width - strokeWidth - 8.dp.toPx(),
-                    size.height - strokeWidth - 8.dp.toPx()
-                ),
+                topLeft = arcOffset,
+                size = arcSize,
                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
                 text = dailyPages.toString(),
                 fontFamily = fontUi,
-                fontSize = 30.sp,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.SemiBold,
-                lineHeight = 30.sp,
+                lineHeight = 32.sp,
                 color = pal.ink
             )
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = "PAGES / DAY",
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
@@ -308,27 +305,44 @@ fun TemplatesGrid(
     pal: NurPalette,
     templates: List<PlanTemplate>,
     onPick: (PlanTemplate) -> Unit,
-    chaptersReady: Boolean = true
+    chaptersReady: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
     val mono = androidx.compose.ui.text.font.FontFamily.Monospace
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        templates.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                row.forEach { tmpl ->
-                    TemplateCard(
-                        pal = pal,
-                        fontUi = fontUi,
-                        fontBody = fontBody,
-                        mono = mono,
-                        tmpl = tmpl,
-                        chaptersReady = chaptersReady,
-                        onPick = onPick,
-                        modifier = Modifier.weight(1f)
-                    )
+
+    // Web parity (Planner.jsx line 363): "grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+    // On wide desktop screens (>= 840dp) show 3 columns; on medium (>= 540dp) 2 columns; else 1.
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val cols = when {
+            maxWidth >= 840.dp -> 3
+            maxWidth >= 540.dp -> 2
+            else -> 1
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            templates.chunked(cols).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    row.forEach { tmpl ->
+                        TemplateCard(
+                            pal = pal,
+                            fontUi = fontUi,
+                            fontBody = fontBody,
+                            mono = mono,
+                            tmpl = tmpl,
+                            chaptersReady = chaptersReady,
+                            onPick = onPick,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // Pad empty columns in last row
+                    repeat(cols - row.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
-                if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
@@ -358,24 +372,29 @@ private fun TemplateCard(
         border = BorderStroke(1.5.dp, pal.boneDark),
         modifier = modifier
             .alpha(if (needsChapters) 0.5f else 1f)
+            .touchTarget()
             .clickable(enabled = !needsChapters) { onPick(tmpl) }
     ) {
-        Box {
+        Box(modifier = Modifier.fillMaxWidth()) {
             // Watermark book — web: absolute -right-4 -top-4, 3% opacity.
             Icon(
                 imageVector = Icons.Filled.MenuBook,
                 contentDescription = null,
-                tint = pal.ink.copy(alpha = 0.06f),
+                tint = pal.ink.copy(alpha = 0.05f),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 12.dp, y = (-12).dp)
+                    .offset(x = 16.dp, y = (-16).dp)
                     .size(80.dp)
             )
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
                 Text(
                     text = tmpl.title,
                     fontFamily = fontUi,
-                    fontSize = 16.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = pal.ink
                 )
@@ -383,7 +402,7 @@ private fun TemplateCard(
                 Text(
                     text = tmpl.description,
                     fontFamily = fontBody,
-                    fontSize = 12.5.sp,
+                    fontSize = 13.sp,
                     lineHeight = 19.sp,
                     color = pal.inkMid,
                     maxLines = 3
@@ -645,6 +664,67 @@ fun StatsCards(pal: NurPalette, stats: List<Pair<String, String>>) {
                 }
                 if (row.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
+        }
+    }
+}
+
+/** Top glass card for active view metrics (Overall, Finish By, Streak). */
+@Composable
+fun MetricGlassCard(
+    label: String,
+    value: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    pal: NurPalette,
+    fontUi: androidx.compose.ui.text.font.FontFamily,
+    fontBody: androidx.compose.ui.text.font.FontFamily,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = pal.cream,
+        border = BorderStroke(1.5.dp, pal.boneDark),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = label.uppercase(),
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = pal.inkMuted
+                )
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = value,
+                fontFamily = fontUi,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = pal.ink
+            )
+            Text(
+                text = subtitle,
+                fontFamily = fontBody,
+                fontSize = 11.sp,
+                color = pal.inkMuted
+            )
         }
     }
 }

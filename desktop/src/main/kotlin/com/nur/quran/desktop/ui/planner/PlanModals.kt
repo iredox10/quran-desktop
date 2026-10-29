@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -408,7 +411,9 @@ fun CustomPlanModal(
 fun ArchivesModal(
     pal: NurPalette,
     archived: List<ArchivedPlan>,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onRestore: ((String) -> Unit)? = null,
+    onDelete: ((String) -> Unit)? = null
 ) {
     val fontBody = rememberBodyFontFamily()
     ModalShell(pal = pal, onDismiss = onDismiss, title = "Past Plans Archive") {
@@ -494,6 +499,57 @@ fun ArchivesModal(
                                 fontSize = 12.sp,
                                 color = pal.inkMid
                             )
+
+                            if (onRestore != null || onDelete != null) {
+                                Spacer(Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (onRestore != null) {
+                                        OutlinedButton(
+                                            onClick = { onRestore(plan.id) },
+                                            shape = RoundedCornerShape(8.dp),
+                                            border = BorderStroke(1.dp, pal.teal),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                containerColor = pal.white,
+                                                contentColor = pal.teal
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Refresh,
+                                                contentDescription = null,
+                                                tint = pal.teal,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                text = "Restore",
+                                                fontFamily = fontBody,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                    if (onDelete != null) {
+                                        IconButton(
+                                            onClick = { onDelete(plan.id) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Delete,
+                                                contentDescription = "Delete",
+                                                tint = androidx.compose.ui.graphics.Color(0xFFC0392B),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

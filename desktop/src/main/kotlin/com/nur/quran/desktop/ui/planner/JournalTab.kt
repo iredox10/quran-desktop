@@ -38,7 +38,14 @@ import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
+import com.nur.quran.shared.PlannerEngine
 import com.nur.quran.shared.ReadingPlan
+
+private data class PlanJournalReflection(
+    val dayNumber: Int,
+    val date: String,
+    val text: String
+)
 
 /**
  * JOURNAL tab — web Planner.jsx parity (1234-1303).
@@ -57,8 +64,8 @@ fun JournalTab(
     val reflections = remember(plan.id, plan.assignments) {
         plan.assignments.mapNotNull { assignment ->
             val text = PlannerStore.getReflection(plan.id, assignment.date)
-            if (text.isBlank()) null else assignment.dayNumber to text
-        }.sortedByDescending { it.first }
+            if (text.isBlank()) null else PlanJournalReflection(assignment.dayNumber, assignment.date, text)
+        }.sortedByDescending { it.dayNumber }
     }
     val marks = remember(plan.id) {
         PlannerStore.getMarks(plan.id).sortedByDescending { it.createdAt }
@@ -73,8 +80,8 @@ fun JournalTab(
                     text = "No reflections yet. Complete a day to write one!"
                 )
             } else {
-                reflections.forEach { (dayNumber, text) ->
-                    ReflectionCard(pal, dayNumber, text)
+                reflections.forEach { item ->
+                    ReflectionCard(pal, item.dayNumber, item.date, item.text)
                     Spacer(modifier = Modifier.height(10.dp))
                 }
             }
@@ -99,6 +106,7 @@ fun JournalTab(
                                 pal = pal,
                                 surahName = mark.surahName.ifBlank { "Surah" },
                                 verseKey = mark.verseKey,
+                                createdAt = mark.createdAt,
                                 onClick = {
                                     if (chapterId != null) onOpenSurah(chapterId, mark.verseKey)
                                 },
@@ -153,9 +161,12 @@ private fun JournalSection(
 }
 
 @Composable
-private fun ReflectionCard(pal: NurPalette, dayNumber: Int, text: String) {
+private fun ReflectionCard(pal: NurPalette, dayNumber: Int, date: String, text: String) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
+    val dateLabel = remember(date) {
+        if (date.isNotBlank()) PlannerEngine.formatPlannerDateLabel(date) else ""
+    }
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = pal.white,
@@ -163,30 +174,45 @@ private fun ReflectionCard(pal: NurPalette, dayNumber: Int, text: String) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(pal.goldSoft),
-                    contentAlignment = Alignment.Center
-                ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(pal.goldSoft),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = dayNumber.toString(),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = pal.gold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = dayNumber.toString(),
+                        text = "REFLECTION",
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp,
+                        fontSize = 9.sp,
+                        letterSpacing = 0.6.sp,
                         fontWeight = FontWeight.Bold,
-                        color = pal.gold
+                        color = pal.inkMuted
                     )
                 }
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "REFLECTION",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 9.sp,
-                    letterSpacing = 0.6.sp,
-                    color = pal.inkMuted
-                )
+                if (dateLabel.isNotBlank()) {
+                    Text(
+                        text = dateLabel,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp,
+                        color = pal.inkMuted
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
@@ -205,11 +231,19 @@ private fun HighlightCard(
     pal: NurPalette,
     surahName: String,
     verseKey: String,
+    createdAt: Long,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
+    val ayahNum = verseKey.substringAfter(":", "")
+    val timeLabel = remember(createdAt) {
+        if (createdAt > 0L) {
+            val sdf = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault())
+            sdf.format(java.util.Date(createdAt))
+        } else ""
+    }
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = pal.white,
@@ -222,13 +256,23 @@ private fun HighlightCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = surahName,
-                    fontFamily = fontUi,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = pal.ink
-                )
+                Column {
+                    Text(
+                        text = surahName,
+                        fontFamily = fontUi,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = pal.ink
+                    )
+                    if (ayahNum.isNotBlank()) {
+                        Text(
+                            text = "Ayah $ayahNum",
+                            fontFamily = fontBody,
+                            fontSize = 11.sp,
+                            color = pal.inkMuted
+                        )
+                    }
+                }
                 Icon(
                     Icons.Filled.Diamond,
                     contentDescription = null,
@@ -237,7 +281,11 @@ private fun HighlightCard(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Surface(shape = RoundedCornerShape(6.dp), color = pal.goldSoft) {
                     Text(
                         text = verseKey,
@@ -247,15 +295,23 @@ private fun HighlightCard(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Tap to read verse \u2192",
-                    fontFamily = fontBody,
-                    fontSize = 10.sp,
-                    color = pal.inkMuted,
-                    maxLines = 1
-                )
+                if (timeLabel.isNotBlank()) {
+                    Text(
+                        text = timeLabel,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                        color = pal.inkMuted
+                    )
+                }
             }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Tap to read verse \u2192",
+                fontFamily = fontBody,
+                fontSize = 11.sp,
+                color = pal.teal,
+                maxLines = 1
+            )
         }
     }
 }

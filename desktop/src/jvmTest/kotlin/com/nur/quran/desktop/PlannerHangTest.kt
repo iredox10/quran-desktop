@@ -1,7 +1,8 @@
 package com.nur.quran.desktop
 
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.captureToImage
 import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.QuranStore
@@ -59,7 +60,7 @@ class PlannerHangTest {
             Runtime.getRuntime().halt(42)
         }
         rule.waitForIdle()
-        rule.onRoot().captureToImage()
+        rule.onAllNodes(androidx.compose.ui.test.isRoot()).onFirst().captureToImage()
         watchdog.shutdownNow()
         println("HANGTEST: settled OK")
     }

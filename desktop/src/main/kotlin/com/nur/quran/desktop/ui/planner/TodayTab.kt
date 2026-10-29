@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,9 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -40,8 +41,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -49,15 +52,18 @@ import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.PrayerStore
 import com.nur.quran.desktop.ui.components.copyToClipboard
+import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.shared.PLANNER_UNITS
 import com.nur.quran.shared.PlannerEngine
+import com.nur.quran.shared.PrayerSlot
 import com.nur.quran.shared.PrayerTimings
 import com.nur.quran.shared.ReadingPlan
 import com.nur.quran.shared.buildPrayerSlots
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
@@ -74,16 +80,16 @@ internal fun formatSessionTime(totalSeconds: Int): String {
 
 /**
  * TODAY tab of the planner, mirroring web `Planner.jsx` ActiveView TODAY tab
- * (lines 669-1063): 200dp RingProgress hero with "% + day count"
- * + "Daily Ritual" column (session-time pill, share-progress, settings gear
- * opening PlannerSettingsDialog via [onOpenSettings]) + sequential
- * prayer-slot rows exactly like web buildPrayerSlots
- * (completed/current/locked/upcoming/empty with Start/Resume deep-link
- * route to the day reader, undo, mark-done circle) + resumeRoute from the
- * last position (first incomplete = today when unfinished).
- *
- * Sequential display only — no lock-enforcement logic beyond status display;
- * progress writes are delegated to [onSlotDone]/[onSlotUndo] (coordinator).
+ * (lines 669-1063):
+ * - 240dp Circular RingProgress hero with ambient radial glow drop shadow,
+ *   prominent todayPct%, and uppercase subtitle tracking ("X OF Y PAGES TODAY").
+ * - "Daily Ritual" column with teal accent pill marker, session timer pill (if >0s),
+ *   share and settings action buttons.
+ * - Sequential prayer slots (Fajr, Dhuhr, Asr, Maghrib, Isha) with timing label,
+ *   visual state (completed, current, upcoming, locked, empty), Start/Resume action,
+ *   mark-done circle, and undo button.
+ * - Primary CTA Button with dynamic label navigating directly to the reader.
+ * - Touch & tablet compatibility (48dp touch targets on interactive controls).
  */
 @Composable
 fun TodayTab(
@@ -117,38 +123,47 @@ fun TodayTab(
     // Web parity (line 769): hasStartedReading = todayDone > 0 || lastReadPage.
     val hasStarted = todayDone > 0 || plan.lastReadPage != null
     val dayDate = todayAssignment?.date ?: todayStr
+    val todayComplete = progress?.isComplete ?: false
+
+    val nextAssignment = if (todayComplete) {
+        plan.assignments.firstOrNull { a ->
+            (todayAssignment == null || a.dayNumber > todayAssignment.dayNumber) &&
+                !PlannerEngine.getAssignmentProgress(plan, a).isComplete
+        }
+    } else null
+    val planDone = (overview?.isFinishedWindow ?: false) && nextAssignment == null
+    val ctaRouteDate = (nextAssignment ?: overview?.firstIncomplete)?.date ?: dayDate
+
+    // Dynamic CTA label matching web parity (Planner.jsx 825-830)
+    val ctaLabel = when {
+        planDone -> "Plan Complete ✓"
+        todayComplete && nextAssignment != null -> "Continue to Day ${nextAssignment.dayNumber}"
+        todayComplete -> "All Caught Up"
+        hasStarted -> "Resume Reading"
+        else -> "Open Al-Quran"
+    }
 
     // Web parity (line 821): "N OF M <UNIT>S TODAY".
     val unitUpper = (PLANNER_UNITS[plan.unitType]?.label ?: plan.unitType).uppercase()
     val unitPlural = PLANNER_UNITS[plan.unitType]?.plural ?: "Pages"
     val ringLabel = "$todayDone OF $todayTotal ${unitUpper}S TODAY"
-    // Current day count under the ring (web header "Day X of N").
     val currentDay = overview?.currentDayNumber ?: todayAssignment?.dayNumber ?: 1
 
     // Session-time pill, web parity (lines 802-810): plannerSessionTimers
-    // totalSeconds formatted "1h 5m" / "5m 3s" / "12s". Desktop
-    // PlannerStore keeps minutes per date; convert to seconds for the same
-    // format function.
     val sessionSeconds = remember(plan.id, todayStr) {
         (PlannerStore.getStudySessions()[todayStr] ?: 0) * 60
     }
     val sessionLabel = remember(sessionSeconds) { formatSessionTime(sessionSeconds) }
     val completedDays = overview?.completedCount ?: 0
-    // Web parity (line 768): resumeRoute = first-incomplete day reader.
     val resumeDayDate = overview?.firstIncomplete?.date
-    // Full web share text (lines 791-794); coordinator override wins.
     val shareText =
         "I've completed $completedDays days of my ${plan.durationDays}-day Quran reading plan " +
             "on Quran Nur! I'm currently on Day $currentDay."
 
-    // Prayer timings load async (blocking IO); slots render with null-safe
-    // time pills while loading (buildPrayerSlots accepts null timings).
     var timings by remember { mutableStateOf<PrayerTimings?>(null) }
     LaunchedEffect(plan.id) {
         timings = withContext(Dispatchers.IO) { PrayerStore.getToday() }
     }
-    // Web parity: slots honor the saved prayerSettings (activePrayers subset
-    // + before/after/split read preference) from the Planner Settings dialog.
     val prayerPrefs = remember { PlannerStore.getPrayerPrefs() }
     val slots = remember(plan, todayAssignment, timings, prayerPrefs) {
         buildPrayerSlots(
@@ -161,100 +176,266 @@ fun TodayTab(
     }
 
     var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(2000)
+            copied = false
+        }
+    }
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Web parity (Planner.jsx 946-948): 240px ring, 3.5rem label,
-                // 0.65rem mono uppercase ring label.
-                PaceRing(
+    val handleShare = {
+        onShareProgress?.invoke() ?: run {
+            copied = copyToClipboard(shareText)
+        }
+    }
+
+    BoxWithConstraints(modifier = modifier) {
+        val isNarrow = maxWidth < 720.dp
+        if (isNarrow) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(28.dp)
+            ) {
+                // Centered Hero PaceRing with radial glow
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    RingHero(pal = pal, todayPct = todayPct, ringLabel = ringLabel)
+                }
+
+                // Daily Ritual Column
+                DailyRitualSection(
                     pal = pal,
-                    progress = todayPct / 100f,
-                    label = "$todayPct%",
-                    subLabel = ringLabel,
-                    diameter = 240.dp,
-                    labelFontSize = 56.sp,
-                    subLabelFontSize = 10.4.sp
+                    fontUi = fontUi,
+                    sessionSeconds = sessionSeconds,
+                    sessionLabel = sessionLabel,
+                    copied = copied,
+                    onShare = handleShare,
+                    onOpenSettings = onOpenSettings,
+                    todayAssignmentTitle = todayAssignment?.title,
+                    slots = slots,
+                    unitPlural = unitPlural,
+                    hasStarted = hasStarted,
+                    dayDate = dayDate,
+                    ctaLabel = ctaLabel,
+                    onCtaClick = { onOpenDay(resumeDayDate ?: ctaRouteDate) },
+                    onSlotDone = onSlotDone,
+                    onSlotUndo = onSlotUndo
                 )
             }
-            Spacer(modifier = Modifier.width(20.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+        } else {
+            // Side-by-side desktop layout matching web Planner.jsx (md:flex-row gap-10)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(36.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                SectionTitle(pal = pal, text = "Daily Ritual")
-                if (todayAssignment != null) {
-                    Text(
-                        text = todayAssignment.title,
-                        fontFamily = fontUi,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = pal.ink
-                    )
+                // Left Column: 240dp Circular RingProgress hero
+                Box(
+                    modifier = Modifier.width(260.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    RingHero(pal = pal, todayPct = todayPct, ringLabel = ringLabel)
                 }
+
+                // Right Column: Daily Ritual + Prayer Slots + Primary CTA
+                DailyRitualSection(
+                    pal = pal,
+                    fontUi = fontUi,
+                    sessionSeconds = sessionSeconds,
+                    sessionLabel = sessionLabel,
+                    copied = copied,
+                    onShare = handleShare,
+                    onOpenSettings = onOpenSettings,
+                    todayAssignmentTitle = todayAssignment?.title,
+                    slots = slots,
+                    unitPlural = unitPlural,
+                    hasStarted = hasStarted,
+                    dayDate = dayDate,
+                    ctaLabel = ctaLabel,
+                    onCtaClick = { onOpenDay(resumeDayDate ?: ctaRouteDate) },
+                    onSlotDone = onSlotDone,
+                    onSlotUndo = onSlotUndo,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 240dp Circular RingProgress hero with ambient radial glow / accent drop shadow.
+ * Mirrors web Planner.jsx lines 944-950.
+ */
+@Composable
+private fun RingHero(pal: NurPalette, todayPct: Int, ringLabel: String) {
+    Box(
+        modifier = Modifier.size(260.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Ambient radial glow behind the ring
+        Box(
+            modifier = Modifier
+                .size(220.dp)
+                .graphicsLayer { alpha = 0.22f }
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(pal.teal.copy(alpha = 0.45f), Color.Transparent),
+                        radius = 240f
+                    ),
+                    shape = CircleShape
+                )
+        )
+        PaceRing(
+            pal = pal,
+            progress = todayPct / 100f,
+            label = "$todayPct%",
+            subLabel = ringLabel,
+            diameter = 240.dp,
+            labelFontSize = 56.sp,
+            subLabelFontSize = 10.4.sp
+        )
+    }
+}
+
+/**
+ * Daily Ritual column containing:
+ * - Header with teal accent pill marker, session timer pill, share and settings buttons.
+ * - Sequential prayer slots (completed, current, upcoming, locked, empty).
+ * - Primary CTA Button.
+ */
+@Composable
+private fun DailyRitualSection(
+    pal: NurPalette,
+    fontUi: FontFamily,
+    sessionSeconds: Int,
+    sessionLabel: String,
+    copied: Boolean,
+    onShare: () -> Unit,
+    onOpenSettings: () -> Unit,
+    todayAssignmentTitle: String?,
+    slots: List<PrayerSlot>,
+    unitPlural: String,
+    hasStarted: Boolean,
+    dayDate: String,
+    ctaLabel: String,
+    onCtaClick: () -> Unit,
+    onSlotDone: (dayDate: String, upTo: Int) -> Unit,
+    onSlotUndo: (dayDate: String, fromCount: Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // ── Daily Ritual Header Row ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Teal accent pill marker (web parity line 956)
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .height(24.dp)
+                        .clip(CircleShape)
+                        .background(pal.teal)
+                )
+                Text(
+                    text = "Daily Ritual",
+                    fontFamily = fontUi,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = pal.ink
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Session timer pill if > 0 (web parity lines 959-964)
                 if (sessionSeconds > 0) {
                     Surface(
                         shape = RoundedCornerShape(100.dp),
-                        color = pal.tealSoft
+                        color = pal.tealSoft,
+                        border = BorderStroke(1.dp, pal.teal.copy(alpha = 0.25f))
                     ) {
-                        Text(
-                            text = sessionLabel,
-                            fontFamily = fontBody,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = pal.teal,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Schedule,
+                                contentDescription = "Reading session time",
+                                tint = pal.teal,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = sessionLabel,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = pal.teal
+                            )
+                        }
                     }
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+
+                // Share progress button (web parity lines 966-972)
+                IconButton(
+                    onClick = onShare,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(pal.cream)
+                        .border(1.5.dp, pal.boneDark, CircleShape)
+                        .touchTarget()
                 ) {
-                    IconButton(
-                        onClick = {
-                            // Coordinator override wins; desktop fallback copies
-                            // the full web share text to the clipboard.
-                            onShareProgress?.invoke() ?: run {
-                                copied = copyToClipboard(shareText)
-                            }
-                        },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(pal.cream)
-                            .border(1.dp, pal.boneDark, CircleShape)
-                    ) {
-                        Icon(
-                            Icons.Filled.Share,
-                            contentDescription = if (copied) "Copied" else "Share progress",
-                            tint = if (copied) pal.green else pal.inkMid,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = onOpenSettings,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(pal.cream)
-                            .border(1.dp, pal.boneDark, CircleShape)
-                    ) {
-                        Icon(
-                            Icons.Filled.Settings,
-                            contentDescription = "Planner settings",
-                            tint = pal.inkMid,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    Icon(
+                        Icons.Filled.Share,
+                        contentDescription = if (copied) "Copied!" else "Share Progress",
+                        tint = if (copied) pal.green else pal.inkMid,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                // Settings button (web parity lines 973-975)
+                IconButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(pal.cream)
+                        .border(1.5.dp, pal.boneDark, CircleShape)
+                        .touchTarget()
+                ) {
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = "Planner Settings",
+                        tint = pal.inkMid,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.8.dp)) {
+        if (todayAssignmentTitle != null) {
+            Text(
+                text = todayAssignmentTitle,
+                fontFamily = fontUi,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = pal.inkMid
+            )
+        }
+
+        // ── Sequential Prayer Slots ──
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             slots.forEach { slot ->
                 val isCurrent = slot.status == "current"
                 val isCompleted = slot.status == "completed"
@@ -262,33 +443,30 @@ fun TodayTab(
                 val isLocked = slot.status == "locked"
                 val isEmpty = slot.status == "empty"
 
-                // Web parity (Planner.jsx 987-997): current scales up 2%,
-                // completed/empty/locked scale down to 95% and fade, and the
-                // completed/locked/empty rows use tighter vertical padding.
                 val scale = when {
-                    isCurrent -> 1.02f
-                    isCompleted || isEmpty || isLocked -> 0.95f
+                    isCurrent -> 1.015f
+                    isCompleted || isEmpty || isLocked -> 0.96f
                     else -> 1f
                 }
                 val opacity = when {
-                    isCompleted -> 0.8f
+                    isCompleted -> 0.85f
                     isEmpty || isLocked -> 0.7f
                     else -> 1f
                 }
                 val container = when {
                     isCurrent -> pal.white
-                    isCompleted -> pal.green.copy(alpha = 0.03f)
+                    isCompleted -> pal.green.copy(alpha = 0.04f)
                     isUpcoming -> pal.white
                     else -> pal.cream.copy(alpha = 0.5f)
                 }
                 val border = when {
-                    isCurrent -> BorderStroke(1.dp, pal.gold)
-                    isCompleted -> BorderStroke(1.dp, pal.green.copy(alpha = 0.2f))
+                    isCurrent -> BorderStroke(1.5.dp, pal.teal)
+                    isCompleted -> BorderStroke(1.dp, pal.green.copy(alpha = 0.25f))
                     else -> BorderStroke(1.5.dp, pal.boneDark)
                 }
                 val iconBg = when {
                     isCompleted -> pal.green
-                    isCurrent -> pal.gold
+                    isCurrent -> pal.teal
                     isUpcoming -> pal.bone
                     else -> Color.Transparent
                 }
@@ -302,7 +480,7 @@ fun TodayTab(
                     isLocked -> "${slot.count} $unitPlural · locked"
                     else -> "No reading required"
                 }
-                val verticalPadding = if (isCompleted || isEmpty || isLocked) 10.dp else 16.dp
+                val verticalPadding = if (isCompleted || isEmpty || isLocked) 10.dp else 14.dp
 
                 Surface(
                     shape = RoundedCornerShape(18.dp),
@@ -321,9 +499,10 @@ fun TodayTab(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
+                        // Slot Status Icon
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(40.dp)
                                 .clip(CircleShape)
                                 .background(iconBg)
                                 .then(
@@ -343,7 +522,7 @@ fun TodayTab(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 isCurrent -> Icon(
-                                    Icons.Filled.MenuBook,
+                                    Icons.AutoMirrored.Filled.MenuBook,
                                     contentDescription = slot.status,
                                     tint = pal.white,
                                     modifier = Modifier.size(20.dp)
@@ -368,6 +547,8 @@ fun TodayTab(
                                 )
                             }
                         }
+
+                        // Slot Info
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
@@ -381,11 +562,7 @@ fun TodayTab(
                                         TextDecoration.None
                                     },
                                     color = pal.ink,
-                                    modifier = if (isCompleted) {
-                                        Modifier.alpha(0.5f)
-                                    } else {
-                                        Modifier
-                                    }
+                                    modifier = if (isCompleted) Modifier.alpha(0.5f) else Modifier
                                 )
                                 val slotTime = slot.time
                                 if (slotTime != null) {
@@ -397,8 +574,8 @@ fun TodayTab(
                                     ) {
                                         Text(
                                             text = slotTime,
-                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                            fontSize = 11.2.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 11.sp,
                                             color = pal.inkMid,
                                             modifier = Modifier.padding(
                                                 horizontal = 6.dp,
@@ -408,21 +585,23 @@ fun TodayTab(
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = subLabel,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                fontFamily = FontFamily.Monospace,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                letterSpacing = 0.6.sp,
-                                color = if (isCurrent) pal.gold else pal.inkMuted
+                                letterSpacing = 0.5.sp,
+                                color = if (isCurrent) pal.teal else pal.inkMuted
                             )
                         }
-                        Box(modifier = Modifier.size(32.dp)) {
+
+                        // Action Controls
+                        Box(contentAlignment = Alignment.Center) {
                             when {
                                 isCompleted -> Box(
                                     modifier = Modifier
-                                        .size(32.dp)
+                                        .size(34.dp)
                                         .clip(CircleShape)
                                         .background(pal.green.copy(alpha = 0.12f))
                                         .border(
@@ -430,6 +609,7 @@ fun TodayTab(
                                             pal.green.copy(alpha = 0.3f),
                                             CircleShape
                                         )
+                                        .touchTarget()
                                         .clickable { onSlotUndo(dayDate, slot.slotStart) },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -440,35 +620,57 @@ fun TodayTab(
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
-                                isCurrent -> Button(
-                                    // Web parity (1033-1037): Start/Resume
-                                    // deep-links to the day reader; Resume goes
-                                    // to the first-incomplete day when available.
-                                    onClick = { onOpenDay(resumeDayDate ?: dayDate) },
-                                    shape = RoundedCornerShape(100.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = pal.gold,
-                                        contentColor = pal.white
-                                    ),
-                                    contentPadding = PaddingValues(
-                                        horizontal = 20.dp,
-                                        vertical = 10.dp
-                                    ),
-                                    modifier = Modifier.align(Alignment.Center)
+                                isCurrent -> Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(
-                                        text = if (hasStarted) "Resume" else "Start",
-                                        fontFamily = fontUi,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.2.sp
-                                    )
+                                    // Mark complete check button
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(pal.white)
+                                            .border(1.5.dp, pal.teal, CircleShape)
+                                            .touchTarget()
+                                            .clickable { onSlotDone(dayDate, slot.slotEnd) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Check,
+                                            contentDescription = "Mark slot done",
+                                            tint = pal.teal,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    // Start / Resume Button
+                                    Button(
+                                        onClick = { onCtaClick() },
+                                        shape = RoundedCornerShape(100.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = pal.teal,
+                                            contentColor = pal.white
+                                        ),
+                                        contentPadding = PaddingValues(
+                                            horizontal = 16.dp,
+                                            vertical = 8.dp
+                                        ),
+                                        modifier = Modifier.touchTarget()
+                                    ) {
+                                        Text(
+                                            text = if (hasStarted) "Resume" else "Start Reading",
+                                            fontFamily = fontUi,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp
+                                        )
+                                    }
                                 }
                                 isUpcoming -> Box(
                                     modifier = Modifier
-                                        .size(32.dp)
+                                        .size(34.dp)
                                         .clip(CircleShape)
                                         .background(pal.white)
                                         .border(1.5.dp, pal.boneDark, CircleShape)
+                                        .touchTarget()
                                         .clickable { onSlotDone(dayDate, slot.slotEnd) },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -479,26 +681,55 @@ fun TodayTab(
                                             .border(1.5.dp, pal.inkMuted, CircleShape)
                                     )
                                 }
-                                isLocked -> Icon(
-                                    Icons.Filled.Lock,
-                                    contentDescription = "Locked",
-                                    tint = pal.inkMuted.copy(alpha = 0.6f),
-                                    modifier = Modifier
-                                        .size(16.dp)
-                                        .align(Alignment.Center)
-                                )
-                                else -> Text(
-                                    text = "–",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Light,
-                                    color = pal.inkMuted.copy(alpha = 0.3f),
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
+                                isLocked -> Box(
+                                    modifier = Modifier.size(34.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Lock,
+                                        contentDescription = "Locked",
+                                        tint = pal.inkMuted.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                else -> Box(
+                                    modifier = Modifier.size(34.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "–",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Light,
+                                        color = pal.inkMuted.copy(alpha = 0.3f)
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+
+        // ── Primary CTA Button (bottom of ritual column) ──
+        Spacer(modifier = Modifier.height(4.dp))
+        Button(
+            onClick = onCtaClick,
+            shape = RoundedCornerShape(100.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = pal.teal,
+                contentColor = pal.white
+            ),
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .touchTarget()
+        ) {
+            Text(
+                text = ctaLabel,
+                fontFamily = fontUi,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
         }
     }
 }
