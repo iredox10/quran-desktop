@@ -10,14 +10,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -32,100 +43,43 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nur.quran.desktop.data.PomodoroStore
-import com.nur.quran.desktop.data.SessionStore
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
-import java.awt.Toolkit
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.UUID
-import kotlinx.coroutines.delay
 
-private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+private fun formatClock(sec: Int): String {
+    val s = sec.coerceAtLeast(0)
+    return "%02d:%02d".format(s / 60, s % 60)
+}
 
 /**
- * Self-contained desktop pomodoro widget, mirroring the WEB planner's
- * FloatingPomodoro / PomodoroWidget behaviour.
+ * Pomodoro configuration card, mirroring the WEB planner's PomodoroWidget.
  *
- * Owns all of its state (store-backed): profile selection + inline
- * create/delete, focus/break countdown with [LaunchedEffect], beep +
- * session logging on phase end with auto-switch, and the daily-goal stepper.
+ * All timer state lives in [PomodoroController] so the same session survives
+ * minimize / navigation. Pass [onCollapse] to render a close affordance in the
+ * header (used by the floating dock).
  */
 @Composable
-fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
+fun PomodoroWidget(
+    pal: NurPalette,
+    modifier: Modifier = Modifier,
+    onCollapse: (() -> Unit)? = null
+) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
 
-    var profiles by remember { mutableStateOf(PomodoroStore.profiles()) }
-    var activeId by remember { mutableStateOf(PomodoroStore.getActiveId()) }
-    var mode by remember { mutableStateOf("focus") }
-    var running by remember { mutableStateOf(false) }
-    var goal by remember { mutableStateOf(PomodoroStore.getDailyGoal()) }
-    var logVersion by remember { mutableStateOf(0) }
-
-    fun activeProfile() = profiles.firstOrNull { it.id == activeId } ?: profiles.first()
-    fun phaseTotalSec() =
-        if (mode == "focus") activeProfile().focusMinutes * 60 else activeProfile().breakMinutes * 60
-
-    var secondsLeft by remember { mutableStateOf(phaseTotalSec()) }
-
-    // Keep the countdown in sync when the profile or mode changes while paused.
-    LaunchedEffect(activeId, mode, profiles) {
-        if (!running) secondsLeft = phaseTotalSec()
-    }
-
-    val today = remember(logVersion) { LocalDate.now().format(dateFmt) }
-    val todayCount = remember(logVersion) { PomodoroStore.todayCount(today) }
-
-    fun handlePhaseEnd(finishedMode: String) {
-        Toolkit.getDefaultToolkit().beep()
-        val profile = activeProfile()
-        if (finishedMode == "focus") {
-            val focusSec = (profile.focusMinutes * 60).toLong()
-            PomodoroStore.logSession(today, focusSec, "focus")
-            // Mirror into the analytics session log (SessionStore only, never PlannerStore).
-            SessionStore.log("focus", null, profile.focusMinutes)
-            mode = "break"
-            secondsLeft = profile.breakMinutes * 60
-        } else {
-            PomodoroStore.logSession(today, (profile.breakMinutes * 60).toLong(), "break")
-            mode = "focus"
-            secondsLeft = profile.focusMinutes * 60
-        }
-        logVersion++
-    }
-
-    // Test-clock-safe ticking (same pattern as the planner reader timer): an
-    // infinite delay loop hangs compose tests with autoAdvance clocks.
-    LaunchedEffect(running, mode, activeId) {
-        if (!running) return@LaunchedEffect
-        var lastTick = withInfiniteAnimationFrameNanos { it }
-        while (running) {
-            withInfiniteAnimationFrameNanos { now ->
-                if (now - lastTick >= 1_000_000_000L) {
-                    lastTick = now
-                    if (secondsLeft <= 1) {
-                        handlePhaseEnd(mode)
-                    } else {
-                        secondsLeft--
-                    }
-                }
-            }
-        }
-    }
-
-    fun fmt(sec: Int): String {
-        val s = sec.coerceAtLeast(0)
-        return "%02d:%02d".format(s / 60, s % 60)
-    }
-
-    val total = phaseTotalSec().coerceAtLeast(1)
-    val progress = 1f - (secondsLeft.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+    val profiles = PomodoroController.profiles
+    val activeId = PomodoroController.activeId
+    val mode = PomodoroController.mode
+    val running = PomodoroController.running
+    val secondsLeft = PomodoroController.secondsLeft
+    val goal = PomodoroController.goal
+    val todayCount = PomodoroController.todayCount
+    val activeProfile = PomodoroController.activeProfile()
 
     var menuExpanded by remember { mutableStateOf(false) }
     var showCreate by remember { mutableStateOf(false) }
@@ -139,6 +93,9 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
         focusedTextColor = pal.ink,
         unfocusedTextColor = pal.ink
     )
+
+    val total = PomodoroController.phaseTotalSec().coerceAtLeast(1)
+    val progress = 1f - (secondsLeft.toFloat() / total.toFloat()).coerceIn(0f, 1f)
 
     Card(
         modifier = modifier,
@@ -159,20 +116,31 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                     fontWeight = FontWeight.Bold,
                     color = pal.ink
                 )
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(if (mode == "focus") pal.teal else pal.gold)
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = if (mode == "focus") "FOCUS" else "BREAK",
-                        fontFamily = fontBody,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = androidx.compose.ui.graphics.Color.White
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (mode == "focus") pal.teal else pal.gold)
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (mode == "focus") "FOCUS" else "BREAK",
+                            fontFamily = fontBody,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = Color.White
+                        )
+                    }
+                    if (onCollapse != null) {
+                        IconButton(onClick = onCollapse) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Minimize pomodoro",
+                                tint = pal.inkMuted
+                            )
+                        }
+                    }
                 }
             }
 
@@ -185,7 +153,7 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = pal.ink)
                 ) {
                     Text(
-                        text = activeProfile().name,
+                        text = activeProfile.name,
                         fontFamily = fontBody,
                         fontSize = 13.sp
                     )
@@ -201,11 +169,7 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                                 )
                             },
                             onClick = {
-                                PomodoroStore.setActive(p.id)
-                                activeId = p.id
-                                mode = "focus"
-                                running = false
-                                secondsLeft = p.focusMinutes * 60
+                                PomodoroController.selectProfile(p.id)
                                 menuExpanded = false
                             }
                         )
@@ -225,15 +189,7 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 OutlinedButton(
-                    onClick = {
-                        PomodoroStore.deleteProfile(activeId)
-                        profiles = PomodoroStore.profiles()
-                        activeId = PomodoroStore.getActiveId()
-                        mode = "focus"
-                        running = false
-                        secondsLeft = (profiles.firstOrNull { it.id == activeId }
-                            ?.focusMinutes ?: 25) * 60
-                    },
+                    onClick = { PomodoroController.deleteActiveProfile() },
                     enabled = profiles.size > 1
                 ) {
                     Text("Delete", fontFamily = fontBody, fontSize = 12.sp)
@@ -272,21 +228,11 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Button(
                     onClick = {
-                        val focusMin = newFocus.toIntOrNull()?.coerceIn(1, 180) ?: 25
-                        val breakMin = newBreak.toIntOrNull()?.coerceIn(1, 60) ?: 5
-                        val profile = PomodoroStore.PomodoroProfile(
-                            id = UUID.randomUUID().toString(),
-                            name = newName.ifBlank { "Custom $focusMin/$breakMin" },
-                            focusMinutes = focusMin,
-                            breakMinutes = breakMin
+                        PomodoroController.createProfile(
+                            name = newName,
+                            focusMinutes = newFocus.toIntOrNull() ?: 25,
+                            breakMinutes = newBreak.toIntOrNull() ?: 5
                         )
-                        PomodoroStore.saveProfile(profile)
-                        PomodoroStore.setActive(profile.id)
-                        profiles = PomodoroStore.profiles()
-                        activeId = profile.id
-                        mode = "focus"
-                        running = false
-                        secondsLeft = focusMin * 60
                         newName = ""
                         newFocus = "25"
                         newBreak = "5"
@@ -301,7 +247,7 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = fmt(secondsLeft),
+                text = formatClock(secondsLeft),
                 fontFamily = fontUi,
                 fontSize = 44.sp,
                 fontWeight = FontWeight.Bold,
@@ -325,7 +271,7 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(
-                    onClick = { running = !running },
+                    onClick = { PomodoroController.toggleRunning() },
                     colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
                     modifier = Modifier.weight(1f)
                 ) {
@@ -336,10 +282,7 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                     )
                 }
                 OutlinedButton(
-                    onClick = {
-                        running = false
-                        secondsLeft = phaseTotalSec()
-                    },
+                    onClick = { PomodoroController.reset() },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("Reset", fontFamily = fontBody, fontSize = 14.sp)
@@ -353,10 +296,9 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = {
-                        goal = (goal - 1).coerceAtLeast(1)
-                        PomodoroStore.putDailyGoal(goal)
-                    }) { Text("−", fontFamily = fontBody) }
+                    OutlinedButton(onClick = { PomodoroController.updateGoal(goal - 1) }) {
+                        Text("−", fontFamily = fontBody)
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "$todayCount/$goal today",
@@ -365,17 +307,116 @@ fun PomodoroWidget(pal: NurPalette, modifier: Modifier = Modifier) {
                         color = pal.inkMid
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    OutlinedButton(onClick = {
-                        goal = (goal + 1).coerceAtMost(32)
-                        PomodoroStore.putDailyGoal(goal)
-                    }) { Text("+", fontFamily = fontBody) }
+                    OutlinedButton(onClick = { PomodoroController.updateGoal(goal + 1) }) {
+                        Text("+", fontFamily = fontBody)
+                    }
                 }
                 Text(
-                    text = "${activeProfile().focusMinutes}m focus · ${activeProfile().breakMinutes}m break",
+                    text = "${activeProfile.focusMinutes}m focus · ${activeProfile.breakMinutes}m break",
                     fontFamily = fontBody,
                     fontSize = 12.sp,
                     color = pal.inkMuted
                 )
+            }
+        }
+    }
+}
+
+/**
+ * App-wide floating pomodoro: a compact pill (web `FloatingPomodoro`) that
+ * expands into the full [PomodoroWidget] config card.
+ *
+ * Mount it once at the app root, aligned bottom-end. The ticker lives here so
+ * it keeps running even while the card is collapsed or the user navigates.
+ */
+@Composable
+fun PomodoroDock(pal: NurPalette, modifier: Modifier = Modifier) {
+    if (!PomodoroController.dockVisible) return
+
+    // Only tick while the timer runs; an always-on frame loop would keep the
+    // app busy (and hang auto-advancing compose tests).
+    val running = PomodoroController.running
+    LaunchedEffect(running) {
+        if (!running) return@LaunchedEffect
+        var lastTick = withInfiniteAnimationFrameNanos { it }
+        while (true) {
+            withInfiniteAnimationFrameNanos { now ->
+                if (now - lastTick >= 1_000_000_000L) {
+                    lastTick = now
+                    PomodoroController.advance(1)
+                }
+            }
+        }
+    }
+
+    val fontUi = rememberUiFontFamily()
+    val expanded = PomodoroController.dockExpanded
+    val focusMode = PomodoroController.mode == "focus"
+
+    Box(modifier = modifier, contentAlignment = Alignment.BottomEnd) {
+        if (expanded) {
+            PomodoroWidget(
+                pal = pal,
+                modifier = Modifier.widthIn(max = 360.dp).padding(20.dp),
+                onCollapse = { PomodoroController.dockExpanded = false }
+            )
+        } else {
+            Card(
+                modifier = Modifier.padding(20.dp),
+                shape = RoundedCornerShape(999.dp),
+                colors = CardDefaults.cardColors(containerColor = pal.cream),
+                border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Timer,
+                        contentDescription = null,
+                        tint = if (focusMode) pal.teal else pal.gold,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = formatClock(PomodoroController.secondsLeft),
+                        fontFamily = fontUi,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = pal.ink
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(22.dp)
+                            .background(pal.boneDark)
+                    )
+                    IconButton(
+                        onClick = { PomodoroController.toggleRunning() },
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(if (running) pal.teal else pal.white)
+                    ) {
+                        Icon(
+                            if (running) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (running) "Pause pomodoro" else "Start pomodoro",
+                            tint = if (running) Color.White else pal.ink,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = { PomodoroController.dockExpanded = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = "Pomodoro settings",
+                            tint = pal.inkMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
     }

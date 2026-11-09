@@ -94,6 +94,7 @@ import com.nur.quran.desktop.ui.home.buildBrowseItems
 import com.nur.quran.desktop.ui.home.filterBrowseItems
 import com.nur.quran.desktop.ui.nav.AppSidebar
 import com.nur.quran.desktop.ui.nav.DesktopRoutes
+import com.nur.quran.desktop.ui.pomodoro.PomodoroDock
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.NurTheme
 import com.nur.quran.desktop.ui.theme.getGreeting
@@ -330,6 +331,7 @@ fun App() {
                             }
                         }
                     }
+                    PomodoroDock(pal = pal, modifier = Modifier.align(Alignment.BottomEnd))
                 }
                 if (showShortcutHelp) {
                     ShortcutHelpDialog(pal = pal, onDismiss = { showShortcutHelp = false })
