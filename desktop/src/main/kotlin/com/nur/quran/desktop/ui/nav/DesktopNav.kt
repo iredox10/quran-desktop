@@ -45,6 +45,7 @@ object DesktopRoutes {
     const val MEMORIZE = "memorize"
     const val PLANNER = "planner"
     const val ANALYTICS = "analytics"
+    const val ACTIVITY = "activity"
     const val LIBRARY = "library"
     const val DOWNLOADS = "downloads"
     const val HISTORY = "history"
@@ -56,6 +57,7 @@ object DesktopRoutes {
             route == MEMORIZE ||
             route == PLANNER ||
             route == ANALYTICS ||
+            route == ACTIVITY ||
             route == LIBRARY ||
             route == DOWNLOADS ||
             route == HISTORY ||
@@ -68,6 +70,7 @@ object DesktopRoutes {
             route == MEMORIZE || route.startsWith("memorize/") -> MEMORIZE
             route == PLANNER || route == "planner_reader" || route.startsWith("planner_reader/") -> PLANNER
             route == SAUKA || route.startsWith("sauka/") -> SAUKA
+            route == ACTIVITY -> ANALYTICS
             isTopLevel(route) -> route
             else -> HOME
         }

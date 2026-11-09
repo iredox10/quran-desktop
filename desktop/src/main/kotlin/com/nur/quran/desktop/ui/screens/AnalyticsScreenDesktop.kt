@@ -265,7 +265,7 @@ fun AnalyticsScreenDesktop(
                     RecentActivityCard(
                         pal = pal,
                         sessions = sessions,
-                        onSeeAll = { onNavigate(DesktopRoutes.HISTORY) },
+                        onSeeAll = { onNavigate(DesktopRoutes.ACTIVITY) },
                         modifier = Modifier.weight(1f)
                     )
                 }

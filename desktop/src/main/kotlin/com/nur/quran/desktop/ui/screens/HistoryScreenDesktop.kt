@@ -59,7 +59,8 @@ import java.util.Locale
 fun HistoryScreenDesktop(
     pal: NurPalette,
     onBack: () -> Unit = {},
-    onOpenSurah: (Int, String?) -> Unit = { _, _ -> }
+    onOpenSurah: (Int, String?) -> Unit = { _, _ -> },
+    onOpenActivity: () -> Unit = {}
 ) {
     var tick by remember { mutableStateOf(0) }
     var confirmClear by remember { mutableStateOf(false) }
@@ -98,7 +99,23 @@ fun HistoryScreenDesktop(
                     fontFamily = FontFamily.Monospace
                 )
             }
+            Surface(
+                onClick = onOpenActivity,
+                shape = RoundedCornerShape(12.dp),
+                color = pal.cream,
+                border = androidx.compose.foundation.BorderStroke(1.dp, pal.boneDark)
+            ) {
+                Text(
+                    text = "Session log",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = pal.inkMid,
+                    fontFamily = fontUi,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                )
+            }
             if (entries.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     onClick = {
                         if (confirmClear) {

@@ -256,6 +256,11 @@ fun App() {
                             onNavigate = { route = it },
                             onOpenSurah = ::openSurah
                         )
+                        route == DesktopRoutes.ACTIVITY -> ActivityHistoryScreenDesktop(
+                            pal = pal,
+                            onBack = { route = DesktopRoutes.ANALYTICS },
+                            onOpenSurah = ::openSurah
+                        )
                         route == DesktopRoutes.LIBRARY -> LibraryScreenDesktop(
                             pal = pal,
                             onBack = { route = DesktopRoutes.HOME },
@@ -264,7 +269,8 @@ fun App() {
                         route == DesktopRoutes.HISTORY -> HistoryScreenDesktop(
                             pal = pal,
                             onBack = { route = DesktopRoutes.HOME },
-                            onOpenSurah = ::openSurah
+                            onOpenSurah = ::openSurah,
+                            onOpenActivity = { route = DesktopRoutes.ACTIVITY }
                         )
                         route == DesktopRoutes.SAUKA -> SaukaIndexDesktop(
                             pal = pal,
