@@ -335,7 +335,6 @@ fun IntentionView(
                     Box(
                         modifier = Modifier
                             .size(34.dp)
-                            .touchTarget()
                             .clip(CircleShape)
                             .border(1.5.dp, pal.boneDark, CircleShape)
                             .clickable { onNewCustom() },
@@ -594,7 +593,6 @@ private fun PaceCardItem(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .touchTarget()
                 .clickable { if (isSelected) onBegin() else onSelect() }
         ) {
             Column(
@@ -654,7 +652,6 @@ private fun PaceCardItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp)
-                            .touchTarget()
                     ) {
                         Text(
                             text = "Begin Journey",
@@ -674,7 +671,6 @@ private fun PaceCardItem(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp)
-                            .touchTarget()
                     ) {
                         Text(
                             text = "Select Path",

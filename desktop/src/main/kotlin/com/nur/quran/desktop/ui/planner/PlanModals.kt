@@ -2,6 +2,7 @@ package com.nur.quran.desktop.ui.planner
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +21,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.nur.quran.desktop.ui.input.dragToScroll
+import com.nur.quran.desktop.ui.input.touchTarget
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -44,10 +48,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
@@ -79,13 +83,24 @@ data class CustomPlanParams(
 private val DayShortNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
 @Composable
-private fun ModalShell(pal: NurPalette, onDismiss: () -> Unit, title: String, content: @Composable () -> Unit) {
+private fun ModalShell(
+    pal: NurPalette,
+    onDismiss: () -> Unit,
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
     val fontUi = rememberUiFontFamily()
-    Dialog(onDismissRequest = onDismiss) {
+    InWindowOverlay(onDismissRequest = onDismiss) {
         Surface(
-            modifier = Modifier.widthIn(max = 480.dp).padding(vertical = 16.dp),
+            modifier = modifier
+                .widthIn(max = 500.dp)
+                .fillMaxWidth(0.92f)
+                .heightIn(max = 640.dp)
+                .padding(vertical = 16.dp),
             shape = RoundedCornerShape(20.dp),
             color = pal.cream,
+            border = BorderStroke(1.dp, pal.boneDark),
             shadowElevation = 16.dp
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -102,7 +117,7 @@ private fun ModalShell(pal: NurPalette, onDismiss: () -> Unit, title: String, co
                         color = pal.ink,
                         modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp).touchTarget()) {
                         Box(
                             modifier = Modifier.size(32.dp).clip(CircleShape).background(pal.bone),
                             contentAlignment = Alignment.Center
@@ -148,7 +163,7 @@ private fun UnitPill(
         shape = RoundedCornerShape(20.dp),
         color = if (selected) pal.teal else pal.cream,
         border = BorderStroke(1.5.dp, if (selected) pal.teal else pal.boneDark),
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable(onClick = onClick).touchTarget()
     ) {
         Text(
             text = label,
@@ -169,6 +184,7 @@ private fun UnitPill(
 fun CustomPlanModal(
     pal: NurPalette,
     chapters: List<PlanChapter>,
+    errorMessage: String? = null,
     onDismiss: () -> Unit,
     onCreate: (CustomPlanParams) -> Unit
 ) {
@@ -207,197 +223,221 @@ fun CustomPlanModal(
     val canCreate = perDay >= 1 && rangeValid && total > 0
 
     ModalShell(pal = pal, onDismiss = onDismiss, title = "Create Custom Plan") {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                FieldLabel(pal, "Plan name (optional)")
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it; error = null },
-                    placeholder = { Text("e.g. Morning Routine, Juz Amma…", fontFamily = fontBody, color = pal.inkMuted) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
-                        cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FieldLabel(pal, "Reading unit")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PLANNER_UNITS.forEach { (key, meta) ->
-                        UnitPill(pal = pal, label = meta.label, selected = unitType == key) {
-                            unitType = key
-                            fromText = "1"
-                            toText = meta.max.toString()
-                            // Web parity (Planner.jsx 158/430): 10/day default,
-                            // kept on unit switch like the web's range reset.
-                            perDayText = "10"
-                            error = null
-                        }
-                    }
-                }
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FieldLabel(pal, "${unitMeta.label} range")
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("From", fontFamily = fontBody, fontSize = 9.sp, letterSpacing = 0.8.sp, color = pal.inkMuted)
-                        Spacer(Modifier.height(4.dp))
-                        OutlinedTextField(
-                            value = fromText,
-                            onValueChange = { v -> fromText = v.filter { it.isDigit() }.take(3); error = null },
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
-                                cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    Text("→", fontSize = 17.sp, color = pal.inkMuted, modifier = Modifier.padding(horizontal = 12.dp))
-                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("To", fontFamily = fontBody, fontSize = 9.sp, letterSpacing = 0.8.sp, color = pal.inkMuted)
-                        Spacer(Modifier.height(4.dp))
-                        OutlinedTextField(
-                            value = toText,
-                            onValueChange = { v -> toText = v.filter { it.isDigit() }.take(3); error = null },
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
-                                cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-                // Clamp on commit: mirror web onBlur behaviour lazily at create time,
-                // but keep live hint accurate.
-                Text(
-                    text = "$total ${unitMeta.plural} selected",
-                    fontFamily = fontBody,
-                    fontSize = 10.sp,
-                    color = pal.inkMuted,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FieldLabel(pal, "${unitMeta.plural} per day")
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(scrollState)
+                    .dragToScroll(scrollState)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FieldLabel(pal, "Plan name (optional)")
                     OutlinedTextField(
-                        value = perDayText,
-                        onValueChange = { v -> perDayText = v.filter { it.isDigit() }.take(2); error = null },
+                        value = title,
+                        onValueChange = { title = it; error = null },
+                        placeholder = { Text("e.g. Morning Routine, Juz Amma…", fontFamily = fontBody, color = pal.inkMuted) },
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
                             cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
                         ),
-                        modifier = Modifier.width(76.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Slider(
-                        value = perDay.coerceIn(1, sliderMax).toFloat(),
-                        onValueChange = { perDayText = it.toInt().coerceAtLeast(1).toString(); error = null },
-                        valueRange = 1f..sliderMax.toFloat(),
-                        steps = (sliderMax - 1).coerceAtLeast(0),
-                        colors = SliderDefaults.colors(thumbColor = pal.teal, activeTrackColor = pal.teal, inactiveTrackColor = pal.boneDark),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-            }
 
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                FieldLabel(pal, "Start date")
-                OutlinedTextField(
-                    value = startDate,
-                    onValueChange = { startDate = it; error = null },
-                    placeholder = { Text("yyyy-MM-dd", fontFamily = fontBody, color = pal.inkMuted) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
-                        cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FieldLabel(pal, "Days Off (Optional)")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DayShortNames.forEachIndexed { idx, day ->
-                        val selected = excludeDays.contains(idx)
-                        UnitPill(pal = pal, label = day, selected = selected) {
-                            excludeDays = if (selected) excludeDays - idx else excludeDays + idx
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FieldLabel(pal, "Reading unit")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PLANNER_UNITS.forEach { (key, meta) ->
+                            UnitPill(pal = pal, label = meta.label, selected = unitType == key) {
+                                unitType = key
+                                fromText = "1"
+                                toText = meta.max.toString()
+                                // Web parity (Planner.jsx 158/430): 10/day default,
+                                // kept on unit switch like the web's range reset.
+                                perDayText = "10"
+                                error = null
+                            }
                         }
                     }
                 }
-                Text(
-                    text = "Reading assignments will skip these days.",
-                    fontFamily = fontBody,
-                    fontSize = 12.sp,
-                    color = pal.inkMuted
-                )
-            }
 
-            if (error != null) {
-                Text(text = error!!, fontFamily = fontBody, fontSize = 12.sp, color = pal.teal)
-            }
-
-            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(pal.boneDark))
-            Text(
-                text = "$perDay ${unitMeta.plural}/day · $computedDuration days · Done by $endLabel",
-                fontFamily = fontBody,
-                fontSize = 11.sp,
-                color = pal.inkMid,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-            Button(
-                onClick = {
-                    if (!canCreate) {
-                        error = when {
-                            perDay < 1 -> "Set at least 1 ${unitMeta.plural.lowercase()} per day."
-                            !rangeValid -> "Range must be within 1..$maxUnit with From ≤ To."
-                            else -> "Nothing selected in this range."
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FieldLabel(pal, "${unitMeta.label} range")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("From", fontFamily = fontBody, fontSize = 9.sp, letterSpacing = 0.8.sp, color = pal.inkMuted)
+                            Spacer(Modifier.height(4.dp))
+                            OutlinedTextField(
+                                value = fromText,
+                                onValueChange = { v -> fromText = v.filter { it.isDigit() }.take(3); error = null },
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
+                                    cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
-                        return@Button
+                        Text("→", fontSize = 17.sp, color = pal.inkMuted, modifier = Modifier.padding(horizontal = 12.dp))
+                        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("To", fontFamily = fontBody, fontSize = 9.sp, letterSpacing = 0.8.sp, color = pal.inkMuted)
+                            Spacer(Modifier.height(4.dp))
+                            OutlinedTextField(
+                                value = toText,
+                                onValueChange = { v -> toText = v.filter { it.isDigit() }.take(3); error = null },
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
+                                    cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
-                    onCreate(
-                        CustomPlanParams(
-                            title = title.trim(),
-                            unitType = unitType,
-                            startUnit = safeFrom,
-                            endUnit = safeTo,
-                            perDay = perDay,
-                            startDate = startDate.trim(),
-                            excludeDays = excludeDays.sorted()
+                    // Clamp on commit: mirror web onBlur behaviour lazily at create time,
+                    // but keep live hint accurate.
+                    Text(
+                        text = "$total ${unitMeta.plural} selected",
+                        fontFamily = fontBody,
+                        fontSize = 10.sp,
+                        color = pal.inkMuted,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FieldLabel(pal, "${unitMeta.plural} per day")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = perDayText,
+                            onValueChange = { v -> perDayText = v.filter { it.isDigit() }.take(2); error = null },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
+                                cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
+                            ),
+                            modifier = Modifier.width(76.dp)
                         )
+                        Spacer(Modifier.width(12.dp))
+                        Slider(
+                            value = perDay.coerceIn(1, sliderMax).toFloat(),
+                            onValueChange = { perDayText = it.toInt().coerceAtLeast(1).toString(); error = null },
+                            valueRange = 1f..sliderMax.toFloat(),
+                            steps = (sliderMax - 1).coerceAtLeast(0),
+                            colors = SliderDefaults.colors(thumbColor = pal.teal, activeTrackColor = pal.teal, inactiveTrackColor = pal.boneDark),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FieldLabel(pal, "Start date")
+                    OutlinedTextField(
+                        value = startDate,
+                        onValueChange = { startDate = it; error = null },
+                        placeholder = { Text("yyyy-MM-dd", fontFamily = fontBody, color = pal.inkMuted) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = pal.gold, unfocusedBorderColor = pal.boneDark,
+                            cursorColor = pal.teal, focusedTextColor = pal.ink, unfocusedTextColor = pal.ink
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
-                },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
-                modifier = Modifier.fillMaxWidth().height(48.dp)
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FieldLabel(pal, "Days Off (Optional)")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DayShortNames.forEachIndexed { idx, day ->
+                            val selected = excludeDays.contains(idx)
+                            UnitPill(pal = pal, label = day, selected = selected) {
+                                excludeDays = if (selected) excludeDays - idx else excludeDays + idx
+                            }
+                        }
+                    }
+                    Text(
+                        text = "Reading assignments will skip these days.",
+                        fontFamily = fontBody,
+                        fontSize = 12.sp,
+                        color = pal.inkMuted
+                    )
+                }
+
+                val activeErr = error ?: errorMessage
+                if (activeErr != null) {
+                    Text(
+                        text = activeErr,
+                        fontFamily = fontBody,
+                        fontSize = 12.sp,
+                        color = Color(0xFFDC2626),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+            }
+
+            // Web parity (Planner.jsx 495-507): pinned footer at bottom of modal
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(pal.cream)
+                    .border(BorderStroke(1.dp, pal.boneDark))
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "CREATE PLAN",
+                    text = "$perDay ${unitMeta.plural}/day · $computedDuration days · Done by $endLabel",
                     fontFamily = fontBody,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    letterSpacing = 1.5.sp,
-                    color = pal.white
+                    fontSize = 11.sp,
+                    color = pal.inkMid,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
+                Button(
+                    onClick = {
+                        if (!canCreate) {
+                            error = when {
+                                perDay < 1 -> "Set at least 1 ${unitMeta.plural.lowercase()} per day."
+                                !rangeValid -> "Range must be within 1..$maxUnit with From ≤ To."
+                                else -> "Nothing selected in this range."
+                            }
+                            return@Button
+                        }
+                        error = null
+                        onCreate(
+                            CustomPlanParams(
+                                title = title.trim(),
+                                unitType = unitType,
+                                startUnit = safeFrom,
+                                endUnit = safeTo,
+                                perDay = perDay,
+                                startDate = startDate.trim(),
+                                excludeDays = excludeDays.sorted()
+                            )
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text(
+                        text = "CREATE PLAN",
+                        fontFamily = fontBody,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        letterSpacing = 1.5.sp,
+                        color = pal.white
+                    )
+                }
             }
             // Keep fontUi referenced for header styling consistency.
             @Suppress("UNUSED_EXPRESSION")
@@ -417,9 +457,11 @@ fun ArchivesModal(
 ) {
     val fontBody = rememberBodyFontFamily()
     ModalShell(pal = pal, onDismiss = onDismiss, title = "Past Plans Archive") {
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
+                .dragToScroll(scrollState)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -598,54 +640,69 @@ fun TemplatePreviewModal(
     )
 
     ModalShell(pal = pal, onDismiss = onDismiss, title = "Start \"${plan.title}\"?") {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = plan.title,
-                fontFamily = fontBody,
-                fontSize = 13.sp,
-                lineHeight = 20.sp,
-                color = pal.inkMid
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                stats.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { (label, value) ->
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = pal.bone,
-                                border = BorderStroke(1.5.dp, pal.boneDark),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(
-                                        text = label.uppercase(),
-                                        fontFamily = fontBody,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.8.sp,
-                                        color = pal.inkMuted
-                                    )
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = value,
-                                        fontFamily = fontUi,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = pal.ink
-                                    )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(scrollState)
+                    .dragToScroll(scrollState)
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = plan.title,
+                    fontFamily = fontBody,
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp,
+                    color = pal.inkMid
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    stats.chunked(2).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEach { (label, value) ->
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = pal.bone,
+                                    border = BorderStroke(1.5.dp, pal.boneDark),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = label.uppercase(),
+                                            fontFamily = fontBody,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 0.8.sp,
+                                            color = pal.inkMuted
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            text = value,
+                                            fontFamily = fontUi,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = pal.ink
+                                        )
+                                    }
                                 }
                             }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
                         }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+            // Fixed footer buttons
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(pal.cream)
+                    .border(BorderStroke(1.dp, pal.boneDark))
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 OutlinedButton(
                     onClick = onDismiss,
                     shape = RoundedCornerShape(12.dp),

@@ -162,6 +162,9 @@ class ScreenshotTest {
         rule.setContent { NurTheme { AnalyticsScreenDesktop(pal = pal) } }
         rule.waitForIdle()
         save(rule.onRoot().captureToImage(), "analytics.png")
+        renderScene("analytics_full.png", 1200, 1600) {
+            NurTheme { AnalyticsScreenDesktop(pal = pal) }
+        }
     }
 
     @OptIn(ExperimentalTestApi::class)

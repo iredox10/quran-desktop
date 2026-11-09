@@ -174,10 +174,9 @@ fun PlannerScreenDesktop(
     val activePlan = remember(refresh) { PlannerStore.getActivePlan() }
     val allPlans = remember(refresh) { PlannerStore.getAllPlans() }
 
-    // Web parity (Planner.jsx 1523-1528): the page opens on the Intention view
-    // unless the active plan already has progress. Creating/switching a plan
-    // explicitly enters the active view.
-    var showActive by remember(activePlan != null) { mutableStateOf(activePlan != null) }
+    // Open active plan dashboard if one exists; show intention view if no active plan
+    // or when the user explicitly clicks the back arrow in the dashboard header.
+    var showActive by remember(activePlan?.id) { mutableStateOf(activePlan != null) }
     LaunchedEffect(activePlan?.id) {
         if (activePlan == null) showActive = false
     }
@@ -201,13 +200,23 @@ fun PlannerScreenDesktop(
         refresh++
     }
 
-    // Web parity (Planner.jsx handleBegin 1537-1547): a plan with the same
-    // title asks to replace the existing one before being added.
+    // Web parity (Planner.jsx handleBegin 1537-1547):
+    // If an existing plan with the same title has NO progress, adopt/refresh and start directly.
+    // Only prompt to replace if the user has existing recorded reading progress.
     fun beginPlan(plan: ReadingPlan) {
         val existing = PlannerStore.getAllPlans().firstOrNull {
-            it.title.isNotBlank() && plan.title.isNotBlank() && it.title == plan.title
+            it.title.isNotBlank() && plan.title.isNotBlank() && it.title.equals(plan.title, ignoreCase = true)
         }
         if (existing != null) {
+            val hasExistingProgress = existing.completedDays.isNotEmpty() ||
+                existing.assignmentProgress.values.any { it > 0 } ||
+                existing.lastReadPage != null
+            if (!hasExistingProgress) {
+                val refreshed = plan.copy(id = existing.id)
+                adoptPlan(refreshed)
+                showActive = true
+                return
+            }
             pendingReplace = existing to plan
             return
         }
@@ -326,7 +335,8 @@ fun PlannerScreenDesktop(
         }
     }
 
-    // ── Intention view (no progress yet, or back from the active view) ──
+    Box(modifier = Modifier.fillMaxSize().background(pal.white)) {
+        // ── Intention view (no progress yet, or back from the active view) ──
     if (!showActive || activePlan == null) {
         val intentionScroll = rememberScrollState()
         Column(
@@ -836,7 +846,11 @@ fun PlannerScreenDesktop(
         CustomPlanModal(
             pal = pal,
             chapters = planChapters(),
-            onDismiss = { showCustomModal = false },
+            errorMessage = customError,
+            onDismiss = {
+                showCustomModal = false
+                customError = null
+            },
             onCreate = { createCustomPlan(it) }
         )
     }
@@ -861,10 +875,12 @@ fun PlannerScreenDesktop(
             planTitle = replacement.title,
             onDismiss = { pendingReplace = null },
             onConfirm = {
-                deletePlan(existing)
-                adoptPlan(replacement)
+                val updated = PlannerStore.getAllPlans().filterNot { it.id == existing.id } + replacement
+                PlannerStore.saveAllPlans(updated)
+                PlannerStore.saveActivePlan(replacement)
                 showActive = true
                 pendingReplace = null
+                refresh++
             }
         )
     }
@@ -907,6 +923,7 @@ fun PlannerScreenDesktop(
                 showAutoRebalance = false
             }
         )
+    }
     }
 }
 

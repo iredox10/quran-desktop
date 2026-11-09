@@ -251,7 +251,9 @@ fun App() {
                         }
                         route == DesktopRoutes.ANALYTICS -> AnalyticsScreenDesktop(
                             pal = pal,
-                            onBack = { route = DesktopRoutes.HOME }
+                            onBack = { route = DesktopRoutes.HOME },
+                            onNavigate = { route = it },
+                            onOpenSurah = ::openSurah
                         )
                         route == DesktopRoutes.LIBRARY -> LibraryScreenDesktop(
                             pal = pal,

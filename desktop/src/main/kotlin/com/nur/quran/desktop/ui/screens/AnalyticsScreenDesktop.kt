@@ -2,6 +2,7 @@ package com.nur.quran.desktop.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,215 +11,280 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import com.nur.quran.desktop.ui.input.dragToScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nur.quran.desktop.PrefsCache
+import com.nur.quran.desktop.data.BookmarkStore
+import com.nur.quran.desktop.data.CollectionStore
+import com.nur.quran.desktop.data.RecentlyReadStore
 import com.nur.quran.desktop.data.SessionStore
-import com.nur.quran.desktop.ui.analytics.AchievementsList
-import com.nur.quran.desktop.ui.analytics.ActivityMixRow
-import com.nur.quran.desktop.ui.analytics.FlowChart
-import com.nur.quran.desktop.ui.analytics.Heatmap7
-import com.nur.quran.desktop.ui.analytics.MonthHeatmap
-import com.nur.quran.desktop.ui.analytics.QuickCards
-import com.nur.quran.desktop.ui.analytics.TopCards
+import com.nur.quran.desktop.ui.analytics.AchievementsCard
+import com.nur.quran.desktop.ui.analytics.ActivityFlowCard
+import com.nur.quran.desktop.ui.analytics.ActivityMixCard
+import com.nur.quran.desktop.ui.analytics.AnalyticsEngine
+import com.nur.quran.desktop.ui.analytics.QuickNavCards
+import com.nur.quran.desktop.ui.analytics.RecentActivityCard
+import com.nur.quran.desktop.ui.analytics.SmartInsightBanner
+import com.nur.quran.desktop.ui.analytics.StartYourJourneyCard
+import com.nur.quran.desktop.ui.analytics.TopHeroCards
+import com.nur.quran.desktop.ui.input.dragToScroll
+import com.nur.quran.desktop.ui.nav.DesktopRoutes
 import com.nur.quran.desktop.ui.theme.NurPalette
 import com.nur.quran.desktop.ui.theme.rememberBodyFontFamily
 import com.nur.quran.desktop.ui.theme.rememberUiFontFamily
 import com.nur.quran.shared.AnalyticsStats
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 /**
- * Desktop analytics dashboard, mirroring Android AnalyticsScreen sections
- * top-to-bottom: TopCards → QuickCards (goal ring + insight) → Heatmap →
- * ActivityMix → AchievementsRecent. Stats delegate to shared [AnalyticsStats].
+ * Desktop Analytics dashboard — 1:1 port of web app's `Progress.jsx` page.
+ *
+ * Sections:
+ * 1. Header with dynamic time-of-day greeting & Smart Insight banner.
+ * 2. 3 Top Hero Metric Cards: Consistency (streak), Today's Focus, and Weekly Goal ring.
+ * 3. Start Your Journey banner (when zero sessions logged).
+ * 4. 2-Column Wide Grid: Activity Flow (with period tabs, chart/heatmap switch, and inline log activity)
+ *    and Activity Mix (donut breakdown with center duration & shares).
+ * 5. 2-Column Wide Grid: Achievements (unlocked/locked target progress) and Recent Activity (timeline list).
+ * 6. 3 Bottom Quick Navigation Cards: Bookmarks, Collections, and Recent Surahs.
  */
 @Composable
-fun AnalyticsScreenDesktop(pal: NurPalette, onBack: () -> Unit = {}) {
+fun AnalyticsScreenDesktop(
+    pal: NurPalette,
+    onBack: () -> Unit = {},
+    onNavigate: (String) -> Unit = {},
+    onOpenSurah: (Int) -> Unit = {}
+) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
 
-    val sessions = remember { SessionStore.all() }
-    val lastRead = remember { PrefsCache.getLastRead() }
+    var refreshKey by remember { mutableStateOf(0) }
 
-    val stats = remember(sessions) {
-        sessions.map {
+    val rawSessions = remember(refreshKey) { SessionStore.all() }
+    val sessions = remember(rawSessions) {
+        rawSessions.map {
             AnalyticsStats.Session(
                 date = it.date,
                 durationSec = it.durationSec,
                 type = it.type,
-                chapterId = it.chapterId
+                chapterId = it.chapterId,
+                timestamp = it.timestamp
             )
         }
     }
 
-    val todayStr = remember {
-        SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+    val bookmarksCount = remember(refreshKey) {
+        runCatching { BookmarkStore.all().size }.getOrDefault(0)
     }
-    val last7Keys = remember {
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        (6 downTo 0).map { i ->
-            val cal = Calendar.getInstance()
-            cal.add(Calendar.DATE, -i)
-            sdf.format(cal.time)
-        }
+    val collectionsCount = remember(refreshKey) {
+        runCatching { CollectionStore.listCollections().size }.getOrDefault(0)
+    }
+    val recentEntries = remember(refreshKey) {
+        RecentlyReadStore.all()
+    }
+    val recentlyReadIds = remember(recentEntries) {
+        recentEntries.map { it.chapterId }
     }
 
-    val last7 = remember(stats) { AnalyticsStats.last7Days(stats) }
-    val streak = remember(stats) { AnalyticsStats.streak(stats.map { it.date }.toSet()) }
-    val todayMins = remember(stats, todayStr) { AnalyticsStats.todayMinutes(stats, todayStr) }
-    val allTimeMins = remember(stats) { AnalyticsStats.allTimeMinutes(stats) }
-    val byType = remember(stats) { AnalyticsStats.minutesByType(stats) }
+    val now = remember { java.util.Date() }
+    val todayKey = remember(now) { AnalyticsEngine.dateKey(now) }
+    val last7Keys = remember(now) { AnalyticsEngine.lastNDayKeys(7, todayKey) }
+
+    val achievementStats = remember(sessions, recentlyReadIds, now) {
+        AnalyticsEngine.computeAchievementStats(sessions, recentlyReadIds, now)
+    }
+
+    val streak = achievementStats.currentStreak.toInt()
+    val todayTotalSec = remember(sessions, todayKey) {
+        sessions.filter { it.date == todayKey }.sumOf { it.durationSec }
+    }
+    val todayMinutes = Math.round(todayTotalSec / 60.0f)
+
     val weeklyGoalMins = 180
-    val weeklyMins = remember(stats, last7Keys) {
-        AnalyticsStats.weeklyTotalMinutes(stats, last7Keys)
+    val weeklyTotalMins = remember(sessions, last7Keys) {
+        Math.round(last7Keys.sumOf { k -> sessions.filter { it.date == k }.sumOf { it.durationSec } } / 60.0f)
     }
-    val weeklyPercent = remember(weeklyMins) {
-        AnalyticsStats.weeklyGoalPercent(weeklyMins, weeklyGoalMins)
-    }
-    val insight = remember(stats) { AnalyticsStats.smartInsight(stats) }
-    val badges = remember(streak, allTimeMins, sessions, lastRead) {
-        AnalyticsStats.achievements(
-            streakDays = streak,
-            allTimeMins = allTimeMins,
-            sessionChapterIds = sessions.map { it.chapterId },
-            recentlyReadIds = listOfNotNull(lastRead?.chapterId)
-        )
+    val weeklyGoalPercent = ((weeklyTotalMins.toFloat() / weeklyGoalMins.toFloat()) * 100f).coerceAtMost(100f).toInt()
+
+    val smartInsight = remember(sessions) {
+        AnalyticsStats.smartInsight(sessions)
     }
 
-    val analyticsListState = rememberLazyListState()
+    val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    val greeting = when {
+        hour < 12 -> "Good Morning"
+        hour < 17 -> "Good Afternoon"
+        else -> "Good Evening"
+    }
+
+    val hasData = sessions.isNotEmpty()
+    val listState = rememberLazyListState()
+
     LazyColumn(
-        state = analyticsListState,
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .background(pal.white)
-            .dragToScroll(analyticsListState),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .dragToScroll(listState),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Centered Constrained Content Container (max width 1160.dp matching web max-w-[1200px])
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.widthIn(max = 1160.dp).fillMaxWidth()
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = pal.ink
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                Column {
-                    Text(
-                        text = "Analytics",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = fontUi,
-                        color = pal.ink
-                    )
-                    Text(
-                        text = "Your progress at a glance",
-                        fontSize = 13.sp,
-                        fontFamily = fontBody,
-                        color = pal.inkMuted
-                    )
-                }
-            }
-        }
-
-        item {
-            TopCards(
-                pal = pal,
-                streakDays = streak,
-                todayMins = todayMins,
-                totalMins = allTimeMins
-            )
-        }
-
-        if (sessions.isEmpty()) {
-            item {
-                Card(
+                // Header Row with Back Button & Centered Title
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = pal.teal),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, pal.tealMid)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(
+                    IconButton(
+                        onClick = onBack,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(pal.boneDark.copy(alpha = 0.35f))
                     ) {
-                        Text(text = "🌙", fontSize = 40.sp)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "Start Your Journey",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = fontUi,
-                            color = androidx.compose.ui.graphics.Color.White
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Read, memorize, or plan to start tracking.",
-                            fontSize = 14.sp,
-                            fontFamily = fontBody,
-                            color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f),
-                            textAlign = TextAlign.Center
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = pal.ink,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.weight(1f))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "ANALYTICS DASHBOARD",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp,
+                            color = pal.inkMuted
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Your Progress",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = fontUi,
+                            color = pal.ink
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "$greeting. Here's the story of your consistency.",
+                            fontSize = 14.sp,
+                            fontFamily = fontBody,
+                            color = pal.inkMuted
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    // Balance space for back button
+                    Spacer(modifier = Modifier.size(38.dp))
                 }
-            }
-        } else {
-            item {
-                QuickCards(
-                    pal = pal,
-                    weeklyPercent = weeklyPercent,
-                    weeklyMins = weeklyMins,
-                    weeklyGoalMins = weeklyGoalMins,
-                    insight = insight
-                )
-            }
-            item {
-                Heatmap7(pal = pal, last7 = last7)
-            }
-            item {
-                MonthHeatmap(pal = pal, sessions = stats)
-            }
-            item {
-                FlowChart(pal = pal, last7 = last7)
-            }
-            item {
-                ActivityMixRow(pal = pal, byType = byType)
-            }
-            item {
-                AchievementsList(pal = pal, badges = badges)
-            }
-        }
 
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
+                if (hasData) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    SmartInsightBanner(pal = pal, insight = smartInsight)
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Top 3 Hero Metric Cards
+                TopHeroCards(
+                    pal = pal,
+                    streak = streak,
+                    todayMinutes = todayMinutes,
+                    weeklyTotalMins = weeklyTotalMins,
+                    weeklyGoalMins = weeklyGoalMins,
+                    weeklyGoalPercent = weeklyGoalPercent
+                )
+
+                if (!hasData) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    StartYourJourneyCard(
+                        pal = pal,
+                        onOpenQuran = { onNavigate(DesktopRoutes.HOME) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 2-Column Grid: Activity Flow & Activity Mix
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    ActivityFlowCard(
+                        pal = pal,
+                        sessions = sessions,
+                        onSessionLogged = { refreshKey++ },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ActivityMixCard(
+                        pal = pal,
+                        sessions = sessions,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 2-Column Grid: Achievements & Recent Activity
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    AchievementsCard(
+                        pal = pal,
+                        stats = achievementStats,
+                        modifier = Modifier.weight(1f)
+                    )
+                    RecentActivityCard(
+                        pal = pal,
+                        sessions = sessions,
+                        onSeeAll = { onNavigate(DesktopRoutes.HISTORY) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 3 Bottom Quick Navigation Link Cards
+                QuickNavCards(
+                    pal = pal,
+                    bookmarksCount = bookmarksCount,
+                    collectionsCount = collectionsCount,
+                    recentSurahsCount = recentEntries.size,
+                    onOpenBookmarks = { onNavigate(DesktopRoutes.LIBRARY) },
+                    onOpenCollections = { onNavigate(DesktopRoutes.LIBRARY) },
+                    onOpenRecent = { onNavigate(DesktopRoutes.HISTORY) }
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }

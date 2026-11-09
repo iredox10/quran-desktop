@@ -18,10 +18,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import com.nur.quran.desktop.ui.input.dragToScroll
+import com.nur.quran.desktop.ui.input.touchTarget
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -56,7 +59,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.PrayerPrefs
 import com.nur.quran.desktop.ui.theme.NurPalette
@@ -95,12 +97,13 @@ fun AdjustPaceDialog(pal: NurPalette, plan: ReadingPlan, onDismiss: () -> Unit, 
         PlannerEngine.getPaceStats(newDuration, plan.excludeDays, plan.startDate, planUnits)
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    InWindowOverlay(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = pal.cream,
             border = BorderStroke(1.dp, pal.boneDark),
-            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth()
+            shadowElevation = 16.dp,
+            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(0.92f).heightIn(max = 620.dp)
         ) {
             Column(modifier = Modifier.padding(28.dp)) {
                 Row(
@@ -331,12 +334,13 @@ fun RebalanceDialog(pal: NurPalette, onDismiss: () -> Unit, onPick: (String) -> 
     val fontBody = rememberBodyFontFamily()
     var selectedOption by remember { mutableStateOf("extend") }
 
-    Dialog(onDismissRequest = onDismiss) {
+    InWindowOverlay(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(32.dp),
             color = pal.white,
             border = BorderStroke(1.dp, pal.boneDark),
-            modifier = Modifier.widthIn(max = 440.dp).fillMaxWidth()
+            shadowElevation = 16.dp,
+            modifier = Modifier.widthIn(max = 440.dp).fillMaxWidth(0.92f).heightIn(max = 620.dp)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Row(
@@ -439,12 +443,12 @@ fun DeletePlanDialog(
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
-    Dialog(onDismissRequest = onDismiss) {
+    InWindowOverlay(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(18.dp),
             color = pal.cream,
             shadowElevation = 16.dp,
-            modifier = Modifier.widthIn(max = 360.dp).fillMaxWidth()
+            modifier = Modifier.widthIn(max = 380.dp).fillMaxWidth(0.92f)
         ) {
             Column(modifier = Modifier.padding(32.dp)) {
                 Text(
@@ -470,7 +474,7 @@ fun DeletePlanDialog(
                         shape = RoundedCornerShape(30.dp),
                         border = BorderStroke(1.5.dp, pal.boneDark),
                         contentPadding = PaddingValues(vertical = 13.6.dp),
-                        modifier = Modifier.weight(1f).height(48.dp)
+                        modifier = Modifier.weight(1f).height(48.dp).touchTarget()
                     ) {
                         Text(
                             text = "Cancel",
@@ -486,7 +490,7 @@ fun DeletePlanDialog(
                             containerColor = Color(0xFFC0392B)
                         ),
                         contentPadding = PaddingValues(vertical = 13.6.dp),
-                        modifier = Modifier.weight(1f).height(48.dp)
+                        modifier = Modifier.weight(1f).height(48.dp).touchTarget()
                     ) {
                         Text(
                             text = "Delete",
@@ -511,13 +515,13 @@ fun ReplacePlanDialog(
 ) {
     val fontUi = rememberUiFontFamily()
     val fontBody = rememberBodyFontFamily()
-    Dialog(onDismissRequest = onDismiss) {
+    InWindowOverlay(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(18.dp),
             color = pal.cream,
             border = BorderStroke(1.dp, pal.boneDark),
             shadowElevation = 16.dp,
-            modifier = Modifier.widthIn(max = 380.dp).fillMaxWidth()
+            modifier = Modifier.widthIn(max = 380.dp).fillMaxWidth(0.92f)
         ) {
             Column(modifier = Modifier.padding(28.dp)) {
                 Text(
@@ -541,7 +545,7 @@ fun ReplacePlanDialog(
                         onClick = onDismiss,
                         shape = RoundedCornerShape(100.dp),
                         border = BorderStroke(1.5.dp, pal.boneDark),
-                        modifier = Modifier.weight(1f).height(48.dp)
+                        modifier = Modifier.weight(1f).height(48.dp).touchTarget()
                     ) {
                         Text("Cancel", fontFamily = fontBody, fontSize = 14.sp, color = pal.inkMid)
                     }
@@ -549,7 +553,7 @@ fun ReplacePlanDialog(
                         onClick = onConfirm,
                         shape = RoundedCornerShape(100.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = pal.teal),
-                        modifier = Modifier.weight(1f).height(48.dp)
+                        modifier = Modifier.weight(1f).height(48.dp).touchTarget()
                     ) {
                         Text(
                             "Replace",
@@ -710,14 +714,16 @@ fun PlannerSettingsDialog(
         "Not set — using defaults"
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    InWindowOverlay(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = pal.cream,
             border = BorderStroke(1.dp, pal.boneDark),
-            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth()
+            shadowElevation = 16.dp,
+            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(0.92f).heightIn(max = 620.dp)
         ) {
-            Column(modifier = Modifier.padding(26.dp).verticalScroll(rememberScrollState())) {
+            val settingsScroll = rememberScrollState()
+            Column(modifier = Modifier.padding(26.dp).verticalScroll(settingsScroll).dragToScroll(settingsScroll)) {
                 // Header with title and close action
                 Row(
                     modifier = Modifier.fillMaxWidth(),

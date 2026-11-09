@@ -22,7 +22,8 @@ object SessionStore {
         val date: String,
         val durationSec: Long,
         val type: String,
-        val chapterId: Int?
+        val chapterId: Int?,
+        val timestamp: Long = 0L
     )
 
     @Synchronized
@@ -30,7 +31,15 @@ object SessionStore {
         if (minutes < 1) return // sub-minute renders/back-presses carry no signal; skip them
         val today = LocalDate.now().format(dateFmt)
         val updated = all().toMutableList()
-        updated.add(Session(date = today, durationSec = minutes * 60L, type = type, chapterId = chapterId))
+        updated.add(
+            Session(
+                date = today,
+                durationSec = minutes * 60L,
+                type = type,
+                chapterId = chapterId,
+                timestamp = System.currentTimeMillis()
+            )
+        )
         save(updated.takeLast(MAX_ENTRIES))
     }
 
