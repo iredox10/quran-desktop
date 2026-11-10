@@ -37,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nur.quran.desktop.data.AudioEngine
+import com.nur.quran.desktop.data.PagePrefetch
 import com.nur.quran.desktop.data.PageWord
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.data.WordStore
@@ -238,10 +240,30 @@ fun PageScreenDesktop(
                     }
                 } else {
                     var pageWords by remember { mutableStateOf<List<PageWord>?>(null) }
+                    var prefetchJob by remember { mutableStateOf<PagePrefetch.Job?>(null) }
+                    DisposableEffect(showMushaf) {
+                        onDispose {
+                            prefetchJob?.stop()
+                            prefetchJob = null
+                        }
+                    }
                     LaunchedEffect(pageNumber, showMushaf) {
                         if (!showMushaf) return@LaunchedEffect
                         pageWords = null
-                        pageWords = withContext(Dispatchers.IO) { WordStore.getPageWords(pageNumber) }
+                        prefetchJob?.stop()
+                        prefetchJob = null
+                        val words = withContext(Dispatchers.IO) { WordStore.getPageWords(pageNumber) }
+                        pageWords = words
+                        if (words.isNotEmpty()) {
+                            // Warm the nearest pages so paging is instant and the
+                            // next few pages keep working offline.
+                            prefetchJob = withContext(Dispatchers.IO) {
+                                PagePrefetch.start(
+                                    pages = PagePrefetch.order(pageNumber).take(24),
+                                    fetch = { page -> WordStore.getPageWords(page) }
+                                )
+                            }
+                        }
                     }
                     val loaded = pageWords
                     when {
