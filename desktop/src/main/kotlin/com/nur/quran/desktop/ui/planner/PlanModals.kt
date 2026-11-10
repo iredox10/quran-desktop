@@ -83,7 +83,7 @@ data class CustomPlanParams(
 private val DayShortNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
 @Composable
-private fun ModalShell(
+internal fun ModalShell(
     pal: NurPalette,
     onDismiss: () -> Unit,
     title: String,

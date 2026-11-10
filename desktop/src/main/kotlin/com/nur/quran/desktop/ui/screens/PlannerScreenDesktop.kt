@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -73,6 +74,8 @@ import com.nur.quran.desktop.data.PrayerPrefs
 import com.nur.quran.desktop.data.PlannerStore
 import com.nur.quran.desktop.data.QuranStore
 import com.nur.quran.desktop.ui.planner.ArchivesModal
+import com.nur.quran.desktop.ui.planner.PlannerHistory
+import com.nur.quran.desktop.ui.planner.PlannerHistoryModal
 import com.nur.quran.desktop.ui.planner.CustomPlanModal
 import com.nur.quran.desktop.ui.planner.CustomPlanParams
 import com.nur.quran.desktop.ui.planner.DeletePlanDialog
@@ -140,6 +143,7 @@ fun PlannerScreenDesktop(
     var customError by remember { mutableStateOf<String?>(null) }
     var showCustomModal by remember { mutableStateOf(false) }
     var showArchivesModal by remember { mutableStateOf(false) }
+    var showHistoryModal by remember { mutableStateOf(false) }
     var previewPlan by remember { mutableStateOf<ReadingPlan?>(null) }
     var showPlannerSettings by remember { mutableStateOf(false) }
     var showDeletePlan by remember { mutableStateOf(false) }
@@ -587,6 +591,25 @@ fun PlannerScreenDesktop(
                                 )
                             }
 
+                            // History button (web PlannerHistory): completed plans,
+                            // reading time, reflections.
+                            IconButton(
+                                onClick = { showHistoryModal = true },
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(pal.white)
+                                    .border(1.dp, pal.boneDark, CircleShape)
+                                    .touchTarget()
+                            ) {
+                                Icon(
+                                    Icons.Filled.History,
+                                    contentDescription = "Plan history",
+                                    tint = pal.inkMid,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+
                             // Settings gear button
                             IconButton(
                                 onClick = { showPlannerSettings = true },
@@ -852,6 +875,26 @@ fun PlannerScreenDesktop(
                 customError = null
             },
             onCreate = { createCustomPlan(it) }
+        )
+    }
+    if (showHistoryModal) {
+        val livePlans = PlannerStore.getAllPlans()
+        val archivedPlans = PlannerStore.getArchived()
+        val allKnown = livePlans + archivedPlans.map { it.plan }
+        PlannerHistoryModal(
+            pal = pal,
+            summaries = PlannerHistory.build(
+                livePlans = livePlans,
+                archived = archivedPlans,
+                activePlanId = PlannerStore.getActivePlan()?.id,
+                studySessions = PlannerStore.getStudySessions(),
+                reflectionsFor = { planId ->
+                    val days = allKnown.firstOrNull { it.id == planId }?.durationDays ?: 0
+                    (1..days).associateWith { PlannerStore.getReflection(planId, it.toString()) }
+                },
+                bookmarksFor = { planId -> PlannerStore.getMarks(planId) }
+            ),
+            onDismiss = { showHistoryModal = false }
         )
     }
     if (showArchivesModal) {
