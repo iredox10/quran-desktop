@@ -76,37 +76,67 @@ fun AudioSetupSheetDesktop(
                 modifier = Modifier.height(300.dp)
             )
 
-            // ── Repeat ──
+            // ── Repeat ayah ──
             Text(
-                text = "REPEAT",
+                text = "REPEAT AYAH",
                 fontSize = 10.sp,
                 letterSpacing = 1.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = pal.gold,
                 fontFamily = FontFamily.Monospace
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Pill(
-                    pal = pal,
-                    label = "Off",
-                    selected = AudioEngine.repeatMode == "off",
-                    onClick = { AudioEngine.repeatMode = "off" },
-                    modifier = Modifier.weight(1f)
-                )
-                Pill(
-                    pal = pal,
-                    label = "Repeat ayah",
-                    selected = AudioEngine.repeatMode == "ayah",
-                    onClick = { AudioEngine.repeatMode = "ayah" },
-                    modifier = Modifier.weight(1f)
-                )
-                Pill(
-                    pal = pal,
-                    label = "Repeat chapter",
-                    selected = AudioEngine.repeatMode == "chapter",
-                    onClick = { AudioEngine.repeatMode = "chapter" },
-                    modifier = Modifier.weight(1f)
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(1 to "Once", 2 to "2×", 3 to "3×", 5 to "5×", -1 to "∞").forEach { (count, label) ->
+                    Pill(
+                        pal = pal,
+                        label = label,
+                        selected = AudioEngine.repeatAyah == count,
+                        onClick = { AudioEngine.repeatAyah = count },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // ── Repeat selection ──
+            Text(
+                text = "REPEAT SELECTION",
+                fontSize = 10.sp,
+                letterSpacing = 1.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = pal.gold,
+                fontFamily = FontFamily.Monospace
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(1 to "Once", 2 to "2×", 3 to "3×", -1 to "∞").forEach { (count, label) ->
+                    Pill(
+                        pal = pal,
+                        label = label,
+                        selected = AudioEngine.repeatSelection == count,
+                        onClick = { AudioEngine.repeatSelection = count },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // ── Delay between ayahs ──
+            Text(
+                text = "DELAY BETWEEN AYAHS",
+                fontSize = 10.sp,
+                letterSpacing = 1.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = pal.gold,
+                fontFamily = FontFamily.Monospace
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(0 to "None", 1 to "1s", 2 to "2s", 3 to "3s", 5 to "5s").forEach { (seconds, label) ->
+                    Pill(
+                        pal = pal,
+                        label = label,
+                        selected = AudioEngine.delaySeconds == seconds,
+                        onClick = { AudioEngine.delaySeconds = seconds },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
 
             // ── Sleep timer ──

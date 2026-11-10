@@ -796,19 +796,56 @@ fun HifdhReaderScreenDesktop(
                                 modifier = Modifier.padding(top = 44.dp)
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
-                                    Text("Repeat", fontFamily = fontUi, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)
-                                    val repLabels = mapOf("off" to "Off", "ayah" to "Ayah", "chapter" to "Chapter")
+                                    Text("Repeat ayah", fontFamily = fontUi, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)
                                     Button(
                                         onClick = {
-                                            AudioEngine.repeatMode = when (AudioEngine.repeatMode) {
-                                                "off" -> "ayah"; "ayah" -> "chapter"; else -> "off"
+                                            AudioEngine.repeatAyah = when (AudioEngine.repeatAyah) {
+                                                1 -> 2; 2 -> 3; 3 -> -1; else -> 1
                                             }
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = pal.cream, contentColor = pal.ink),
                                         shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth().touchTarget()
                                     ) {
-                                        Text(repLabels[AudioEngine.repeatMode] ?: "Off", fontFamily = fontUi, fontSize = 12.sp)
+                                        val label = when (AudioEngine.repeatAyah) {
+                                            -1 -> "Infinite"; 1 -> "Once"; else -> "${AudioEngine.repeatAyah}×"
+                                        }
+                                        Text(label, fontFamily = fontUi, fontSize = 12.sp)
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("Repeat selection", fontFamily = fontUi, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)
+                                    Button(
+                                        onClick = {
+                                            AudioEngine.repeatSelection = when (AudioEngine.repeatSelection) {
+                                                1 -> 2; 2 -> 3; 3 -> -1; else -> 1
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = pal.cream, contentColor = pal.ink),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.fillMaxWidth().touchTarget()
+                                    ) {
+                                        val label = when (AudioEngine.repeatSelection) {
+                                            -1 -> "Infinite"; 1 -> "Once"; else -> "${AudioEngine.repeatSelection}×"
+                                        }
+                                        Text(label, fontFamily = fontUi, fontSize = 12.sp)
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("Delay between ayahs", fontFamily = fontUi, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)
+                                    val delayOpts = listOf(0, 1, 2, 3, 5)
+                                    Button(
+                                        onClick = {
+                                            val i = delayOpts.indexOf(AudioEngine.delaySeconds)
+                                            AudioEngine.delaySeconds = delayOpts[(i + 1) % delayOpts.size]
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = pal.cream, contentColor = pal.ink),
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.fillMaxWidth().touchTarget()
+                                    ) {
+                                        Text(
+                                            if (AudioEngine.delaySeconds == 0) "None" else "${AudioEngine.delaySeconds}s",
+                                            fontFamily = fontUi,
+                                            fontSize = 12.sp
+                                        )
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text("Sleep timer", fontFamily = fontUi, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = pal.ink)

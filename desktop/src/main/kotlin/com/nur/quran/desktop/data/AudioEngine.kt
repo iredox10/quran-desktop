@@ -17,7 +17,9 @@ import java.util.prefs.Preferences
  * - data class Track(verseKey, chapterId, verseNumber)
  * - var queue: List<Track>, var index: Int, var playing: Boolean (Compose-observable)
  * - var reciterId: Int (observable, persisted in Preferences node "audio_prefs", key "reciter_id")
- * - var repeatMode: String ("off" / "ayah" / "chapter", persisted key "repeat_mode", default "off")
+ * - var repeatAyah: Int (1 = once, N = repeat the ayah N times, -1 = infinite; persisted)
+ * - var repeatSelection: Int (1 = once, N = repeat the whole queue N times, -1 = infinite; persisted)
+ * - var delaySeconds: Int (0..30 pause between ayahs; persisted)
  * - var sleepMinutes: Int (persisted key "sleep_minutes", default 0; >0 arms a stop deadline)
  * - val current: Track?
  * - playChapter(chapterId, startVerse = 1), playVerse(verseKey),
@@ -39,15 +41,42 @@ object AudioEngine {
 
     private const val PREFS_NODE = "audio_prefs"
     private const val KEY_RECITER_ID = "reciter_id"
-    private const val KEY_REPEAT_MODE = "repeat_mode"
+    private const val KEY_REPEAT_AYAH = "repeat_ayah"
+    private const val KEY_REPEAT_SELECTION = "repeat_selection"
+    private const val KEY_DELAY_SECONDS = "delay_seconds"
     private const val KEY_SLEEP_MINUTES = "sleep_minutes"
 
-    /** Repeat behavior at track/queue end: "off" / "ayah" / "chapter". Persisted. */
-    var repeatMode: String
-        get() = repeatModeState.value
+    /**
+     * How many times each ayah plays before advancing: 1 = once, N = N times,
+     * -1 = repeat forever. Persisted (web `audioSettings.repeatAya`).
+     */
+    var repeatAyah: Int
+        get() = repeatAyahState.value
         set(value) {
-            repeatModeState.value = value
-            persistPref(KEY_REPEAT_MODE, value)
+            val normalized = normalizeRepeatCount(value)
+            repeatAyahState.value = normalized
+            persistPref(KEY_REPEAT_AYAH, normalized)
+        }
+
+    /**
+     * How many times the whole queue plays: 1 = once, N = N times,
+     * -1 = repeat forever. Persisted (web `audioSettings.repeatSelection`).
+     */
+    var repeatSelection: Int
+        get() = repeatSelectionState.value
+        set(value) {
+            val normalized = normalizeRepeatCount(value)
+            repeatSelectionState.value = normalized
+            persistPref(KEY_REPEAT_SELECTION, normalized)
+        }
+
+    /** Pause between ayahs in seconds (0..30). Persisted. */
+    var delaySeconds: Int
+        get() = delaySecondsState.value
+        set(value) {
+            val normalized = value.coerceIn(0, 30)
+            delaySecondsState.value = normalized
+            persistPref(KEY_DELAY_SECONDS, normalized)
         }
 
     /**
@@ -75,7 +104,9 @@ object AudioEngine {
         private set
 
     private val reciterState = mutableStateOf(loadReciterId())
-    private val repeatModeState = mutableStateOf(loadPref(KEY_REPEAT_MODE, "off"))
+    private val repeatAyahState = mutableStateOf(normalizeRepeatCount(loadPref(KEY_REPEAT_AYAH, 1)))
+    private val repeatSelectionState = mutableStateOf(normalizeRepeatCount(loadPref(KEY_REPEAT_SELECTION, 1)))
+    private val delaySecondsState = mutableStateOf(loadPref(KEY_DELAY_SECONDS, 0).coerceIn(0, 30))
     private val sleepMinutesState = mutableStateOf(loadPref(KEY_SLEEP_MINUTES, 0))
 
     /** Currently selected reciter; setting persists to Preferences. */
@@ -104,16 +135,24 @@ object AudioEngine {
     @Volatile
     private var activePlayer: Player? = null
 
-    /** Queue the whole chapter from [startVerse] and play from there. */
-    fun playChapter(chapterId: Int, startVerse: Int = 1) {
-        val verses = QuranStore.versesOfChapter(chapterId)
-            .filter { it.verseNumber >= startVerse }
+    /**
+     * Queue the chapter from [startVerse] through [endVerse] (inclusive, null =
+     * end of chapter) and play from the start of that range.
+     */
+    fun playChapter(chapterId: Int, startVerse: Int = 1, endVerse: Int? = null) {
+        val verses = chapterTracks(chapterId, startVerse, endVerse)
         if (verses.isEmpty()) return
         synchronized(lock) {
-            queue = verses.map { Track(it.verseKey, it.chapterId, it.verseNumber) }
+            queue = verses
             launchLocked(0)
         }
     }
+
+    /** The verse range a chapter play would queue — also used by tests. */
+    fun chapterTracks(chapterId: Int, startVerse: Int = 1, endVerse: Int? = null): List<Track> =
+        QuranStore.versesOfChapter(chapterId)
+            .filter { it.verseNumber >= startVerse && (endVerse == null || it.verseNumber <= endVerse) }
+            .map { Track(it.verseKey, it.chapterId, it.verseNumber) }
 
     /** Queue the verse's chapter and start playback at [verseKey]. */
     fun playVerse(verseKey: String) {
@@ -229,7 +268,9 @@ object AudioEngine {
     private fun runQueue(snapshot: List<Track>, reciter: Int, start: Int, gen: Int) {
         try {
             var i = start
-            while (i < snapshot.size) {
+            var ayahPlayed = 0
+            var selectionPass = 0
+            while (true) {
                 if (gen != generation) return
                 index = i
                 val track = snapshot[i]
@@ -265,25 +306,50 @@ object AudioEngine {
                     if (activePlayer === player) activePlayer = null
                 }
                 if (gen != generation) return
-                // Track finished: sleep timer > ayah repeat > advance / chapter repeat.
+                // Track finished: sleep timer > ayah repeat > advance / queue repeat.
                 if (sleepExpired()) {
                     System.err.println("AudioEngine: sleep timer elapsed")
                     requestStop(gen)
                     return
                 }
-                when {
-                    repeatMode == "ayah" -> { /* replay same index */ }
-                    i + 1 >= snapshot.size && repeatMode == "chapter" -> i = 0
-                    else -> i++
+                ayahPlayed++
+                if (repeatAyah == -1 || ayahPlayed < repeatAyah) {
+                    if (!waitDelaySeconds(gen)) return
+                    continue
                 }
+                ayahPlayed = 0
+                if (i + 1 >= snapshot.size) {
+                    selectionPass++
+                    if (repeatSelection == -1 || selectionPass < repeatSelection) {
+                        i = 0
+                    } else {
+                        break
+                    }
+                } else {
+                    i++
+                }
+                if (!waitDelaySeconds(gen)) return
             }
             synchronized(lock) {
-                if (gen == generation && repeatMode != "chapter") playing = false
+                if (gen == generation) playing = false
             }
         } catch (t: Throwable) {
             System.err.println("AudioEngine: ${t.message}")
             requestStop(gen)
         }
+    }
+
+    /** Sleeps [delaySeconds] between tracks; false when playback was cancelled. */
+    private fun waitDelaySeconds(gen: Int): Boolean {
+        val seconds = delaySeconds
+        if (seconds <= 0) return true
+        if (gen != generation) return false
+        try {
+            Thread.sleep(seconds * 1000L)
+        } catch (_: InterruptedException) {
+            return false
+        }
+        return gen == generation
     }
 
     private fun requestStop(gen: Int) {
@@ -307,6 +373,14 @@ object AudioEngine {
             // Cache is best-effort; playback uses the in-memory bytes.
         }
         return bytes
+    }
+
+    /** 1..99 plays, or -1 for infinite. Anything else collapses to "once". */
+    private fun normalizeRepeatCount(value: Int): Int = when {
+        value == -1 -> -1
+        value < 1 -> 1
+        value > 99 -> 99
+        else -> value
     }
 
     private fun loadReciterId(): Int {
