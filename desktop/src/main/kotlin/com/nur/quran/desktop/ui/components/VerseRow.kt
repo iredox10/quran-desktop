@@ -1,6 +1,7 @@
 package com.nur.quran.desktop.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,8 @@ import com.nur.quran.desktop.PrefsCache
 import com.nur.quran.desktop.data.BookmarkStore
 import com.nur.quran.desktop.data.DeskVerse
 import com.nur.quran.desktop.data.TafsirStore
+import com.nur.quran.desktop.data.VerseWord
+import com.nur.quran.desktop.data.WordStore
 import com.nur.quran.desktop.ui.input.touchTarget
 import com.nur.quran.shared.HtmlStripper
 import com.nur.quran.shared.Verse
@@ -95,6 +98,23 @@ fun VerseRow(
     var tafsirOpen by remember(verse.verseKey) { mutableStateOf(false) }
     val tafsirText = remember(tafsirOpen, verse.verseKey) {
         if (tafsirOpen) TafsirStore.get(verse.verseKey)?.let(HtmlStripper::strip) else null
+    }
+
+    // Word study (web parity): "none" | "translation" | "tajweed".
+    val wordHoverAction = PrefsCache.getWordTooltipBehavior()
+    val verseWords = remember(verse.verseKey, wordHoverAction) {
+        if (wordHoverAction == "none") emptyList() else WordStore.wordsForVerse(verse.verseKey)
+    }
+    var wordTooltip by remember(verse.verseKey) { mutableStateOf<VerseWord?>(null) }
+    val onWordClick: (Int) -> Unit = { index ->
+        if (wordHoverAction != "none") {
+            val word = verseWords.getOrNull(index)
+            wordTooltip = when {
+                word == null || word.isEndMarker -> null
+                wordHoverAction == "translation" && word.translation.isBlank() -> null
+                else -> if (wordTooltip == word) null else word
+            }
+        }
     }
 
     Column(
@@ -234,6 +254,7 @@ fun VerseRow(
                     fontScale = fontScale,
                     lineHeightMultiplier = lineHeightMultiplier,
                     fontFamily = fontArabic,
+                    onWordClick = onWordClick,
                     modifier = Modifier.fillMaxWidth(),
                     markerGold = pal.gold
                 )
@@ -244,11 +265,23 @@ fun VerseRow(
                     fontScale = fontScale,
                     lineHeightMultiplier = lineHeightMultiplier,
                     fontFamily = fontArabic,
+                    onWordClick = onWordClick,
                     modifier = Modifier.fillMaxWidth(),
                     endMarkerLength = verseEndMarkerLength(fontName, verse.verseNumber),
                     markerGold = pal.gold
                 )
             }
+        }
+
+        wordTooltip?.let { word ->
+            Spacer(modifier = Modifier.height(10.dp))
+            WordTooltipCard(
+                pal = pal,
+                word = word,
+                showTajweedRules = wordHoverAction == "tajweed",
+                fontUi = fontBody,
+                onDismiss = { wordTooltip = null }
+            )
         }
 
         if (showTranslation && translation.isNotBlank()) {
@@ -286,6 +319,112 @@ fun VerseRow(
                 pal = pal,
                 verseKey = verse.verseKey,
                 onDismiss = { showCollections = false }
+            )
+        }
+    }
+}
+
+/**
+ * Word study popup shown after tapping a word in the Arabic block.
+ *
+ * Web parity: `WordTranslationTooltip` (translation mode) and
+ * `TajweedTooltip` (tajweed mode) — the desktop renders the tooltip inline
+ * under the verse instead of at the pointer.
+ */
+@Composable
+internal fun WordTooltipCard(
+    pal: NurPalette,
+    word: VerseWord,
+    showTajweedRules: Boolean,
+    fontUi: FontFamily,
+    onDismiss: () -> Unit
+) {
+    val fontArabic = rememberArabicFontFamily(PrefsCache.getFont())
+    val rules = remember(word.tajweedHtml) { TajweedRules.rulesIn(word.tajweedHtml) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(pal.surface)
+            .border(1.5.dp, pal.goldSoft, RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = word.arabic,
+                fontFamily = fontArabic,
+                fontSize = 24.sp,
+                color = pal.ink
+            )
+            if (word.transliteration.isNotBlank()) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = word.transliteration,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 12.sp,
+                    color = pal.inkMuted
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .touchTarget()
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onDismiss),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Dismiss word tooltip",
+                    tint = pal.inkMuted,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+
+        if (showTajweedRules && rules.isNotEmpty()) {
+            rules.forEach { rule ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(rule.color)
+                    )
+                    Spacer(modifier = Modifier.width(7.dp))
+                    Text(
+                        text = rule.name,
+                        fontFamily = fontUi,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = pal.ink
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = rule.nameArabic,
+                        fontFamily = fontArabic,
+                        fontSize = 15.sp,
+                        color = rule.color
+                    )
+                }
+                Text(
+                    text = rule.description,
+                    fontFamily = fontUi,
+                    fontSize = 11.5.sp,
+                    color = pal.inkMuted,
+                    modifier = Modifier.padding(top = 2.dp, start = 16.dp)
+                )
+            }
+        } else if (word.translation.isNotBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = word.translation,
+                fontFamily = fontUi,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = pal.ink
             )
         }
     }

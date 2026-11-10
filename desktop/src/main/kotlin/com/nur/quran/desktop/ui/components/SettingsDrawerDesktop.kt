@@ -82,6 +82,7 @@ private const val VIEW_SYNC = "sync"
 
 private val TABS = listOf("General", "Reading", "Data")
 private val WORD_HOVER_OPTIONS = listOf("None", "Translation", "Tajweed")
+private val WORD_HOVER_VALUES = listOf("none", "translation", "tajweed")
 
 /** The desktop edition bundles exactly one tafsir (Ibn Kathir, English). */
 private const val TAFSIR_NAME = "Ibn Kathir (Abridged)"
@@ -155,6 +156,7 @@ fun SettingsDrawerDesktop(
     var tajweed by remember(tick) { mutableStateOf(PrefsCache.getTajweedEnabled()) }
     var mushafMode by remember(tick) { mutableStateOf(PrefsCache.getMushafMode()) }
     var touchMode by remember(tick) { mutableStateOf(PrefsCache.getTouchMode()) }
+    var wordTooltip by remember(tick) { mutableStateOf(PrefsCache.getWordTooltipBehavior()) }
     var backupStatus by remember { mutableStateOf("") }
 
     val mushafObj = remember(mushaf) { Mushaf.fromId(mushaf) }
@@ -336,9 +338,16 @@ fun SettingsDrawerDesktop(
                                         touchMode = it
                                         PrefsCache.putTouchMode(it)
                                     }
-                                    // Structure parity: the row exists but the desktop has no
-                                    // word-level tooltips yet, so the control is shown disabled.
-                                    WordHoverActionRow(pal, fontUi, fontBody)
+                                    WordHoverActionRow(
+                                        pal = pal,
+                                        fontUi = fontUi,
+                                        fontBody = fontBody,
+                                        selected = wordTooltip,
+                                        onSelect = {
+                                            wordTooltip = it
+                                            PrefsCache.putWordTooltipBehavior(it)
+                                        }
+                                    )
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -991,16 +1000,21 @@ private fun PickerOption(
 }
 
 /**
- * Web `Word Hover Action` segmented row. The desktop has no word-level
- * tooltips yet, so the whole block renders disabled (structure parity without
- * a dead control).
+ * Web `Word Hover Action` segmented row: what tapping a word in the reader
+ * shows. `selected` is one of `"none"`, `"translation"`, `"tajweed"`.
  */
 @Composable
-private fun WordHoverActionRow(pal: NurPalette, fontUi: FontFamily, fontBody: FontFamily) {
+private fun WordHoverActionRow(
+    pal: NurPalette,
+    fontUi: FontFamily,
+    fontBody: FontFamily,
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    val values = WORD_HOVER_VALUES
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(0.5f)
             .padding(horizontal = 14.dp, vertical = 11.dp)
     ) {
         Text(
@@ -1011,7 +1025,7 @@ private fun WordHoverActionRow(pal: NurPalette, fontUi: FontFamily, fontBody: Fo
             color = pal.ink
         )
         Text(
-            text = "Word-level taps arrive in a later desktop update.",
+            text = "Tap a word to show its translation or tajweed rule.",
             fontFamily = fontBody,
             fontSize = 11.sp,
             color = pal.inkMuted
@@ -1021,8 +1035,8 @@ private fun WordHoverActionRow(pal: NurPalette, fontUi: FontFamily, fontBody: Fo
             pal = pal,
             fontUi = fontUi,
             items = WORD_HOVER_OPTIONS,
-            selected = 0,
-            onSelect = {}
+            selected = values.indexOf(selected).coerceAtLeast(0),
+            onSelect = { index -> onSelect(values[index]) }
         )
     }
 }

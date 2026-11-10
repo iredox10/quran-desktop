@@ -96,6 +96,14 @@ object PrefsCache {
     fun getMushafMode(): Boolean = prefs.getBoolean(KEY_MUSHAF_MODE, false)
     fun putMushafMode(value: Boolean) = prefs.putBoolean(KEY_MUSHAF_MODE, value)
 
+    /**
+     * Word tap behaviour in the reader (web `wordTooltipBehavior`):
+     * `"none"`, `"translation"` or `"tajweed"`. Web defaults to tajweed.
+     */
+    private const val KEY_WORD_TOOLTIP = "word_tooltip_behavior"
+    fun getWordTooltipBehavior(): String = prefs.get(KEY_WORD_TOOLTIP, "tajweed")
+    fun putWordTooltipBehavior(value: String) = prefs.put(KEY_WORD_TOOLTIP, value)
+
     // --- tablet / touch mode ---
     private const val KEY_TOUCH_MODE = "touch_mode"
     fun getTouchMode(): Boolean = prefs.getBoolean(KEY_TOUCH_MODE, false)
